@@ -901,6 +901,28 @@ internal sealed class CliRunner
         }
     }
 
+    /// <summary>拍一张并登记到清单里。</summary>
+    private static void Capture(
+        Form form,
+        string directory,
+        List<(string Label, string Path, string Size)> shots,
+        string name,
+        string label)
+    {
+        var image = WindowShots.CaptureWindow(form, out var error);
+        if (image is null)
+        {
+            Console.WriteLine($"  {Fit(label, 26)} 截图失败：{error}");
+            return;
+        }
+
+        using (image)
+        {
+            var path = WindowShots.Save(image, directory, name);
+            shots.Add((label, path, $"{image.Width}x{image.Height}"));
+        }
+    }
+
     /// <summary>主窗口：逐个标签页截图（每页都会触发懒加载建页与布局）。</summary>
     private void ShootMainTabs(
         SnapLogEngine engine,
@@ -941,22 +963,50 @@ internal sealed class CliRunner
                     Thread.Sleep(450);
                     Application.DoEvents();
 
-                    var image = WindowShots.CaptureWindow(main, out var error);
-                    if (image is null)
+                    index++;
+                    Capture(main, directory, shots, $"{index:00}-tab-{index}", $"标签页：{page.Text}");
+
+                    // 设置页比视口高，滚到底再拍一张：否则页尾的组永远看不到。
+                    var view = FindControls<Control>(page)
+                        .FirstOrDefault(control => control is ScrollableControl { AutoScroll: true });
+
+                    if (view is ScrollableControl { AutoScroll: true } scrollable
+                        && scrollable.VerticalScroll.Maximum > 0)
                     {
-                        Console.WriteLine($"  {Fit("标签页：" + page.Text, 22)} 截图失败：{error}");
+                        scrollable.AutoScrollPosition = new Point(0, scrollable.VerticalScroll.Maximum);
+                        Application.DoEvents();
+                        Thread.Sleep(250);
+                        Application.DoEvents();
+                        Capture(main, directory, shots, $"{index:00}b-tab-{index}-bottom", $"标签页：{page.Text}（底部）");
+                        scrollable.AutoScrollPosition = new Point(0, 0);
+                        Application.DoEvents();
+                    }
+                }
+
+                // 窄窗口：用户抱怨过"窗口缩小按钮跑到外面"，这里留一张视觉证据。
+                var wide = main.ClientSize.Width;
+                main.ClientSize = new Size(660, main.ClientSize.Height);
+                Application.DoEvents();
+
+                foreach (var title in new[] { "抓取记录", "总结记录", "大模型配置" })
+                {
+                    var target = tabs.TabPages.Cast<TabPage>()
+                        .FirstOrDefault(p => string.Equals(p.Text, title, StringComparison.Ordinal));
+
+                    if (target is null)
+                    {
                         continue;
                     }
 
-                    using (image)
-                    {
-                        var name = $"{index + 1:00}-tab-{index + 1}";
-                        var path = WindowShots.Save(image, directory, name);
-                        shots.Add(($"标签页：{page.Text}", path, $"{image.Width}x{image.Height}"));
-                    }
-
-                    index++;
+                    tabs.SelectedTab = target;
+                    Application.DoEvents();
+                    Thread.Sleep(350);
+                    Application.DoEvents();
+                    Capture(main, directory, shots, $"98-narrow-{title}", $"窄窗口：{title}");
                 }
+
+                main.ClientSize = new Size(wide, main.ClientSize.Height);
+                Application.DoEvents();
             },
             delayMs: 1200);
     }

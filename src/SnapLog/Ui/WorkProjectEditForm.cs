@@ -60,6 +60,9 @@ internal sealed class WorkProjectEditForm : Form
         _description.Height = 120;
         _description.ScrollBars = ScrollBars.Vertical;
         _description.PlaceholderText = "填写该项目的工作内容、涉及的系统或关键词。描述越具体，模型归类越准确。";
+
+        // 多行框先设文本、后首次聚焦时会把全文选中（WinForms 老行为），打开时把光标放到开头。
+        Shown += (_, _) => _description.Select(0, 0);
         grid.Controls.Add(_description, 1, 1);
 
         var hint = new Label

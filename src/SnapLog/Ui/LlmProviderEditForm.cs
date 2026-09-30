@@ -70,7 +70,7 @@ internal sealed class LlmProviderEditForm : Form
 
             grid.Controls.Add(new Label
             {
-                Text = caption + "：",
+                Text = caption.Length == 0 ? string.Empty : caption + "：",
                 AutoSize = true,
                 ForeColor = SystemColors.GrayText,
                 Margin = new Padding(0, 8, 6, 0),

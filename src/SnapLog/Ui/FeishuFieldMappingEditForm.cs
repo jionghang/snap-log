@@ -162,7 +162,7 @@ internal sealed class FeishuFieldMappingEditForm : Form
 
         var lines = new List<string>
         {
-            $"把总结的“{FeishuFieldMapping.DescribeField(field)}”写到飞书的“{(target.Length == 0 ? "(未设置)" : target)}”列。",
+            $"把“{FeishuFieldMapping.DescribeField(field)}”写到飞书的“{(target.Length == 0 ? "(未设置)" : target)}”列。",
         };
 
         lines.Add(field switch

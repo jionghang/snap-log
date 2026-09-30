@@ -58,7 +58,7 @@ internal sealed class AboutView : SettingsViewBase
             info.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             info.Controls.Add(new Label
             {
-                Text = caption + "：",
+                Text = caption.Length == 0 ? string.Empty : caption + "：",
                 AutoSize = true,
                 ForeColor = SystemColors.GrayText,
                 Margin = new Padding(0, 4, 4, 0),
