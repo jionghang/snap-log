@@ -439,7 +439,9 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
             _knownFields = fields;
 
-            var names = string.Join("、", fields.Select(f => $"{f.Name}({f.TypeName})"));
+            // 字段清单只列列名：写成"列名（类型）"时，用户复制粘贴容易把类型说明一起带进映射，
+            // 而飞书按名称精确匹配，多这几个字就会报字段名不匹配。类型在映射编辑窗体的提示里单独说明。
+            var names = string.Join("、", fields.Select(f => f.Name));
             _pendingHint.ForeColor = Color.SeaGreen;
             _pendingHint.Text = $"已读取 {fields.Count} 个字段";
 

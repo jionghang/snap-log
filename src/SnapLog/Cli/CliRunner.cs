@@ -698,7 +698,8 @@ internal sealed class CliRunner
         ProbeForm(
             "字段映射（新增）",
             () => new FeishuFieldMappingEditForm(new FeishuFieldMapping(), isNew: true, probeFields),
-            failures);
+            failures,
+            CheckMappingFieldPicker);
         ProbeForm(
             "字段映射（编辑已被删掉的列）",
             () => new FeishuFieldMappingEditForm(
@@ -946,6 +947,45 @@ internal sealed class CliRunner
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 从"飞书字段名"的下拉里选一列之后，输入框里必须只剩列名本身。
+    /// 下拉项曾经显示成"列名（类型）"，如果那个显示文本被带进映射，飞书那边就会报字段名不匹配。
+    /// </summary>
+    private static string? CheckMappingFieldPicker(Form form)
+    {
+        var combo = FindControls<ComboBox>(form)
+            .FirstOrDefault(c => (c.Items.Count > 0 ? c.Items[0]?.ToString() ?? string.Empty : string.Empty)
+                .StartsWith("时间", StringComparison.Ordinal));
+
+        if (combo is null)
+        {
+            return "找不到“飞书字段名”的下拉框";
+        }
+
+        combo.SelectedIndex = 0;
+
+        var text = (combo.Text ?? string.Empty).Trim();
+        return text == "时间"
+            ? null
+            : $"从下拉选中列名后输入框里是“{text}”，应当只剩列名“时间”（类型说明不该写进映射）";
+    }
+
+    private static IEnumerable<T> FindControls<T>(Control root) where T : Control
+    {
+        foreach (Control child in root.Controls)
+        {
+            if (child is T typed)
+            {
+                yield return typed;
+            }
+
+            foreach (var nested in FindControls<T>(child))
+            {
+                yield return nested;
+            }
+        }
     }
 
     private static IEnumerable<string> CollectTexts(Control root)
