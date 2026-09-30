@@ -34,6 +34,7 @@ internal sealed class MainForm : Form
     private readonly Label _totalValue = new();
     private readonly ListBox _logList = new();
     private readonly Button _toggleButton = new();
+    private readonly Button _captureButton = new();
     private readonly CheckBox _autoStart = new();
     private readonly ToolStripStatusLabel _statusStripLabel = new();
     private readonly TabControl _tabs = new();
@@ -41,6 +42,12 @@ internal sealed class MainForm : Form
 
 
     private int _sessionRecordCount;
+
+    /// <summary>手动抓取的倒计时常量：够切一个窗口，又不至于等到忘了自己在等什么。</summary>
+    private const int ManualCaptureCountdownSeconds = 5;
+
+    /// <summary>倒数中；非空表示正在倒数，再点按钮就取消。</summary>
+    private CancellationTokenSource? _captureCountdown;
 
     /// <summary>引擎是否运行过。用来区分"正在启动"和"已被暂停"。</summary>
     private bool _sawRunning;
@@ -273,8 +280,13 @@ internal sealed class MainForm : Form
         _toggleButton.Click += async (_, _) => await ToggleRecordingAsync();
         buttons.Controls.Add(_toggleButton);
 
-        buttons.Controls.Add(MakeButton("立即抓取一次", 108, async () => await CaptureOnceAsync()));
-
+        _captureButton.Text = "立即抓取一次";
+        _captureButton.Width = 108;
+        _captureButton.Height = 30;
+        _captureButton.AutoSize = false;
+        _captureButton.Margin = new Padding(3, 3, 3, 3);
+        _captureButton.Click += async (_, _) => await CaptureOnceAsync();
+        buttons.Controls.Add(_captureButton);
         var logHeader = new Label
         {
             Text = "运行日志（最近 500 条）",
@@ -319,13 +331,6 @@ internal sealed class MainForm : Form
         panel.Controls.Add(value, 1, row);
     }
 
-    private static Button MakeButton(string text, int width, Action onClick)
-    {
-        var button = new Button { Text = text, Width = width, AutoSize = false, Height = 30 };
-        button.Click += (_, _) => onClick();
-        return button;
-    }
-
     // ---------------------------------------------------------------- 抓取记录页
 
     private TabPage BuildRecordsTab(SettingsContext context)
@@ -364,8 +369,42 @@ internal sealed class MainForm : Form
         RefreshStatus();
     }
 
+    /// <summary>
+    /// 立即抓取一次。点按钮的那一刻前台窗口是 SnapLog 自己，而它自己在排除列表里，
+    /// 直接抓只会得到"未记录"。所以先倒数几秒，让用户把要记录的窗口切到前台；
+    /// 倒数期间按钮变成"取消抓取"，再点一次即放弃。
+    /// </summary>
     private async Task CaptureOnceAsync()
     {
+        if (_captureCountdown is not null)
+        {
+            _captureCountdown.Cancel();
+            return;
+        }
+
+        var countdown = new CancellationTokenSource();
+        _captureCountdown = countdown;
+        _captureButton.Text = "取消抓取";
+
+        try
+        {
+            for (var remaining = ManualCaptureCountdownSeconds; remaining > 0; remaining--)
+            {
+                SetStatus($"{remaining} 秒后抓取，请切换到要记录的窗口（再点按钮取消）");
+                await Task.Delay(TimeSpan.FromSeconds(1), countdown.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus("已取消抓取");
+            return;
+        }
+        finally
+        {
+            _captureCountdown = null;
+            _captureButton.Text = "立即抓取一次";
+        }
+
         SetStatus("正在抓取…");
         try
         {

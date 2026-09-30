@@ -22,21 +22,24 @@ if errorlevel 1 (
     )
 )
 
-rem While the tray app is running it holds SnapLog.exe, so the copy step fails
-rem after ten retries with a confusing MSB3027. Say it plainly instead.
+rem A running tray app may hold the exe we are about to overwrite: the copy step
+rem then fails after ten retries with a confusing MSB3027. We do not refuse up front
+rem because another copy (an extracted release, say) does not lock this output - the
+rem friendly hint is only printed when the build actually failed while one is running.
 rem (findstr rather than find: find is shadowed by Git for Windows' unix find
 rem  when this script is run from a Git Bash environment.)
-tasklist /fi "imagename eq SnapLog.exe" 2>nul | findstr /i /c:"SnapLog.exe" >nul
-if not errorlevel 1 (
-    echo [error] SnapLog is running. Exit it from the tray menu, then run build.cmd again.
-    popd
-    exit /b 1
-)
 
 echo === build Release ===
 dotnet build SnapLog.sln -c Release
 if errorlevel 1 (
-    echo [error] build failed.
+    tasklist /fi "imagename eq SnapLog.exe" 2>nul | findstr /i /c:"SnapLog.exe" >nul
+    if not errorlevel 1 (
+        echo [error] build failed while SnapLog is running. If the error above is MSB3027
+        echo         ^(file locked by the running app^), exit SnapLog from the tray menu
+        echo         and run build.cmd again.
+    ) else (
+        echo [error] build failed.
+    )
     popd
     exit /b 1
 )

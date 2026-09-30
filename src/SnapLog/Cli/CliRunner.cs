@@ -1191,6 +1191,9 @@ internal sealed class CliRunner
         var summary = "(未取到尺寸)";
         var runningVerdict = "(未执行)";
         var pausedVerdict = "(未执行)";
+        var prebuildVerdict = "(未执行)";
+        var countdownVerdict = "(未执行)";
+        var cancelVerdict = "(未执行)";
 
         var constructSw = System.Diagnostics.Stopwatch.StartNew();
         try
@@ -1236,12 +1239,43 @@ internal sealed class CliRunner
                         pausedVerdict = pausedProblem is null ? "已暂停✓" : "已暂停✗";
 
                         var pendingTabs = PendingLazyTabs(form);
-                        var prebuildVerdict = pendingTabs == 0 ? "预建✓" : $"预建✗（还剩 {pendingTabs} 页）";
+                        prebuildVerdict = pendingTabs == 0 ? "预建✓" : $"预建✗（还剩 {pendingTabs} 页）";
                         Record("空闲预建", pendingTabs == 0 ? null : $"还有 {pendingTabs} 个标签页没被预建出来");
+                        break;
+
+                    // ≈4.2 秒：点"立即抓取一次"，应当进入倒数
+                    case 6:
+                        var capture = FindControls<Button>(form).FirstOrDefault(b => b.Text == "立即抓取一次");
+                        if (capture is null)
+                        {
+                            Record("抓取倒计时", "状态页上找不到“立即抓取一次”按钮");
+                            countdownVerdict = "倒计时✗";
+                            break;
+                        }
+
+                        capture.PerformClick();
+                        break;
+
+                    // ≈4.9 秒：还在倒数（按钮=取消抓取）；再点一次取消，绝不能让它真的抓下去——
+                    // 那会把自检窗口自己写进真实数据库。
+                    case 7:
+                        var countingProblem = CheckCaptureCountdown(form, expectCounting: true);
+                        Record("抓取倒计时", countingProblem);
+                        countdownVerdict = countingProblem is null ? "倒计时✓" : "倒计时✗";
+
+                        FindControls<Button>(form).FirstOrDefault(b => b.Text == "取消抓取")?.PerformClick();
+                        break;
+
+                    // ≈5.6 秒：取消生效，按钮与状态都回到原样
+                    case 8:
+                        var cancelProblem = CheckCaptureCountdown(form, expectCounting: false);
+                        Record("取消抓取", cancelProblem);
+                        cancelVerdict = cancelProblem is null ? "取消✓" : "取消✗";
 
                         timer.Stop();
                         summary = $"{form.Width}x{form.Height} 控件数={CountControls(form)} "
-                                  + $"构造={constructSw.ElapsedMilliseconds} ms  {runningVerdict} {pausedVerdict} {prebuildVerdict}";
+                                  + $"构造={constructSw.ElapsedMilliseconds} ms  {runningVerdict} {pausedVerdict} "
+                                  + $"{prebuildVerdict} {countdownVerdict} {cancelVerdict}";
                         Application.ExitThread();
                         break;
                 }
@@ -1382,6 +1416,36 @@ internal sealed class CliRunner
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// "立即抓取一次"点下去要先倒数几秒（否则前台还是 SnapLog 自己，抓了也会被排除），
+    /// 倒数期间按钮变成"取消抓取"，再点一次就放弃。这里分别验倒数中与取消后的两个状态。
+    /// </summary>
+    private static string? CheckCaptureCountdown(Form form, bool expectCounting)
+    {
+        var texts = CollectTexts(form).ToList();
+
+        if (expectCounting)
+        {
+            if (!texts.Contains("取消抓取"))
+            {
+                return "按钮没有变成“取消抓取”";
+            }
+
+            return texts.Any(t => t.Contains("秒后抓取", StringComparison.Ordinal))
+                ? null
+                : "状态栏没有出现倒计时提示";
+        }
+
+        if (!texts.Contains("立即抓取一次"))
+        {
+            return "按钮没有恢复成“立即抓取一次”";
+        }
+
+        return texts.Any(t => t.Contains("已取消抓取", StringComparison.Ordinal))
+            ? null
+            : "状态栏没有显示“已取消抓取”";
     }
 
     /// <summary>
@@ -1759,6 +1823,19 @@ internal sealed class CliRunner
         if (!string.IsNullOrWhiteSpace(root.Text))
         {
             yield return root.Text;
+        }
+
+        // 状态栏的文字挂在 ToolStripItem 上，不是子控件，得单独取一行，
+        // 否则"状态栏说了什么"这块一直没被检查到。
+        if (root is StatusStrip strip)
+        {
+            foreach (ToolStripItem item in strip.Items)
+            {
+                if (!string.IsNullOrWhiteSpace(item.Text))
+                {
+                    yield return item.Text;
+                }
+            }
         }
 
         foreach (Control child in root.Controls)

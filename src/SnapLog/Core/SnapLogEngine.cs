@@ -324,7 +324,11 @@ public sealed class SnapLogEngine : IAsyncDisposable
                 name => !string.IsNullOrWhiteSpace(name)
                         && string.Equals(name.Trim(), snapshot.ProcessName, StringComparison.OrdinalIgnoreCase)))
         {
-            return $"进程 {snapshot.ProcessName} 位于排除列表";
+            // 手动抓取最常撞上的就是这一条：按钮点下去的那一刻前台还是 SnapLog 自己。
+            // 报"位于排除列表"对用户没有指导意义，直接说下一步该做什么。
+            return trigger == CaptureTrigger.Manual && IsOwnProcess(snapshot.ProcessName)
+                ? "前台窗口是 SnapLog 自己，先切到要记录的窗口"
+                : $"进程 {snapshot.ProcessName} 位于排除列表";
         }
 
         if (_options.Triggers.ExcludedWindowTitles.Any(
@@ -362,6 +366,14 @@ public sealed class SnapLogEngine : IAsyncDisposable
     /// <summary>窗口的身份：进程 + 类名 + 标题。同一个窗口在一个周期内只记一次。</summary>
     private static string WindowIdentity(WindowSnapshot snapshot) =>
         $"{snapshot.ProcessName}\u0001{snapshot.ClassName}\u0001{snapshot.WindowTitle}";
+
+    /// <summary>前台窗口是不是本程序自己。手动抓取时没切走窗口就是这个情况。</summary>
+    private static bool IsOwnProcess(string processName) =>
+        !string.IsNullOrWhiteSpace(processName)
+        && string.Equals(processName, Environment.ProcessPath is { } path
+                ? System.IO.Path.GetFileNameWithoutExtension(path)
+                : string.Empty,
+            StringComparison.OrdinalIgnoreCase);
 
     /// <summary>跨过抓取周期就清空"已记录"注册表，下一个周期里的窗口又能被记一次。</summary>
     private void ResetCycleIfNeeded()
