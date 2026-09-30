@@ -592,6 +592,60 @@ public sealed class SqliteActivityStore : IActivityRepository
             return Convert.ToInt32(command.ExecuteScalar() ?? 0, CultureInfo.InvariantCulture);
         }, cancellationToken);
 
+    public Task<IReadOnlyList<string>> DeleteSummaryRunsAsync(
+        IReadOnlyList<long> ids,
+        CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return Task.FromResult<IReadOnlyList<string>>([]);
+        }
+
+        return RunAsync<IReadOnlyList<string>>(connection =>
+        {
+            var placeholders = new string[ids.Count];
+            for (var i = 0; i < ids.Count; i++)
+            {
+                placeholders[i] = $"$id{i}";
+            }
+
+            var inClause = string.Join(", ", placeholders);
+
+            var paths = new List<string>();
+            using (var select = connection.CreateCommand())
+            {
+                select.CommandText = $"SELECT saved_path FROM summary_runs WHERE id IN ({inClause})";
+                for (var i = 0; i < ids.Count; i++)
+                {
+                    select.Parameters.AddWithValue(placeholders[i], ids[i]);
+                }
+
+                using var reader = select.ExecuteReader();
+                while (reader.Read())
+                {
+                    var path = reader.GetString(0);
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        paths.Add(path);
+                    }
+                }
+            }
+
+            using (var delete = connection.CreateCommand())
+            {
+                delete.CommandText = $"DELETE FROM summary_runs WHERE id IN ({inClause})";
+                for (var i = 0; i < ids.Count; i++)
+                {
+                    delete.Parameters.AddWithValue(placeholders[i], ids[i]);
+                }
+
+                delete.ExecuteNonQuery();
+            }
+
+            return paths;
+        }, cancellationToken);
+    }
+
     public Task MarkSummaryRunsPushedAsync(
         IReadOnlyList<long> ids,
         DateTime pushedAt,

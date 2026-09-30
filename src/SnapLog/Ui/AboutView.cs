@@ -35,7 +35,7 @@ internal sealed class AboutView : SettingsViewBase
 
         var subtitle = new Label
         {
-            Text = "屏幕活动的记录、识别、总结与归档",
+            Text = "本机屏幕活动记录与工作总结工具",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 0, 0, 10),
@@ -68,8 +68,9 @@ internal sealed class AboutView : SettingsViewBase
 
         var description = new Label
         {
-            Text = "本机运行的屏幕活动记录工具：跟随前台窗口切换截图 → 离线识别文字 → 存入本机数据库 → "
-                   + "按需或定时调用大模型生成工作总结 → 可把总结写入飞书多维表格。",
+            Text = "SnapLog 在本机记录前台窗口的活动内容：截取窗口画面并离线识别其中的文字，"
+                   + "结果存入本地数据库；可按需或定时调用大语言模型生成工作总结，"
+                   + "并可将总结写入飞书多维表格备查。识别与存储均在本地完成，不依赖网络。",
             AutoSize = true,
             MaximumSize = new Size(560, 0),
             Margin = new Padding(0, 0, 0, 10),
@@ -84,6 +85,12 @@ internal sealed class AboutView : SettingsViewBase
         var links = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 14, 0, 0) };
 
         links.Controls.Add(NewButton("打开项目主页", () => OpenUrl(RepositoryUrl)));
+        links.Controls.Add(new Label
+        {
+            Text = "　",
+            AutoSize = true,
+            Margin = new Padding(0, 0, 8, 0),
+        });
 
         links.Controls.Add(NewButton("打开数据目录", () => OpenPath(Paths.DataDirectory)));
         links.Controls.Add(NewButton("打开日志目录", () => OpenPath(Paths.LogsDirectory)));
@@ -92,10 +99,11 @@ internal sealed class AboutView : SettingsViewBase
 
         var note = new Label
         {
-            Text = "抓取、文字识别、数据库与截图均保存在本机。"
-                   + "仅在主动执行“生成总结”“写入飞书”，或已开启相应定时与自动开关时，内容才会发送至外部服务。"
+            Text = "数据归属：截图、识别文字、数据库与日志均保存在本机，程序默认不联网。"
+                   + "仅在用户主动执行“生成总结”“写入飞书”，或已启用相应的定时与自动写入功能时，"
+                   + "相关内容才会发送至所配置的外部服务。"
                    + Environment.NewLine + Environment.NewLine
-                   + $"源代码与问题反馈：{RepositoryUrl}",
+                   + $"许可与源码：MIT License。项目地址与问题反馈：{RepositoryUrl}",
             AutoSize = true,
             MaximumSize = new Size(560, 0),
             ForeColor = SystemColors.GrayText,

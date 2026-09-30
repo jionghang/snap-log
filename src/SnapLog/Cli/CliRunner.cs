@@ -695,9 +695,16 @@ internal sealed class CliRunner
         ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
         ProbeForm("RecordsForm（记录查看器）", () => new RecordsForm(_options, _store, _paths, _log), failures,
             CheckDeleteButtonState);
-        ProbeForm("删除确认框（有截图）", () => new DeleteRecordsDialog(3, 3), failures);
-        ProbeForm("删除确认框（无截图）", () => new DeleteRecordsDialog(2, 0), failures);
-        ProbeForm("SummaryHistoryForm（总结历史）", () => new SummaryHistoryForm(settingsContext), failures);
+        ProbeForm(
+            "删除确认框（记录·有截图）",
+            () => new DeleteConfirmDialog("记录", 3, "截图文件", 3, "(none)"),
+            failures);
+        ProbeForm(
+            "删除确认框（总结·无文件）",
+            () => new DeleteConfirmDialog("总结", 2, "总结文件（.md）", 0, "(none)"),
+            failures);
+        ProbeForm("SummaryHistoryForm（总结历史）", () => new SummaryHistoryForm(settingsContext), failures,
+            CheckDeleteButtonState);
 
         // 字段映射窗体：带上"已知飞书字段"两种情形各构造一次（命中/不命中列名走的是不同提示分支）。
         var probeFields = new List<FeishuBitablePublisher.FeishuTableField>

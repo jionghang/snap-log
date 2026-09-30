@@ -209,7 +209,7 @@ internal sealed class RecordsView : UserControl
         _from.Value = ActivityQuery.DefaultFrom;
         timeRow.Controls.Add(_from);
 
-        timeRow.Controls.Add(new Label { Text = "→", AutoSize = true, Margin = new Padding(6, 7, 6, 0) });
+        timeRow.Controls.Add(new Label { Text = "至", AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(6, 7, 6, 0) });
 
         _to.Format = DateTimePickerFormat.Custom;
         _to.CustomFormat = "yyyy-MM-dd HH:mm";
@@ -622,7 +622,13 @@ internal sealed class RecordsView : UserControl
             }
         }
 
-        using var dialog = new DeleteRecordsDialog(ids.Count, screenshots);
+        using var dialog = new DeleteConfirmDialog(
+            "记录",
+            ids.Count,
+            "截图文件",
+            screenshots,
+            "截图文件已被保留策略清理，或抓取时没有开启保存截图。");
+
         if (dialog.ShowDialog(FindForm()) != DialogResult.OK)
         {
             return;
@@ -635,7 +641,7 @@ internal sealed class RecordsView : UserControl
             var removedFiles = 0;
             long freedBytes = 0;
 
-            if (dialog.DeleteScreenshots)
+            if (dialog.DeleteFiles)
             {
                 foreach (var stored in paths)
                 {
@@ -661,7 +667,7 @@ internal sealed class RecordsView : UserControl
             }
 
             var message = $"已删除 {ids.Count} 条记录"
-                          + (dialog.DeleteScreenshots ? $"，同时删除 {removedFiles} 张截图（释放 {DescribeBytes(freedBytes)}）" : string.Empty);
+                          + (dialog.DeleteFiles ? $"，同时删除 {removedFiles} 张截图（释放 {DescribeBytes(freedBytes)}）" : string.Empty);
             _statusLabel.Text = message;
             _log.Info(message);
 

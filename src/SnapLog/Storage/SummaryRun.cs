@@ -106,6 +106,14 @@ public interface ISummaryHistoryStore
     /// <summary>符合待写入条件的总结条数，界面上用来先告诉用户"这一次会写几条"。</summary>
     Task<int> CountPendingPushRunsAsync(DateTime from, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// 按 id 删除总结历史，返回这些总结保存过的 Markdown 文件路径。
+    /// 与记录删除同理：只删库里的行，文要不要删由调用方按用户勾选决定。
+    /// </summary>
+    Task<IReadOnlyList<string>> DeleteSummaryRunsAsync(
+        IReadOnlyList<long> ids,
+        CancellationToken cancellationToken);
+
     /// <summary>把若干条总结标记成已写进飞书。</summary>
     Task MarkSummaryRunsPushedAsync(
         IReadOnlyList<long> ids,
