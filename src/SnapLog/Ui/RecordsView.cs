@@ -96,6 +96,7 @@ internal sealed class RecordsView : UserControl
         var filters = BuildFilterBar();
         var pager = BuildPagerBar();
 
+        DoubleBuffer.Enable(_grid);
         _grid.Dock = DockStyle.Fill;
         _grid.ReadOnly = true;
         _grid.AllowUserToAddRows = false;

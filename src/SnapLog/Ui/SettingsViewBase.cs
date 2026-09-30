@@ -46,6 +46,7 @@ internal abstract class SettingsViewBase : UserControl
         AutoScroll = true;
         Dock = DockStyle.Fill;
         BackColor = SystemColors.Control;
+        DoubleBuffered = true;
 
         SuspendLayout();
         try
@@ -62,6 +63,9 @@ internal abstract class SettingsViewBase : UserControl
                 flp.AutoSize = true;
                 flp.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             }
+
+            // 建页期间挂起的布局到这里一次性恢复：反着恢复，让最外层最后重排。
+            ResumeDeferredLayout(content);
 
             var footer = BuildFooter();
             footer.Dock = DockStyle.Bottom;
@@ -157,6 +161,36 @@ internal abstract class SettingsViewBase : UserControl
 
     private void OnControlChanged(object? sender, EventArgs e) => MarkDirty();
 
+    // ---------------------------------------------------------------- 建页时的布局
+
+    /// <summary>建页期间挂起布局的容器。</summary>
+    private readonly List<Control> _deferredLayout = [];
+
+    /// <summary>
+    /// 挂起一个容器的布局，等整页建完再统一恢复。
+    /// 不这么做的话，每加一行控件都会让整棵 AutoSize 容器树重新量一遍、排一遍，
+    /// 一个设置页能因此多花几百毫秒。
+    /// </summary>
+    private T DeferLayout<T>(T control) where T : Control
+    {
+        control.SuspendLayout();
+        _deferredLayout.Add(control);
+        return control;
+    }
+
+    private void ResumeDeferredLayout(Control content)
+    {
+        for (var i = _deferredLayout.Count - 1; i >= 0; i--)
+        {
+            _deferredLayout[i].ResumeLayout(false);
+        }
+
+        _deferredLayout.Clear();
+
+        DoubleBuffer.Enable(content);
+        content.PerformLayout();
+    }
+
     // ---------------------------------------------------------------- 页脚
 
     private Control BuildFooter()
@@ -222,7 +256,7 @@ internal abstract class SettingsViewBase : UserControl
     // ---------------------------------------------------------------- 共享布局
 
     /// <summary>一个带标题的分组卡片。</summary>
-    protected static TableLayoutPanel NewSection(string title)
+    protected TableLayoutPanel NewSection(string title)
     {
         var grid = new TableLayoutPanel
         {
@@ -250,7 +284,9 @@ internal abstract class SettingsViewBase : UserControl
 
         // 用 Tag 记下一个空行号，避免和标题行冲突。
         grid.Tag = 1;
-        return grid;
+
+        DoubleBuffer.Enable(grid);
+        return DeferLayout(grid);
     }
 
     protected static void AddRow(TableLayoutPanel grid, string caption, Control control)
@@ -288,14 +324,14 @@ internal abstract class SettingsViewBase : UserControl
         return button;
     }
 
-    protected static FlowLayoutPanel NewRow()
+    protected FlowLayoutPanel NewRow()
     {
-        return new FlowLayoutPanel
+        return DeferLayout(new FlowLayoutPanel
         {
             AutoSize = true,
             Dock = DockStyle.Fill,
             WrapContents = false,
-        };
+        });
     }
 
     // ---------------------------------------------------------------- 通用小工具

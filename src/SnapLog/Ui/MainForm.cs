@@ -190,18 +190,30 @@ internal sealed class MainForm : Form
         }
     }
 
-    /// <summary>空闲时把懒加载的标签页都建好。跑一次就够了，建完就退订。</summary>
+    /// <summary>
+    /// 空闲时把懒加载的标签页逐页建好。
+    /// 一轮空闲只建一页：全部建在一轮里会让启动后有一秒左右的界面卡顿
+    /// （窗口先画一半、剩下的等 UI 线程忙完才补上，看起来就是"打开后再刷新一下"）。
+    /// 建完一页后主动投一个空消息，让下一轮空闲尽快到来，不用等用户动鼠标。
+    /// </summary>
     private void OnIdlePrebuildTabs(object? sender, EventArgs e)
     {
-        Application.Idle -= OnIdlePrebuildTabs;
-
         foreach (TabPage page in _tabs.TabPages)
         {
             if (page.Tag is Func<Control>)
             {
                 EnsureTabContentBuilt(page);
+
+                if (!IsDisposed && IsHandleCreated)
+                {
+                    BeginInvoke(() => { });
+                }
+
+                return;
             }
         }
+
+        Application.Idle -= OnIdlePrebuildTabs;
     }
 
     /// <summary>外部（托盘弹窗/高级页）改过配置后，把设置页的显示刷新过来。</summary>

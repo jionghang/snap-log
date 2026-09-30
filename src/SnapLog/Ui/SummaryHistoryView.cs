@@ -124,6 +124,7 @@ internal sealed class SummaryHistoryView : UserControl
         _summary.ForeColor = SystemColors.GrayText;
         toolbar.Controls.Add(_summary);
 
+        DoubleBuffer.Enable(_grid);
         _grid.Dock = DockStyle.Fill;
         _grid.ReadOnly = true;
         _grid.AllowUserToAddRows = false;

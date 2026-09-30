@@ -685,8 +685,10 @@ internal sealed class CliRunner
             CheckSettingsPage);
         ProbeForm("设置页（OCR）", () => WrapView("OCR 配置", new OcrSettingsView(settingsContext)), failures,
             CheckSettingsPage);
-        ProbeForm("设置页（大模型）", () => WrapView("大模型配置", new LlmSettingsView(settingsContext)), failures);
-        ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures);
+        ProbeForm("设置页（大模型）", () => WrapView("大模型配置", new LlmSettingsView(settingsContext)), failures,
+            CheckLayoutSane);
+        ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures,
+            CheckLayoutSane);
         ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
         ProbeForm("RecordsForm（记录查看器）", () => new RecordsForm(_options, _store, _paths, _log), failures);
         ProbeForm("SummaryHistoryForm（总结历史）", () => new SummaryHistoryForm(settingsContext), failures);
@@ -805,15 +807,19 @@ internal sealed class CliRunner
                         engine.StopAsync().GetAwaiter().GetResult();
                         break;
 
-                    // ≈2.8 秒：引擎已停，状态页应当跟着变成"已暂停"
+                    // ≈2.8 秒：引擎已停，状态页应当跟着变成"已暂停"，懒加载页也该被空闲预建补完了
                     case 4:
                         var pausedProblem = CheckRunState(form, expectRunning: false);
                         Record("已暂停", pausedProblem);
                         pausedVerdict = pausedProblem is null ? "已暂停✓" : "已暂停✗";
 
+                        var pendingTabs = PendingLazyTabs(form);
+                        var prebuildVerdict = pendingTabs == 0 ? "预建✓" : $"预建✗（还剩 {pendingTabs} 页）";
+                        Record("空闲预建", pendingTabs == 0 ? null : $"还有 {pendingTabs} 个标签页没被预建出来");
+
                         timer.Stop();
                         summary = $"{form.Width}x{form.Height} 控件数={CountControls(form)} "
-                                  + $"构造={constructSw.ElapsedMilliseconds} ms  {runningVerdict} {pausedVerdict}";
+                                  + $"构造={constructSw.ElapsedMilliseconds} ms  {runningVerdict} {pausedVerdict} {prebuildVerdict}";
                         Application.ExitThread();
                         break;
                 }
@@ -882,6 +888,11 @@ internal sealed class CliRunner
                 }
 
                 summary = $"{form.Width}x{form.Height} 可见={form.Visible} 控件数={CountControls(form)} 构造={constructSw.ElapsedMilliseconds} ms";
+
+                if (ContentHeightOf(form) is { } contentHeight)
+                {
+                    summary += $" 内容高={contentHeight}";
+                }
                 if (verdict != "通过")
                 {
                     summary += $"  {verdict}";
@@ -974,9 +985,54 @@ internal sealed class CliRunner
             : $"从下拉选中列名后输入框里是“{text}”，应当只剩列名“时间”（类型说明不该写进映射）";
     }
 
-    /// <summary>设置页的通用检查：保存按钮的灰/亮 + 滚轮不改值。</summary>
+    /// <summary>设置页的通用检查：布局是否正常 + 保存按钮的灰/亮 + 滚轮不改值。</summary>
     private static string? CheckSettingsPage(Form form) =>
-        CheckSaveButtonState(form) ?? CheckWheelDoesNotChangeValue(form);
+        CheckLayoutSane(form) ?? CheckSaveButtonState(form) ?? CheckWheelDoesNotChangeValue(form);
+
+    /// <summary>还没被空闲预建出来的懒加载标签页数量（Tag 里还留着工厂的就是没建的）。</summary>
+    private static int PendingLazyTabs(Form form)
+    {
+        var tabs = FindControls<TabControl>(form).FirstOrDefault();
+        return tabs is null ? 0 : tabs.TabPages.Cast<TabPage>().Count(p => p.Tag is Func<Control>);
+    }
+
+    /// <summary>设置页里那块内容容器（Dock=Top 的那个）的高度；布局没跑过的话它会停在默认尺寸。</summary>
+    private static int? ContentHeightOf(Form form)
+    {
+        var view = FindControls<SettingsViewBase>(form).FirstOrDefault();
+        return view?.Controls.Cast<Control>().FirstOrDefault(c => c.Dock == DockStyle.Top)?.Height;
+    }
+
+    /// <summary>设置页内容高度的下限。建页时挂起了各容器的布局，忘了恢复就会塌成默认尺寸，这里兜住这种情况。</summary>
+    private const int MinimumContentHeight = 200;
+
+    /// <summary>
+    /// 布局自检：可见控件要有实际尺寸，整页内容高度也要像个正常的页面。
+    /// 空标题列里那些空白自适应标签是故意做成零尺寸的，跳过它们。
+    /// </summary>
+    private static string? CheckLayoutSane(Form form)
+    {
+        var collapsed = FindControls<Control>(form)
+            .Where(c => c is Button or CheckBox or ComboBox or NumericUpDown or TextBox or ListBox
+                        || (c is Label { AutoSize: false }))
+            .Where(c => c.Visible && (c.Width <= 0 || c.Height <= 0))
+            .Select(c => $"{c.GetType().Name}“{c.Text}”")
+            .Take(3)
+            .ToList();
+
+        if (collapsed.Count > 0)
+        {
+            return $"有控件没有尺寸（布局没恢复？）：{string.Join("、", collapsed)}";
+        }
+
+        var height = ContentHeightOf(form);
+        if (height is > 0 and < MinimumContentHeight)
+        {
+            return $"页面内容高度只有 {height}px，布局没有展开";
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// "保存设置/放弃修改"在没有任何改动时应当是灰的，改一处之后才亮起来。
