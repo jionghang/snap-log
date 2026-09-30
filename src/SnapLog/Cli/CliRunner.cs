@@ -805,7 +805,8 @@ internal sealed class CliRunner
             form => CheckLayoutSane(form) ?? CheckNarrowLayout(form));
         ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures,
             form => CheckLayoutSane(form) ?? CheckNarrowLayout(form));
-        ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
+        ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures,
+            CheckAboutBuildTime);
         ProbeForm("RecordsForm（记录查看器）", () => new RecordsForm(_options, _store, _paths, _log), failures,
             form => CheckDeleteButtonState(form) ?? CheckNarrowLayout(form));
         ProbeForm(
@@ -1223,6 +1224,29 @@ internal sealed class CliRunner
         }
 
         return delete.Enabled || grid.Rows.Count == 0 ? null : "重新选中后“删除”没有恢复可点";
+    }
+
+    /// <summary>
+    /// 关于页要显示"构建时间"：出现过"重新构建了、打开还是旧界面"的情况，
+    /// 有个明确的构建时间就能一眼确认当前跑的是哪一版。
+    /// </summary>
+    private static string? CheckAboutBuildTime(Form form)
+    {
+        var values = FindControls<Label>(form).Select(label => label.Text).ToList();
+
+        if (!values.Any(text => text.StartsWith("构建时间", StringComparison.Ordinal)))
+        {
+            return "关于页没有“构建时间”这一行";
+        }
+
+        var hasTimestamp = values.Any(text => DateTime.TryParseExact(
+            text,
+            "yyyy-MM-dd HH:mm:ss",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None,
+            out _));
+
+        return hasTimestamp ? null : "“构建时间”没有显示出真实时间";
     }
 
     /// <summary>窄窗口下用的宽度。用户把窗口缩小时，按钮与文字不该被裁掉。</summary>

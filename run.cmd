@@ -29,6 +29,10 @@ if exist "%USERPROFILE%\.dotnet\dotnet.exe" (
     set "PATH=%USERPROFILE%\.dotnet;%PATH%"
 )
 
+rem Say which build is being launched: a stale exe elsewhere is the classic
+rem "why is it still the old version" confusion.
+for %%i in ("%EXE%") do echo [info] launching %%~fi ^(built %%~ti^)
+
 rem With arguments: stay in this console so the output is visible.
 rem Without arguments: start the tray app in the background.
 if "%~1"=="" (

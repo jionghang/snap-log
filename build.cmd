@@ -41,6 +41,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
+rem run.cmd prefers publish\SnapLog.exe; a stale self-contained build there
+rem would shadow this fresh one.
+if exist "%SCRIPT_DIR%publish\SnapLog.exe" (
+    echo [warn] publish\SnapLog.exe exists and is NOT refreshed by this script.
+    echo        run.cmd starts that one first - re-run publish.cmd, or delete the publish folder.
+)
+
 echo.
 echo Build finished:
 echo   %SCRIPT_DIR%src\SnapLog\bin\Release\net10.0-windows10.0.19041.0\SnapLog.exe

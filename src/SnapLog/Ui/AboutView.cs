@@ -81,6 +81,7 @@ internal sealed class AboutView : SettingsViewBase
         AddRow("版本", version?.ToString() ?? "未知");
         AddRow("运行时", $".NET {Environment.Version}");
         AddRow("系统", Environment.OSVersion.VersionString);
+        AddRow("构建时间", DescribeBuildTime());
         AddRow("许可证", "MIT");
 
         var links = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Margin = new Padding(0, 14, 0, 0) };
@@ -118,6 +119,25 @@ internal sealed class AboutView : SettingsViewBase
         root.Controls.Add(links);
         root.Controls.Add(note);
         return root;
+    }
+
+    /// <summary>
+    /// 可执行文件的生成时间。用来一眼确认"当前跑的是哪一版"——
+    /// 出现过"明明重新构建了、打开还是旧界面"的情况，通常就是启动了另一个目录下的旧 exe。
+    /// </summary>
+    private static string DescribeBuildTime()
+    {
+        try
+        {
+            var path = Environment.ProcessPath;
+            return string.IsNullOrEmpty(path) || !File.Exists(path)
+                ? "未知"
+                : File.GetLastWriteTime(path).ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return "未知";
+        }
     }
 
     protected override void LoadFromOptions()
