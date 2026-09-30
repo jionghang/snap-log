@@ -1,6 +1,10 @@
 @echo off
-rem 一键构建 SnapLog。需要 .NET 10 SDK。
-rem 如果 dotnet 不在 PATH 里，会自动尝试 %USERPROFILE%\.dotnet。
+rem Build SnapLog (requires the .NET 10 SDK).
+rem
+rem ASCII only on purpose: cmd.exe parses batch files using the console's OEM code page,
+rem and non-ASCII comments were breaking parsing on some machines
+rem ("'tnet?setlocal' is not recognized as an internal or external command").
+rem Keep this file ASCII.
 setlocal
 
 set "SCRIPT_DIR=%~dp0"
@@ -12,26 +16,26 @@ if errorlevel 1 (
         set "DOTNET_ROOT=%USERPROFILE%\.dotnet"
         set "PATH=%USERPROFILE%\.dotnet;%PATH%"
     ) else (
-        echo [错误] 找不到 dotnet。请先安装 .NET 10 SDK： https://dotnet.microsoft.com/download
+        echo [error] dotnet not found. Install the .NET 10 SDK: https://dotnet.microsoft.com/download
         popd
         exit /b 1
     )
 )
 
-echo === 构建 Release ===
+echo === build Release ===
 dotnet build SnapLog.sln -c Release
 if errorlevel 1 (
-    echo [错误] 构建失败。
+    echo [error] build failed.
     popd
     exit /b 1
 )
 
 echo.
-echo 构建完成，可执行文件：
+echo Build finished:
 echo   %SCRIPT_DIR%src\SnapLog\bin\Release\net10.0-windows10.0.19041.0\SnapLog.exe
 echo.
-echo 下一步：
-echo   1) 跑一次自检确认抓取和 OCR 正常： SnapLog.exe --selftest
-echo   2) 启动托盘应用：                    SnapLog.exe
+echo Next steps:
+echo   1) sanity check:      SnapLog.exe --selftest
+echo   2) start the tray app: run.cmd
 popd
 endlocal

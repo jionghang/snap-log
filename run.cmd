@@ -1,31 +1,36 @@
 @echo off
-rem 启动 SnapLog 托盘应用（需要先跑 build.cmd 或 publish.cmd）。
-rem 命令行模式直接把参数传进来即可，例如：
+rem Start the SnapLog tray app (run build.cmd or publish.cmd first).
+rem
+rem Console mode: pass the command line straight through, e.g.
 rem   run.cmd --selftest
 rem   run.cmd --diagnose
 rem   run.cmd --windows
+rem
+rem ASCII only on purpose: cmd.exe parses batch files using the console's OEM code page,
+rem and non-ASCII comments were breaking parsing on some machines. Keep this file ASCII.
 setlocal
 
 set "SCRIPT_DIR=%~dp0"
 
-rem 优先用自包含版本，它不依赖机器上有没有装 .NET
+rem Prefer the self-contained build: it does not depend on the .NET runtime being installed.
 set "EXE=%SCRIPT_DIR%publish\SnapLog.exe"
 
 if not exist "%EXE%" set "EXE=%SCRIPT_DIR%src\SnapLog\bin\Release\net10.0-windows10.0.19041.0\SnapLog.exe"
 if not exist "%EXE%" set "EXE=%SCRIPT_DIR%src\SnapLog\bin\Debug\net10.0-windows10.0.19041.0\SnapLog.exe"
 
 if not exist "%EXE%" (
-    echo [错误] 还没有构建。请先运行 build.cmd
+    echo [error] nothing built yet. Run build.cmd first.
     exit /b 1
 )
 
-rem 开发版（非自包含）需要能找到运行时
+rem The development build needs the runtime on PATH.
 if exist "%USERPROFILE%\.dotnet\dotnet.exe" (
     set "DOTNET_ROOT=%USERPROFILE%\.dotnet"
     set "PATH=%USERPROFILE%\.dotnet;%PATH%"
 )
 
-rem 有命令行参数时留在当前控制台看输出，无参数则后台启动托盘
+rem With arguments: stay in this console so the output is visible.
+rem Without arguments: start the tray app in the background.
 if "%~1"=="" (
     start "" "%EXE%"
 ) else (
