@@ -409,25 +409,25 @@ public sealed class SummaryRunner
         var path = Path.Combine(
             _paths.SummariesDirectory,
             day is { } covered
-                ? $"summary-{covered:yyyy-MM-dd}.md"
-                : $"summary-{DateTime.Now:yyyyMMdd-HHmmss}.md");
+                ? $"summary-{covered:yyyy-MM-dd}.txt"
+                : $"summary-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
         var header = new StringBuilder()
-            .AppendLine("# SnapLog 活动总结")
+            .AppendLine("SnapLog 活动总结")
             .AppendLine()
-            .AppendLine($"- 生成时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss}")
-            .AppendLine($"- 覆盖范围：{preparation.Digest.DescribeRange()}")
-            .AppendLine($"- 记录条数：{preparation.Digest.IncludedRecords} / {preparation.Digest.AvailableRecords}"
+            .AppendLine($"生成时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss}")
+            .AppendLine($"覆盖范围：{preparation.Digest.DescribeRange()}")
+            .AppendLine($"记录条数：{preparation.Digest.IncludedRecords} / {preparation.Digest.AvailableRecords}"
                         + (preparation.Digest.Truncated ? "（按预算截断）" : string.Empty))
-            .AppendLine($"- 发送内容：{SummaryPreparation.DescribeMode(preparation.PayloadMode)}"
+            .AppendLine($"发送内容：{SummaryPreparation.DescribeMode(preparation.PayloadMode)}"
                         + (preparation.ImageCount > 0 ? $"，附带 {preparation.ImageCount} 张截图" : string.Empty))
-            .AppendLine($"- 模型：{completion.ProviderDescription}"
+            .AppendLine($"模型：{completion.ProviderDescription}"
                         + (completion.Attempts > 1 ? $"（第 {completion.Attempts} 次尝试成功）" : string.Empty))
-            .AppendLine($"- 数据文件：{_store.Location}");
+            .AppendLine($"数据文件：{_store.Location}");
 
         // 带图时把图片清单留档：以后想知道"当时到底发了哪些画面"能查得到。
         if (preparation.ImageCount > 0)
         {
-            header.AppendLine("- 附带截图：");
+            header.AppendLine("附带截图：");
             foreach (var image in preparation.Request.Images)
             {
                 header.AppendLine($"  - {image.Timestamp:yyyy-MM-dd HH:mm:ss} {image.ProcessName} `{image.Path}`");
@@ -435,7 +435,6 @@ public sealed class SummaryRunner
         }
 
         header.AppendLine()
-            .AppendLine("---")
             .AppendLine()
             .AppendLine(completion.Text);
 

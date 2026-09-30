@@ -179,7 +179,12 @@ public static class OptionsStore
     /// </summary>
     private static void FillDefaultPrompt(SummarizationOptions summarization)
     {
-        if (string.IsNullOrWhiteSpace(summarization.SystemPromptOverride))
+        var current = summarization.SystemPromptOverride;
+
+        // 空 = 还没填过；等于旧版内置模板 = 当时自动填入的那份（要求输出 Markdown）。
+        // 两种情况都换成最新模板；用户自己写过的内容不动。
+        if (string.IsNullOrWhiteSpace(current)
+            || string.Equals(current.Trim(), Summarization.Prompts.LegacyDefaultTemplate.Trim(), StringComparison.Ordinal))
         {
             summarization.SystemPromptOverride = Summarization.Prompts.DefaultTemplate;
         }

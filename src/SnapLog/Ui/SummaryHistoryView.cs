@@ -403,9 +403,9 @@ internal sealed class SummaryHistoryView : UserControl
         using var dialog = new DeleteConfirmDialog(
             "总结",
             ids.Count,
-            "总结文件（.md）",
+            "总结文件（.txt）",
             files,
-            "这些总结没有落盘的 Markdown 文件（生成失败，或文件已被清理）。");
+            "这些总结没有落盘的文本文件（生成失败，或文件已被清理）。");
 
         if (dialog.ShowDialog(FindForm()) != DialogResult.OK)
         {
@@ -518,7 +518,7 @@ internal sealed class SummaryHistoryView : UserControl
             string.Empty,
         };
 
-        lines.Add(run.Markdown.Length > 0 ? "--- 总结正文 ---" : "--- 无总结正文（本次未成功生成）---");
+        lines.Add(run.Markdown.Length > 0 ? "总结正文" : "无总结正文（本次未成功生成）");
 
         if (run.Markdown.Length > 0)
         {
