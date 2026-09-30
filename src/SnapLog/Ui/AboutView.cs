@@ -83,7 +83,7 @@ internal sealed class AboutView : SettingsViewBase
         var note = new Label
         {
             Text = "一切都在本机：抓取、OCR、数据库、截图都存在你自己的电脑上。"
-                   + "只有你主动点「生成小结」或「立即写入飞书」时，内容才会发出去。",
+                   + "只有你主动点「生成小结」或「写入飞书」，或者自己打开了定时/自动写入开关时，内容才会发出去。",
             AutoSize = true,
             MaximumSize = new Size(560, 0),
             ForeColor = SystemColors.GrayText,

@@ -29,7 +29,7 @@ public enum CliCommand
     /// <summary>立刻把待识别（Pending）的记录批量识别掉。</summary>
     OcrPending,
 
-    /// <summary>立刻把当天的记录写进飞书多维表格。</summary>
+    /// <summary>立刻把还没写入过的小结写进飞书多维表格。</summary>
     Publish,
 
     /// <summary>
