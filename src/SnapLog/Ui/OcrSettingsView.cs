@@ -61,9 +61,9 @@ internal sealed class OcrSettingsView : SettingsViewBase
         };
         _paddleModel.Items.AddRange(
         [
-            new PaddleModelChoice(PaddleModelKind.V6Tiny, "PP-OCRv6 tiny（推荐：最准最快）"),
-            new PaddleModelChoice(PaddleModelKind.V6Small, "PP-OCRv6 small（同样准，慢 3 倍）"),
-            new PaddleModelChoice(PaddleModelKind.V5Mobile, "PP-OCRv5 mobile（慢 6 倍，不如 v6）"),
+            new PaddleModelChoice(PaddleModelKind.V6Tiny, "PP-OCRv6 tiny（推荐）"),
+            new PaddleModelChoice(PaddleModelKind.V6Small, "PP-OCRv6 small（精度相当，耗时约为 tiny 的 3 倍）"),
+            new PaddleModelChoice(PaddleModelKind.V5Mobile, "PP-OCRv5 mobile（更慢，精度低于 v6）"),
         ]);
         _paddleModel.SelectedIndexChanged += (_, _) => UpdateEngineHint();
         AddRow(grid, "PaddleOCR 模型", _paddleModel);
@@ -71,7 +71,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         var optionsRow = NewRow();
         _paddleMkldnn = new CheckBox
         {
-            Text = "启用 MKLDNN 加速（快 3~4 倍，但内存从约 145MB 涨到约 640MB）",
+            Text = "启用 MKLDNN 加速（速度提高约 3 至 4 倍，内存占用由约 145MB 增至约 640MB）",
             AutoSize = true,
             Margin = new Padding(3, 6, 12, 0),
         };
@@ -86,8 +86,8 @@ internal sealed class OcrSettingsView : SettingsViewBase
         _ocrMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
         _ocrMode.Items.AddRange(
         [
-            new OcrModeChoice(OcrRunMode.Realtime, "实时识别（抓到就识别）"),
-            new OcrModeChoice(OcrRunMode.ScheduledBatch, "每天定时批量识别（省 CPU）"),
+            new OcrModeChoice(OcrRunMode.Realtime, "实时识别（抓取后立即识别）"),
+            new OcrModeChoice(OcrRunMode.ScheduledBatch, "每日定时批量识别（降低日常占用）"),
         ]);
         _ocrMode.SelectedIndexChanged += (_, _) =>
         {
@@ -107,7 +107,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         testRow.Controls.Add(_testOcr);
         testRow.Controls.Add(new Label
         {
-            Text = "抓一次当前窗口走一遍真实识别链路，用来确认引擎和模型是否可用",
+            Text = "抓取当前窗口执行一次完整识别，用于验证引擎与模型是否可用",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 9, 0, 0),
@@ -172,7 +172,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         switch (kind)
         {
             case OcrEngineKind.Disabled:
-                _engineHint.Text = "关闭后只记录时间戳、进程名和窗口标题，不做文字识别。";
+                _engineHint.Text = "关闭后仅记录时间、进程名与窗口标题，不进行文字识别。";
                 return;
 
             case OcrEngineKind.PaddleOcr:
@@ -184,7 +184,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
                     PaddleModelKind.V5Mobile => "PP-OCRv5 mobile",
                     _ => "PP-OCRv6 tiny",
                 };
-                _engineHint.Text = $"{model}：首次识别时才加载（约 400ms、100MB），之后常驻。模型随程序离线运行。";
+                _engineHint.Text = $"{model}：首次识别时加载（约 400ms、100MB），之后常驻内存，全程离线运行。";
                 return;
 
             default:
@@ -193,8 +193,8 @@ internal sealed class OcrSettingsView : SettingsViewBase
                     // 系统 OCR 的探测很便宜（只是问一下系统语言包），可以直接报可用性。
                     using var probe = new WindowsMediaOcrEngine();
                     _engineHint.Text = probe.IsAvailable
-                        ? $"当前可用：{probe.Description}"
-                        : $"不可用：{probe.Description}";
+                        ? $"引擎可用：{probe.Description}"
+                        : $"引擎不可用：{probe.Description}";
                 }
                 catch (Exception ex)
                 {
@@ -225,7 +225,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
             if (!snapshot.IsUsable)
             {
                 _engineHint.ForeColor = Color.OrangeRed;
-                _engineHint.Text = "找不到可抓取的窗口。请先把某个窗口切到最前再试。";
+                _engineHint.Text = "未找到可抓取的窗口，请先将目标窗口置于最前。";
                 return;
             }
 
@@ -249,7 +249,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
 
             _engineHint.ForeColor = Color.SeaGreen;
             _engineHint.Text = $"识别成功：{engine.Description}"
-                               + (isFallback ? "（无前台窗口，用的是最大可见窗口）" : string.Empty);
+                               + (isFallback ? "（无前台窗口，已改用最大可见窗口）" : string.Empty);
 
             using var preview = new OcrPreviewForm(snapshot, capture.Method, capture.Image, outcome);
             preview.ShowDialog(FindForm());

@@ -5,7 +5,7 @@ using SnapLog.Summarization;
 namespace SnapLog.Ui;
 
 /// <summary>
-/// 编辑「模型列表」里的一个条目。
+/// 编辑“模型列表”里的一个条目。
 /// 顺便校验接口地址是否合法、密钥是否拿得到——这两个是最常见的配错点，
 /// 让用户在这里就发现，而不是等到生成总结时才看到一句失败。
 /// </summary>
@@ -46,7 +46,7 @@ internal sealed class LlmProviderEditForm : Form
         BuildLayout();
     }
 
-    /// <summary>编辑结果。只有点「确定」时有效。</summary>
+    /// <summary>编辑结果。只有点“确定”时有效。</summary>
     public LlmProviderOptions Result => _working;
 
     private void BuildLayout()
@@ -200,8 +200,8 @@ internal sealed class LlmProviderEditForm : Form
                 ? "SNAPLOG_OPENAI_API_KEY"
                 : _working.ApiKeyEnvironmentVariable;
 
-            Warn($"拿不到密钥：请填写 API Key，或先设置环境变量 {variableName}。\n\n"
-                 + "（留空也能保存，但生成总结时会自动跳到下一个模型）");
+            Warn($"未获取到密钥：请填写 API Key，或先设置环境变量 {variableName}。\n\n"
+                 + "（留空也可保存，但生成总结时会自动跳过该模型）");
             return;
         }
 
@@ -232,12 +232,12 @@ internal sealed class LlmProviderEditForm : Form
         }
 
         var keyNote = fromEnvironment
-            ? $"已检测到环境变量 {variableName}，它优先于这里填的明文。"
+            ? $"已从环境变量 {variableName} 读取，其优先级高于此处填写的明文。"
             : _apiKey.Text.Length > 0
-                ? "密钥来自这里的明文配置（会写进配置文件）。"
+                ? "使用此处填写的明文配置（将写入配置文件）。"
                 : string.IsNullOrWhiteSpace(variableName)
-                    ? "没有密钥来源：请填写 API Key 或设置环境变量。"
-                    : $"没有密钥来源：请填写 API Key，或先设置环境变量 {variableName}。";
+                    ? "缺少密钥来源：请填写 API Key 或设置环境变量。"
+                    : $"缺少密钥来源：请填写 API Key，或先设置环境变量 {variableName}。";
 
         var duplicate = _siblings.Any(other =>
             !ReferenceEquals(other, _original)
@@ -245,11 +245,11 @@ internal sealed class LlmProviderEditForm : Form
             && string.Equals(other.Model, _model.Text.Trim(), StringComparison.OrdinalIgnoreCase)
             && string.Equals(other.Endpoint.TrimEnd('/'), endpointText.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
 
-        var hint = new List<string> { endpointNote, keyNote, "要用图片时模型必须有视觉能力（如 gpt-4o、qwen-vl-max）。" };
+        var hint = new List<string> { endpointNote, keyNote, "使用图片时模型需具备视觉能力（如 gpt-4o、qwen-vl-max）。" };
 
         if (duplicate)
         {
-            hint.Add("提示：列表里已经有完全相同的接口 + 模型，重复配置没有意义。");
+            hint.Add("列表中已存在相同的接口与模型，重复配置无意义。");
         }
 
         if (BindingContext is not null)
@@ -307,7 +307,7 @@ internal sealed class LlmProviderEditForm : Form
 
             var request = new SummaryRequest(
                 "你是一个连通性测试。收到请求后只回复两个字：可用。",
-                "连通性测试，请回复「可用」。",
+                "连通性测试，请回复“可用”。",
                 [],
                 LlmImageDetail.Auto);
 
@@ -315,7 +315,7 @@ internal sealed class LlmProviderEditForm : Form
 
             _hint.Text = $"测试通过：{completion.ProviderDescription}" + Environment.NewLine
                          + $"回复内容：{Trim(completion.Text)}" + Environment.NewLine
-                         + "（已真实发送一次很小的请求）";
+                         + "（已实际发送一次最小请求）";
             _hint.ForeColor = Color.SeaGreen;
 
             MessageBox.Show(

@@ -111,7 +111,7 @@ internal sealed class SummaryHistoryView : UserControl
         };
         toolbar.Controls.Add(generate);
 
-        var copy = new Button { Text = "复制小结", Width = 96, Height = 28, Margin = new Padding(0, 3, 4, 0) };
+        var copy = new Button { Text = "复制总结", Width = 96, Height = 28, Margin = new Padding(0, 3, 4, 0) };
         copy.Click += (_, _) => CopySelectedSummary();
         toolbar.Controls.Add(copy);
 
@@ -154,7 +154,7 @@ internal sealed class SummaryHistoryView : UserControl
         _detail.Font = new Font("Consolas", 9.5f);
         _detail.BackColor = SystemColors.Window;
         _detail.WordWrap = true;
-        _detail.Text = "在上方选中一条查看完整小结（失败时显示失败原因）。";
+        _detail.Text = "请在上方选择一条记录查看完整总结（失败时显示原因）。";
 
         var detailHeader = new Label
         {
@@ -188,7 +188,7 @@ internal sealed class SummaryHistoryView : UserControl
             var (preparation, error) = await _context.SummaryRunner.PrepareAsync(_context.Options, CancellationToken.None);
 
             _detail.Text = preparation is null
-                ? $"[无法预览]" + Environment.NewLine + Environment.NewLine + error
+                ? "[无法预览]" + Environment.NewLine + Environment.NewLine + error
                 : preparation.RenderForDisplay();
         }
         catch (Exception ex)
@@ -198,14 +198,14 @@ internal sealed class SummaryHistoryView : UserControl
         }
     }
 
-    /// <summary>生成小结。第一次会走隐私确认。</summary>
+    /// <summary>生成总结。第一次会走隐私确认。</summary>
     private async Task GenerateWithConsentAsync()
     {
         if (!_context.Options.Summarization.Enabled)
         {
             var enable = MessageBox.Show(
-                "大模型总结当前是关闭状态。" + Environment.NewLine + Environment.NewLine
-                + "要现在打开吗？打开后才会把记录发送到配置的接口。",
+                "大模型总结当前为关闭状态。" + Environment.NewLine + Environment.NewLine
+                + "是否现在启用？启用后才会把内容发送到所配置的接口。",
                 "SnapLog",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
@@ -222,10 +222,10 @@ internal sealed class SummaryHistoryView : UserControl
         if (!_context.Options.Summarization.ConsentGranted)
         {
             var confirm = MessageBox.Show(
-                "生成小结会把最近的活动记录（窗口标题 + 屏幕上识别出的文字"
+                "生成总结会把最近的活动记录（窗口标题与识别文字"
                 + (_context.Options.Summarization.PayloadMode == LlmPayloadMode.TextOnly ? string.Empty : "，以及截图")
-                + "）发送到配置的模型接口。" + Environment.NewLine + Environment.NewLine
-                + "记录里可能包含隐私内容（聊天记录、文档片段、账号信息等），请确认这条链路你能接受。",
+                + "）发送到所配置的模型接口。" + Environment.NewLine + Environment.NewLine
+                + "内容可能包含隐私信息（聊天记录、文档片段、账号信息等），请确认可以接受。",
                 "数据外发确认",
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Warning);
@@ -248,7 +248,7 @@ internal sealed class SummaryHistoryView : UserControl
 
             _detail.Text = result.Success
                 ? $"{result.Markdown}" + Environment.NewLine + Environment.NewLine + "---" + Environment.NewLine + $"已保存：{result.SavedPath}"
-                : $"[未生成]" + Environment.NewLine + Environment.NewLine + result.Message
+                : "[未生成]" + Environment.NewLine + Environment.NewLine + result.Message
                   + (result.Preparation is null ? string.Empty : Environment.NewLine + Environment.NewLine + result.Preparation.RenderForDisplay());
         }
         finally
@@ -338,7 +338,7 @@ internal sealed class SummaryHistoryView : UserControl
             var total = runs.Count;
             var failed = runs.Count(r => !r.Success);
             _summary.Text = total == 0
-                ? "还没有总结记录"
+                ? "暂无总结记录"
                 : $"共 {total} 条" + (failed > 0 ? $"，其中失败 {failed} 条" : string.Empty);
 
             if (_grid.Rows.Count > 0)
@@ -348,7 +348,7 @@ internal sealed class SummaryHistoryView : UserControl
             }
             else
             {
-                _detail.Text = "还没有总结记录。点「现在生成一次」，或到设置里把「定时生成总结」打开。";
+                _detail.Text = "暂无总结记录。可点“现在生成一次”，或在设置中启用“定时生成总结”。";
             }
         }
         catch (Exception ex)
@@ -391,13 +391,13 @@ internal sealed class SummaryHistoryView : UserControl
             run.Attempts > 1 ? $"尝试次数  ：第 {run.Attempts} 次成功" : "尝试次数  ：1",
             $"输入记录  ：{run.RecordCount} 条，附带截图 {run.ImageCount} 张",
             $"耗时      ：{run.ElapsedText}",
-            $"飞书写入  ：{(run.PushedAt is { } pushedAt ? pushedAt.ToString("yyyy-MM-dd HH:mm:ss") : "还没写入")}",
-            $"文件      ：{(run.SavedPath.Length == 0 ? "(未落盘)" : run.SavedPath)}",
+            $"飞书写入  ：{(run.PushedAt is { } pushedAt ? pushedAt.ToString("yyyy-MM-dd HH:mm:ss") : "尚未写入")}",
+            $"文件      ：{(run.SavedPath.Length == 0 ? "（未保存）" : run.SavedPath)}",
             $"说明      ：{run.Message}",
             string.Empty,
         };
 
-        lines.Add(run.Markdown.Length > 0 ? "--- 小结正文 ---" : "--- 没有小结正文（这次没有成功生成）---");
+        lines.Add(run.Markdown.Length > 0 ? "--- 总结正文 ---" : "--- 无总结正文（本次未成功生成）---");
 
         if (run.Markdown.Length > 0)
         {

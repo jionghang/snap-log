@@ -46,7 +46,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         var enableRow = NewRow();
         _llmEnabled = new CheckBox
         {
-            Text = "启用（关闭时不会发起任何网络请求）",
+            Text = "启用（关闭时不发起任何网络请求）",
             AutoSize = true,
             Margin = new Padding(3, 6, 0, 0),
         };
@@ -84,15 +84,15 @@ internal sealed class LlmSettingsView : SettingsViewBase
         listRow.Controls.Add(listButtons, 1, 0);
 
         AddRow(grid, "模型列表", listRow);
-        AddRow(grid, string.Empty, NewHint("按顺序使用：前一个重试用尽仍失败就自动换下一个。双击可编辑。"));
+        AddRow(grid, string.Empty, NewHint("按列表顺序调用：前一个重试用尽仍失败时自动切换到下一个。双击可编辑。"));
 
         // ---- 发送内容 ----
         _payloadMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
         _payloadMode.Items.AddRange(
         [
-            new PayloadChoice(LlmPayloadMode.TextOnly, "只发 OCR 文字（最省 token）"),
-            new PayloadChoice(LlmPayloadMode.TextAndImage, "文字 + 截图（最准，需要视觉模型）"),
-            new PayloadChoice(LlmPayloadMode.ImageOnly, "只发截图（不看 OCR，token 更贵）"),
+            new PayloadChoice(LlmPayloadMode.TextOnly, "仅发送识别文字（消耗最低）"),
+            new PayloadChoice(LlmPayloadMode.TextAndImage, "文字与截图（效果最好，需视觉模型）"),
+            new PayloadChoice(LlmPayloadMode.ImageOnly, "仅发送截图（不发送识别文字，消耗更高）"),
         ]);
         _payloadMode.SelectedIndexChanged += (_, _) =>
         {
@@ -115,9 +115,9 @@ internal sealed class LlmSettingsView : SettingsViewBase
         _imageDetail = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
         _imageDetail.Items.AddRange(
         [
-            new DetailChoice(LlmImageDetail.Auto, "清晰度 Auto"),
-            new DetailChoice(LlmImageDetail.Low, "清晰度 Low（省）"),
-            new DetailChoice(LlmImageDetail.High, "清晰度 High（贵）"),
+            new DetailChoice(LlmImageDetail.Auto, "清晰度 自动"),
+            new DetailChoice(LlmImageDetail.Low, "清晰度 低（节省）"),
+            new DetailChoice(LlmImageDetail.High, "清晰度 高（消耗更高）"),
         ]);
         imageOptionsRow.Controls.Add(_imageDetail);
         AddRow(grid, "图片选项", imageOptionsRow);
@@ -200,8 +200,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         AddRow(grid, "工作项目", projectRow);
         AddRow(grid, string.Empty, NewHint(
-            "大概写下自己的工作任务（项目名 + 说明）。生成总结时会附给模型，让它把活动按项目归类，"
-            + "并据此判断哪块占了最多时间。双击可编辑。"));
+            "填写自己的工作项目（项目名与说明）。生成总结时会随提示词发送，模型据此将活动按项目归类。双击可编辑。"));
 
         // ---- 总结历史 ----
         var historyRow = NewRow();
@@ -210,7 +209,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         historyRow.Controls.Add(_openHistory);
         historyRow.Controls.Add(new Label
         {
-            Text = "成功和失败都会记下来，定时任务半夜失败了也能查到原因",
+            Text = "成功与失败均会记录，便于事后排查",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(8, 9, 0, 0),
@@ -275,14 +274,14 @@ internal sealed class LlmSettingsView : SettingsViewBase
         _payloadHint.Text = mode switch
         {
             LlmPayloadMode.ImageOnly =>
-                "只发截图：不发 OCR 文字，由模型自己看图。需要支持视觉的模型（如 gpt-4o、qwen-vl-max）。"
-                + "注意截图原图会上传，画面里的所有内容都会被发出去。",
+                "仅发送截图，由模型直接读图，需要视觉模型（如 gpt-4o、qwen-vl-max）。"
+                + "截图原图会上传，画面中的全部内容都会发送出去。",
             LlmPayloadMode.TextAndImage =>
-                "文字 + 截图：最准，但 token 消耗也最高。同一个窗口的截图会按上面的间隔采样，"
-                + "避免把长时间不动的窗口重复发很多遍。",
+                "文字与截图一并发送，效果最好、消耗最高。同一窗口的截图按上方间隔采样，"
+                + "避免重复发送长时间未变化的画面。",
             _ =>
-                "只发 OCR 文字：不上传任何截图，最省 token，也是隐私面最小的做法。"
-                + "注意记录里可能包含你在「排除的进程名前」之外的应用内容。",
+                "仅发送识别文字，不上传截图，消耗与隐私暴露面都最小。"
+                + "识别文字仍可能包含工作内容，请注意排除列表之外的窗口。",
         };
     }
 
@@ -346,7 +345,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         }
 
         var confirm = MessageBox.Show(
-            $"删除模型配置「{provider.Name}」？", "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+            $"删除模型配置“{provider.Name}”？", "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
         if (confirm != DialogResult.OK)
         {
             return;
@@ -435,7 +434,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         }
 
         var confirm = MessageBox.Show(
-            $"删除工作项目「{project.Name}」？", "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+            $"删除工作项目“{project.Name}”？", "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
         if (confirm != DialogResult.OK)
         {
             return;
@@ -478,7 +477,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         var overridden = Options.Summarization.SystemPromptOverride.Trim().Length > 0;
 
         _promptState.Text = (overridden ? "已自定义（替换内置模板）" : "使用内置模板")
-                            + (projects > 0 ? $"　+ 自动附 {projects} 条工作项目" : string.Empty);
+                            + (projects > 0 ? $"，另附 {projects} 条工作项目" : string.Empty);
     }
 
     private void OpenHistory()

@@ -60,9 +60,9 @@ public sealed record SummaryPreparation(
 
     public static string DescribeMode(LlmPayloadMode mode) => mode switch
     {
-        LlmPayloadMode.ImageOnly => "只发截图",
-        LlmPayloadMode.TextAndImage => "文字 + 截图",
-        _ => "只发 OCR 文字",
+        LlmPayloadMode.ImageOnly => "仅发送截图",
+        LlmPayloadMode.TextAndImage => "文字与截图",
+        _ => "仅发送识别文字",
     };
 
     private static string FormatBytes(long bytes) => bytes switch
@@ -111,7 +111,7 @@ public sealed class SummaryRunner
 
         if (records.Count == 0)
         {
-            return (null, "还没有任何记录可以总结。先让 SnapLog 跑一段时间，或点「立即抓取」。");
+            return (null, "暂无可用于总结的记录。请先运行一段时间，或点“立即抓取一次”。");
         }
 
         // 预览不要求密钥就绪：用户正是要先看清"会发什么"才决定配不配密钥，
@@ -124,8 +124,8 @@ public sealed class SummaryRunner
             if (settings.PayloadMode != LlmPayloadMode.TextOnly && images.Count == 0)
             {
                 return (null,
-                    "配置的是发送截图，但在选定的记录里没找到可用的截图文件。"
-                    + "请确认「保存截图文件」是开启的，或者把发送内容改回「只发 OCR 文字」。");
+                    "当前配置为发送截图，但所选记录中没有可用的截图文件。"
+                    + "请确认已开启“保存截图文件”，或将“发送内容”改回“仅发送识别文字”。");
             }
 
             // 只发图时，文字部分只留"时间范围"这种骨架，不把 OCR 内容发出去（否则就不叫只发图了）。
@@ -135,7 +135,7 @@ public sealed class SummaryRunner
 
             if (settings.PayloadMode != LlmPayloadMode.ImageOnly && digest.IsEmpty)
             {
-                return (null, $"读到 {records.Count} 条记录，但里面没有可用的文字内容（可能都太短或被判定为空）。");
+                return (null, $"读取到 {records.Count} 条记录，但其中没有可用的文字内容（可能过短或未通过最小长度判定）。");
             }
 
             var request = new SummaryRequest(
@@ -160,10 +160,10 @@ public sealed class SummaryRunner
         var enabled = settings.Providers.Where(p => p.Enabled).ToList();
         if (enabled.Count == 0)
         {
-            return "（模型列表里没有启用中的模型，生成时会直接失败）";
+            return "（模型列表中没有启用的模型，生成将直接失败）";
         }
 
-        var lines = new List<string> { $"共 {enabled.Count} 个模型，按顺序尝试：" };
+        var lines = new List<string> { $"共 {enabled.Count} 个模型，按顺序调用：" };
 
         foreach (var provider in enabled)
         {
@@ -175,7 +175,7 @@ public sealed class SummaryRunner
                          || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(variableName));
 
             lines.Add($"  · {provider.Name} · {provider.Model} @ {provider.Endpoint}"
-                      + (hasKey ? string.Empty : $"（缺少密钥：请填 API Key 或设置环境变量 {variableName}）"));
+                      + (hasKey ? string.Empty : $"（缺少密钥：请填写 API Key 或设置环境变量 {variableName}）"));
         }
 
         return string.Join(Environment.NewLine, lines);
@@ -198,7 +198,7 @@ public sealed class SummaryRunner
     }
 
     /// <summary>
-    /// 生成总结。每次调用都会往「总结历史」里记一条（成功和失败都记），
+    /// 生成总结。每次调用都会往“总结历史”里记一条（成功和失败都记），
     /// 这样定时任务半夜失败了第二天也查得到原因。
     /// </summary>
     /// <param name="trigger">触发来源，会显示在总结历史里：手动 / 定时 / 命令行。</param>
@@ -219,7 +219,7 @@ public sealed class SummaryRunner
         await RecordAsync(result, trigger, startedAt, stopwatch.ElapsedMilliseconds, cancellationToken)
             .ConfigureAwait(false);
 
-        // 记完历史才写飞书：这段时间刚好把这条小结落到库里，推送那边是按库里的待写入清单走的。
+        // 记完历史才写飞书：这段时间刚好把这条总结落到库里，推送那边是按库里的待写入清单走的。
         if (result.Success)
         {
             await PushToFeishuAsync(options, cancellationToken).ConfigureAwait(false);
@@ -229,7 +229,7 @@ public sealed class SummaryRunner
     }
 
     /// <summary>
-    /// 按配置把刚生成的小结写进飞书。推送失败不影响小结本身——正文已经落盘也落库了，
+    /// 按配置把刚生成的总结写进飞书。推送失败不影响总结本身——正文已经落盘也落库了，
     /// 这里只记日志，剩下的交给定时写入或用户手动补一次。
     /// </summary>
     private async Task PushToFeishuAsync(AppOptions options, CancellationToken cancellationToken)
@@ -249,7 +249,7 @@ public sealed class SummaryRunner
             }
             else
             {
-                _log.Warn($"写入飞书未成功（小结本身已保存）：{result.Message}");
+                _log.Warn($"写入飞书未成功（总结本身已保存）：{result.Message}");
             }
         }
         catch (OperationCanceledException)
@@ -258,7 +258,7 @@ public sealed class SummaryRunner
         }
         catch (Exception ex)
         {
-            _log.Warn($"写入飞书失败（小结本身已保存）：{ex.Message}");
+            _log.Warn($"写入飞书失败（总结本身已保存）：{ex.Message}");
         }
     }
 
@@ -268,13 +268,13 @@ public sealed class SummaryRunner
 
         if (!settings.Enabled)
         {
-            return new SummaryRunResult(false, null, null, "大模型总结当前是关闭状态，请先在设置里启用。");
+            return new SummaryRunResult(false, null, null, "大模型总结当前为关闭状态，请先在设置中启用。");
         }
 
         if (!settings.ConsentGranted)
         {
             return new SummaryRunResult(false, null, null,
-                "尚未确认「活动记录会发送到外部接口」的提示，已取消。在设置里生成一次并确认即可。");
+                "尚未确认“活动记录将发送至外部接口”的提示，已取消。在设置中生成一次并确认即可。");
         }
 
         var (preparation, prepareError) = await PrepareAsync(options, cancellationToken).ConfigureAwait(false);
@@ -301,7 +301,7 @@ public sealed class SummaryRunner
 
                 var savedPath = Save(completion, preparation);
                 _log.Info($"总结已保存：{savedPath}（由 {completion.ProviderDescription} 生成，"
-                          + $"用了 {completion.Attempts} 次尝试）");
+                          + $"尝试 {completion.Attempts} 次）");
 
                 var message = completion.Attempts > 1
                     ? $"已生成并保存到 {savedPath}（{completion.ProviderDescription}，第 {completion.Attempts} 次尝试成功）"
@@ -369,7 +369,7 @@ public sealed class SummaryRunner
 
         var path = Path.Combine(_paths.SummariesDirectory, $"summary-{DateTime.Now:yyyyMMdd-HHmmss}.md");
         var header = new StringBuilder()
-            .AppendLine("# SnapLog 活动小结")
+            .AppendLine("# SnapLog 活动总结")
             .AppendLine()
             .AppendLine($"- 生成时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss}")
             .AppendLine($"- 覆盖范围：{preparation.Digest.DescribeRange()}")

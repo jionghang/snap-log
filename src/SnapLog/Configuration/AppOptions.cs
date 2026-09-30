@@ -27,25 +27,23 @@ public sealed class AppOptions
 public sealed class CaptureOptions
 {
     [Category("抓取"), DisplayName("图像最长边上限(像素)"),
-     Description("截图后按最长边等比缩放，超过此值会被缩小。过大图像会拖慢 OCR 并可能超出 OCR 引擎上限。")]
+     Description("截图按最长边等比缩放，超过此值将被缩小。图像过大会拖慢识别，并可能超出引擎上限。")]
     public int MaxImageDimension { get; set; } = 2560;
 
     [Category("抓取"), DisplayName("保存截图文件"),
-     Description("开启后每次抓取都会存一张图，记录才能对应到当时的画面（记录查看器里可以直接打开）。"
-                 + "关闭后记录只剩文字，看不到原始截图。默认开启。")]
+     Description("开启后每次抓取保存一张截图，可在记录查看器中直接打开；关闭后记录仅保留文字。默认开启。")]
     public bool SaveImages { get; set; } = true;
 
     [Category("抓取"), DisplayName("截图文件目录"),
-     Description("留空 = 数据目录下的 images 子目录。支持环境变量，例如 %USERPROFILE%\\Pictures\\SnapLog。")]
+     Description("留空则使用数据目录下的 images 子目录。支持环境变量，例如 %USERPROFILE%\\Pictures\\SnapLog。")]
     public string ImageDirectory { get; set; } = "";
 
     [Category("抓取"), DisplayName("截图保留天数"),
-     Description("超过这个天数的截图文件会被自动删除（记录本身不受影响）。填 0 表示永久保留。"
-                 + "截图很占磁盘，建议设一个上限。")]
+     Description("超过该天数的截图文件将被自动删除，记录本身不受影响。填 0 表示永久保留。截图占用磁盘较大，建议设置上限。")]
     public int ImageRetentionDays { get; set; } = 30;
 
     [Category("抓取"), DisplayName("截图格式"),
-     Description("仅开启「保存截图文件」时生效。Png 无损但更大；Jpeg 体积约为 Png 的三分之一。")]
+     Description("仅在开启“保存截图文件”时生效。Png 无损、体积较大；Jpeg 体积约为 Png 的三分之一。")]
     public ImageFormatKind ImageFormat { get; set; } = ImageFormatKind.Png;
 }
 
@@ -63,21 +61,19 @@ public sealed class TriggerOptions
     public TriggerMode Mode { get; set; } = TriggerMode.Both;
 
     [Category("触发"), DisplayName("延时截图时长(毫秒)"),
-     Description("窗口第一次出现时先等这么久，页面才渲染出内容。期间再切窗口就重新计时，"
-                 + "等满后**还是这个窗口**才截图。默认 5000 毫秒。")]
+     Description("窗口首次出现后等待此时长；期间切换窗口会重新计时，等待结束后仍为同一窗口才截图。默认 5000 毫秒。")]
     public int ForegroundSettleMilliseconds { get; set; } = 5000;
 
     [Category("触发"), DisplayName("抓取周期(分钟)"),
-     Description("同一个窗口在一个周期内只抓一次。比如设 10：一个窗口 10 分钟内反复切回去不会重复抓，"
-                 + "过了一个周期再打开才重新记一条。")]
+     Description("同一窗口在每个周期内仅抓取一次。设为 10 时：窗口在 10 分钟内反复切回不会重复抓取，下一周期再次打开才会记录。")]
     public int CaptureCycleMinutes { get; set; } = 10;
 
     [Category("触发"), DisplayName("两次抓取最小间隔(秒)"),
-     Description("节流阀，防止 alt-tab 连按时疯狂抓取。")]
+     Description("限流值，避免快速连续切换窗口时频繁抓取。")]
     public int MinSecondsBetweenCaptures { get; set; } = 20;
 
     [Category("触发"), DisplayName("定时抓取间隔(秒)"),
-     Description("定时任务的周期，默认 300 秒即 5 分钟。")]
+     Description("定时抓取的周期，默认 300 秒（5 分钟）。")]
     public int IntervalSeconds { get; set; } = 300;
 
     [Category("触发"), DisplayName("排除的进程名"),
@@ -102,25 +98,24 @@ public sealed class OcrOptions
     [Category("OCR"), DisplayName("OCR 引擎"),
      Description("PaddleOcr = 离线 PaddleOCR（PP-OCR 模型，中文准确率明显更高，代价是体积和内存）。"
                  + "WindowsMedia = 系统内置 OCR（零额外依赖、最省内存，但中文错字较多）。"
-                 + "Disabled = 只记录时间戳和窗口标题，不做文字识别。")]
+                 + "Disabled = 仅记录时间与窗口标题，不进行文字识别。")]
     public OcrEngineKind Engine { get; set; } = OcrEngineKind.PaddleOcr;
 
     [Category("OCR"), DisplayName("识别方式"),
-     Description("Realtime = 抓到时立刻识别，结果马上能用，但识别期间会占 CPU（默认）。"
-                 + "ScheduledBatch = 白天只截图不识别，到下面设定的时间统一补识别——"
-                 + "把耗 CPU 的活儿挪到机器空闲时段，代价是记录里的文字要等批次跑完才出现。"
-                 + "定时模式必须保存截图（没图就没法事后识别），程序会自动开启保存。")]
+     Description("Realtime = 抓取后立即识别，结果即时可用，识别期间占用 CPU（默认）。"
+                 + "ScheduledBatch = 白天只截图，到设定时间统一补识别，把 CPU 占用集中到空闲时段，"
+                 + "代价是记录中的文字需等批次完成后才出现。定时模式必须保存截图，程序会自动开启该开关。")]
     public OcrRunMode Mode { get; set; } = OcrRunMode.Realtime;
 
     [Category("OCR"), DisplayName("定时识别时间"),
-     Description("仅「识别方式 = ScheduledBatch」时生效，格式 HH:mm，例如 02:00。"
+     Description("仅“识别方式 = ScheduledBatch”时生效，格式 HH:mm，例如 02:00。"
                  + "程序在那个时间点之后第一次运行时执行，当天只跑一次。")]
     public string BatchTimeOfDay { get; set; } = "02:00";
 
     [Category("OCR"), DisplayName("识别前目标分辨率(最长边)"),
-     Description("仅对 Windows 内置 OCR 生效。"
-                 + "界面字号很小，放大后识别率提升很明显：实测 1650px 宽的窗口提到 2400px 后，常见词组正确数从 4/17 涨到 13/17。"
-                 + "PaddleOCR 自带检测模型会自行缩放，不需要预先放大。填 0 表示用引擎允许的最大值。")]
+     Description("仅对 Windows 内置 OCR 生效。界面字号较小时，放大对识别率提升明显："
+                 + "实测 1650px 宽窗口提高到 2400px 后，常见词组正确数由 4/17 增至 13/17。"
+                 + "PaddleOCR 的检测模型会自行缩放，无需预先放大。填 0 表示使用引擎允许的最大值。")]
     public int TargetLongestSide { get; set; } = 2400;
 
     [Category("OCR"), DisplayName("放大倍数上限"),
@@ -132,7 +127,7 @@ public sealed class OcrOptions
     public int MinTextLength { get; set; } = 4;
 
     [Category("OCR"), DisplayName("丢弃空记录"),
-     Description("开启后不把没有识别到文字的记录写进库，避免库里全是空行。")]
+     Description("开启后，未识别到文字的记录不写入数据库，避免产生大量空记录。")]
     public bool DropEmptyRecords { get; set; } = true;
 
     // ---------------------------------------------------------------- PaddleOCR
@@ -141,17 +136,17 @@ public sealed class OcrOptions
      Description("都是随程序离线发布的中文模型。"
                  + "V6Tiny = PP-OCRv6 tiny（推荐：实测命中率 22/24，最快）。"
                  + "V6Small = PP-OCRv6 small（同样 22/24，慢 3 倍）。"
-                 + "V5Mobile = PP-OCRv5 mobile（21/24，慢 6 倍，不建议）。")]
+                 + "V5Mobile = PP-OCRv5 mobile（21/24，慢 6 倍，不推荐）。")]
     public PaddleModelKind PaddleModel { get; set; } = PaddleModelKind.V6Tiny;
 
     [Category("OCR · PaddleOCR"), DisplayName("CPU 线程数"),
-     Description("限制推理线程数，避免占满 CPU。实测 4 线程已经接近收益上限。")]
+     Description("限制推理线程数，避免占满 CPU。实测 4 线程已接近收益上限。")]
     public int PaddleThreads { get; set; } = 4;
 
     [Category("OCR · PaddleOCR"), DisplayName("启用 MKLDNN 加速"),
-     Description("关（默认）：一张 1650x925 截图约 4 秒，稳定占用约 145MB —— 低内存优先。"
-                 + "开：同样内容约 1.4 秒，但稳定占用约 640MB —— 快 3~4 倍，内存代价很大。"
-                 + "两者识别准确率完全一致（实测均为 22/24）。")]
+     Description("关闭（默认）：一张 1650x925 截图约 4 秒、稳定占用约 145MB，适合内存有限的机器。"
+                 + "开启：同样内容约 1.4 秒、稳定占用约 640MB，速度提高约 3 至 4 倍。"
+                 + "两者识别准确率一致（实测均为 22/24）。")]
     public bool PaddleEnableMkldnn { get; set; }
 
     [Category("OCR · PaddleOCR"), DisplayName("检测模型最长边"),
@@ -214,8 +209,7 @@ public sealed class StorageOptions
     public bool ImportLegacyCsv { get; set; } = true;
 
     [Category("存储"), DisplayName("记录保留天数"),
-     Description("超过这个天数的记录会从数据库里删除。填 0 表示永久保留。"
-                 + "记录里带文字，长期积累也会变大；建议按需设一个上限。")]
+     Description("超过该天数的记录将从数据库删除。填 0 表示永久保留。记录含文字内容，长期积累后体积较大，建议按需设置上限。")]
     public int RecordRetentionDays { get; set; }
 }
 
@@ -223,7 +217,7 @@ public sealed class StorageOptions
 public sealed class SummarizationOptions
 {
     [Category("总结"), DisplayName("启用大模型总结"),
-     Description("关闭时「生成总结」只做本地归档，不会发起任何网络请求。")]
+     Description("关闭时不发起任何网络请求，仅保留本地记录。")]
     public bool Enabled { get; set; }
 
     [Browsable(false)]
@@ -234,7 +228,7 @@ public sealed class SummarizationOptions
     /// 可以配多个网关做冗余，或者主用便宜的、备用能力更强的。
     /// </summary>
     [Category("总结"), DisplayName("模型列表"),
-     Description("按顺序使用：前一个重试用尽仍失败就自动换下一个。")]
+     Description("按列表顺序调用：前一个重试用尽仍失败时，自动切换到下一个。")]
     public List<LlmProviderOptions> Providers { get; set; } = [];
 
     // ---- 以下四项是旧版单模型配置，仅用于把老配置迁移进 Providers，界面上不显示 ----
@@ -254,29 +248,29 @@ public sealed class SummarizationOptions
     // ---------------------------------------------------------------- 发送内容
 
     [Category("总结"), DisplayName("发送内容"),
-     Description("TextOnly = 只发 OCR 文字（最省 token）。"
-                 + "ImageOnly = 只发截图，靠模型自己的视觉能力读（适合 OCR 效果差的界面，token 更贵）。"
-                 + "TextAndImage = 文字 + 截图一起发（最准，也最贵，需要模型支持视觉）。")]
+     Description("TextOnly = 仅发送识别文字（消耗最低）。"
+                 + "ImageOnly = 仅发送截图，由模型直接读图（适合识别效果不佳的界面，消耗更高）。"
+                 + "TextAndImage = 文字与截图一并发送（效果最好、消耗最高，需模型支持视觉）。")]
     public LlmPayloadMode PayloadMode { get; set; } = LlmPayloadMode.TextOnly;
 
     [Category("总结"), DisplayName("附带图片最多张数"),
-     Description("只对 ImageOnly / TextAndImage 生效。图片很贵，用它兜住单次请求的成本上限。")]
+     Description("仅对 ImageOnly / TextAndImage 生效。图片计费较高，用于限制单次请求的成本上限。")]
     public int MaxImages { get; set; } = 6;
 
     [Category("总结"), DisplayName("同窗口图片最小间隔(秒)"),
-     Description("只对 ImageOnly / TextAndImage 生效。同一个窗口在这个时间内的多张截图只挑一张发，"
-                 + "避免把一个长时间不动的窗口重复发十几遍。填 0 表示不限制。")]
+     Description("仅对 ImageOnly / TextAndImage 生效。同一窗口在该时间内的多张截图只发送一张，"
+                 + "避免重复发送长时间静止的画面。填 0 表示不限制。")]
     public int ImageSampleSeconds { get; set; } = 300;
 
     [Category("总结"), DisplayName("图片清晰度"),
-     Description("Auto = 由服务端按尺寸决定；Low = 固定低清（约 85 token/张，最省）；High = 高清（贵数倍）。"
-                 + "文字主要靠 OCR 文本提供时，Low 通常够用。")]
+     Description("Auto = 由服务端按尺寸决定；Low = 固定低清（约 85 token/张，消耗最低）；High = 高清（消耗为数倍）。"
+                 + "文字主要由识别文本提供时，Low 通常足够。")]
     public LlmImageDetail ImageDetail { get; set; } = LlmImageDetail.Auto;
 
     // ---------------------------------------------------------------- 提示词与容错
 
     [Category("总结"), DisplayName("送入模型的最大字符数"),
-     Description("只对文字部分生效。超出部分会按时间倒序截断，只保留最近的记录。")]
+     Description("仅对文字部分生效。超出部分按时间倒序截断，只保留最近的记录。")]
     public int MaxInputCharacters { get; set; } = 24000;
 
     [Category("总结"), DisplayName("最多送入的记录条数"),
@@ -288,7 +282,7 @@ public sealed class SummarizationOptions
     public string Language { get; set; } = "zh-CN";
 
     [Category("总结"), DisplayName("附加要求"),
-     Description("追加到提示词末尾的自定义要求，例如\"按项目分组\"、\"只保留待办事项\"。")]
+     Description("追加到提示词末尾的自定义要求，例如“按项目分组”“只保留待办事项”。")]
     public string ExtraInstructions { get; set; } = "";
 
     [Category("总结"), DisplayName("失败重试次数"),
@@ -306,8 +300,8 @@ public sealed class SummarizationOptions
     // ---------------------------------------------------------------- 定时与提示词
 
     [Category("总结"), DisplayName("定时生成总结"),
-     Description("打开后，每天到下面的时间点自动生成一次，结果和失败原因都记进「总结历史」。"
-                 + "生成会真的把记录发到模型接口，请先确认隐私提示。")]
+     Description("开启后每天到设定时间自动生成一次，结果与失败原因均记入“总结历史”。"
+                 + "生成会实际把内容发送到模型接口，请先确认隐私提示。")]
     public bool ScheduleEnabled { get; set; }
 
     [Category("总结"), DisplayName("定时生成时间"),
@@ -315,14 +309,14 @@ public sealed class SummarizationOptions
     public string ScheduleTimeOfDay { get; set; } = "18:30";
 
     [Category("总结"), DisplayName("系统提示词（留空用内置模板）"),
-     Description("填了就用你写的这段作为 system 提示词，完全替换内置模板。"
-                 + "「工作项目清单」仍会自动附在后面（它是结构化数据，不跟着模板走）。"
-                 + "界面上有「填入内置模板」按钮，可以先载入默认内容再改。")]
+     Description("填写后以此作为 system 提示词，完全替换内置模板。"
+                 + "“工作项目清单”仍会自动附加（属结构化数据，不受模板影响）。"
+                 + "界面提供“填入内置模板”按钮，可先载入默认内容再修改。")]
     public string SystemPromptOverride { get; set; } = "";
 
     [Category("总结"), DisplayName("工作项目列表"),
-     Description("自己写的工作任务清单。生成总结时会附给模型，让它把活动按项目归类，"
-                 + "并据此判断哪块占了最多时间。不填也能用，只是没有按项目归类。")]
+     Description("自定义的工作任务清单。生成总结时随提示词发送，模型据此将活动按项目归类。"
+                 + "留空也可使用，此时不做项目归类。")]
     public List<WorkProjectOptions> WorkProjects { get; set; } = [];
 }
 
@@ -330,11 +324,11 @@ public sealed class SummarizationOptions
 public sealed class WorkProjectOptions
 {
     [Category("工作项目"), DisplayName("项目名称"),
-     Description("简短名字，会出现在总结的归类小节里。")]
+     Description("简短名称，会出现在总结的项目归类部分。")]
     public string Name { get; set; } = "";
 
     [Category("工作项目"), DisplayName("说明"),
-     Description("大概写这个项目在做什么、涉及哪些系统或关键词。写得越具体，模型归类越准。")]
+     Description("描述该项目的工作内容、涉及的系统或关键词。描述越具体，模型归类越准确。")]
     public string Description { get; set; } = "";
 
     public override string ToString() =>
@@ -344,24 +338,23 @@ public sealed class WorkProjectOptions
 }
 
 /// <summary>
-/// 把大模型生成的小结写入飞书多维表格。
+/// 把大模型生成的总结写入飞书多维表格。
 /// 分三层：数据（app_token + table_id）、通道（应用凭证 → tenant_access_token）、触发（定时/生成后/手动）。
 /// </summary>
 public sealed class FeishuOptions
 {
     [Category("飞书"), DisplayName("启用飞书写入"),
-     Description("打开后可以定时把小结写进飞书多维表格，也可以手动点「立即写入」。"
-                 + "写入内容是小结正文和它的元数据（时间、触发来源、模型、条数等），"
-                 + "这些内容会上传到飞书，请确认这张表只有你（或你信任的人）能看。")]
+     Description("开启后可按定时或手动方式把总结写入飞书多维表格。"
+                 + "写入内容为总结正文及其元数据（时间、触发来源、模型、条数等），将上传至飞书，"
+                 + "请确认该表仅本人或可信成员可访问。")]
     public bool Enabled { get; set; }
 
     [Category("飞书"), DisplayName("定时写入时间"),
      Description("格式 HH:mm，例如 19:00。程序在那个时间点之后第一次运行时执行，当天只跑一次。")]
     public string ScheduleTimeOfDay { get; set; } = "19:00";
 
-    [Category("飞书"), DisplayName("生成小结后立即写入"),
-     Description("每次成功生成小结后，立刻把它写进飞书。配合「定时生成总结」就等于每天自动汇总。"
-                 + "关掉则只按上面的定时写入或手动写入。")]
+    [Category("飞书"), DisplayName("生成总结后立即写入"),
+     Description("每次成功生成总结后立即写入飞书；配合“定时生成总结”即为每天自动汇总。关闭后仅按定时写入或手动写入执行。")]
     public bool PushAfterSummary { get; set; }
 
     // ---------------------------------------------------------------- 通道层
@@ -371,8 +364,7 @@ public sealed class FeishuOptions
     public string AppId { get; set; } = "";
 
     [Category("飞书 · 应用凭证"), DisplayName("App Secret"),
-     Description("自建应用的 App Secret。留空则从下面的环境变量读取。"
-                 + "它等同于应用身份，强烈建议只放在环境变量里。")]
+     Description("自建应用的 App Secret。留空则从下方环境变量读取。该值等同于应用身份，建议仅保存在环境变量中。")]
     public string AppSecret { get; set; } = "";
 
     [Category("飞书 · 应用凭证"), DisplayName("读取 App Secret 的环境变量名"),
@@ -380,44 +372,43 @@ public sealed class FeishuOptions
     public string AppSecretEnvironmentVariable { get; set; } = "SNAPLOG_FEISHU_APP_SECRET";
 
     [Category("飞书 · 应用凭证"), DisplayName("鉴权方式"),
-     Description("用应用身份 tenant_access_token（默认）。令牌有效期 7200 秒，程序会缓存并提前 5 分钟刷新，"
-                 + "不会每写一条就换一次令牌。")]
+     Description("使用应用身份 tenant_access_token（默认）。令牌有效期 7200 秒，程序会缓存并提前 5 分钟刷新。")]
     public FeishuAuthMode AuthMode { get; set; } = FeishuAuthMode.TenantAccessToken;
 
     // ---------------------------------------------------------------- 数据层
 
     [Category("飞书 · 数据"), DisplayName("多维表格 app_token"),
-     Description("整张多维表格的标识。从多维表格的 URL 里取，形如 "
-                 + "https://xxx.feishu.cn/base/xxxxxxxxxxxxxxxxxxxxxxxx 里的 xxxxxxxxxxxxxxxxxxxxxxxx。"
-                 + "同一张多维表格下的多张数据表共用这一个。")]
+     Description("整张多维表格的标识，取自多维表格 URL，形如 "
+                 + "https://xxx.feishu.cn/base/xxxxxxxxxxxxxxxxxxxxxxxx 中的 xxxxxxxxxxxxxxxxxxxxxxxx。"
+                 + "同一张多维表格下的多张数据表共用。")]
     public string AppToken { get; set; } = "";
 
     [Category("飞书 · 数据"), DisplayName("数据表 table_id"),
-     Description("每张数据表各有一个，形如 tblxxxxxxxxxxxxxx。换表或新建表后需要重新获取。")]
+     Description("每张数据表各有一个，形如 tblxxxxxxxxxxxxxx。更换或新建数据表后需重新获取。")]
     public string TableId { get; set; } = "";
 
     [Category("飞书 · 数据"), DisplayName("字段映射"),
-     Description("小结字段 → 飞书表里的字段名，一条一行，可以随时增删。"
-                 + "没有对应列的映射把「飞书字段名」留空即可，那条会被跳过——不必每条都填。"
-                 + "飞书按字段名精确匹配，名称差一个空格或换行都会报 FieldNameNotFound（1254045）。"
-                 + "写入前程序会先调「列出字段」核对，对不上的会明确告诉你哪一个。")]
+     Description("总结字段与飞书列名的对应关系，一条一行，可随时增删。"
+                 + "无对应列的映射将“飞书字段名”留空即可跳过，不必逐条填写。"
+                 + "飞书按字段名精确匹配，名称中含多余空格或换行会报 FieldNameNotFound（1254045）；"
+                 + "写入前程序会调用“列出字段”核对并指出不匹配项。")]
     public List<FeishuFieldMapping> FieldMappings { get; set; } = FeishuFieldMapping.CreateDefault();
 
     [Category("飞书 · 数据"), DisplayName("写入范围（天）"),
-     Description("只写入这么多天内生成、而且还没写进飞书的小结。默认 1 = 只写当天的，"
-                 + "避免第一次开启时把历史小结一次性全导进表里。要补历史就把这个值调大。")]
+     Description("仅写入该天数内生成且尚未写入飞书的总结。默认 1 表示只写当天，"
+                 + "避免首次开启时一次性导入全部历史总结；需补录历史时将该值调大。")]
     public int PushLookbackDays { get; set; } = 1;
 
-    [Category("飞书 · 数据"), DisplayName("小结正文最大长度"),
-     Description("小结可能很长，飞书单元格有长度上限。超出会被截断并标注。")]
+    [Category("飞书 · 数据"), DisplayName("总结正文最大长度"),
+     Description("总结正文可能较长，而飞书单元格有长度上限。超出部分将被截断并标注。")]
     public int MaxTextLength { get; set; } = 2000;
 
     [Category("飞书 · 数据"), DisplayName("每批写入条数"),
-     Description("飞书单次批量写入有上限（500），分批提交可以在失败时少丢一点。")]
+     Description("飞书单次批量写入上限为 500 条，分批提交可降低失败时的影响范围。")]
     public int BatchSize { get; set; } = 200;
 
     /// <summary>
-    /// 载入配置时发现字段映射还是旧版的记录字段、已被自动换成小结字段的默认映射。
+    /// 载入配置时发现字段映射还是旧版的记录字段、已被自动换成总结字段的默认映射。
     /// 只是用来提示用户重新核对列名，不写进配置文件。
     /// </summary>
     [JsonIgnore]
@@ -432,17 +423,17 @@ public enum FeishuAuthMode
 }
 
 /// <summary>
-/// 一条字段映射：把小结的哪个字段写到飞书表的哪一列。
+/// 一条字段映射：把总结的哪个字段写到飞书表的哪一列。
 /// 两条都可以留空其一：飞书字段名留空 = 这条不写（表里没有那一列时就这么处理）。
 /// </summary>
 public sealed class FeishuFieldMapping
 {
-    [Category("字段映射"), DisplayName("小结字段"),
-     Description("SnapLog 这边的字段，从下拉里选。")]
+    [Category("字段映射"), DisplayName("总结字段"),
+     Description("SnapLog 侧的字段，从下拉列表中选择。")]
     public string RecordField { get; set; } = "";
 
     [Category("字段映射"), DisplayName("飞书字段名"),
-     Description("飞书数据表里的列名，必须完全一致（含空格和符号）。留空表示不写这一列。")]
+     Description("飞书数据表中的列名，必须完全一致（含空格与符号）。留空表示不写入该列。")]
     public string FeishuField { get; set; } = "";
 
     public override string ToString() =>
@@ -452,7 +443,7 @@ public sealed class FeishuFieldMapping
 
     public FeishuFieldMapping Clone() => new() { RecordField = RecordField, FeishuField = FeishuField };
 
-    /// <summary>可映射的小结字段清单。全部可选，默认映射只是一份常见写法。</summary>
+    /// <summary>可映射的总结字段清单。全部可选，默认映射只是一份常见写法。</summary>
     public static IReadOnlyList<string> AvailableFields { get; } =
     [
         nameof(Storage.SummaryRun.StartedAt),
@@ -471,15 +462,15 @@ public sealed class FeishuFieldMapping
     /// <summary>字段的中文说明。下拉和列表里显示它，免得用户对着 StartedAt 猜意思。</summary>
     public static string DescribeField(string field) => field switch
     {
-        nameof(Storage.SummaryRun.StartedAt) => "小结生成时间",
+        nameof(Storage.SummaryRun.StartedAt) => "总结生成时间",
         nameof(Storage.SummaryRun.Trigger) => "触发来源",
         nameof(Storage.SummaryRun.Provider) => "模型",
         nameof(Storage.SummaryRun.RecordCount) => "记录条数",
         nameof(Storage.SummaryRun.ImageCount) => "截图张数",
         nameof(Storage.SummaryRun.ElapsedMilliseconds) => "耗时(毫秒)",
         nameof(Storage.SummaryRun.Attempts) => "尝试次数",
-        nameof(Storage.SummaryRun.Markdown) => "小结正文",
-        nameof(Storage.SummaryRun.Preview) => "小结摘要(前120字)",
+        nameof(Storage.SummaryRun.Markdown) => "总结正文",
+        nameof(Storage.SummaryRun.Preview) => "总结摘要(前120字)",
         nameof(Storage.SummaryRun.SavedPath) => "本地文件路径",
         nameof(Storage.SummaryRun.Message) => "结果说明",
         _ => field,
@@ -495,7 +486,7 @@ public sealed class FeishuFieldMapping
         new() { RecordField = nameof(Storage.SummaryRun.Trigger), FeishuField = "触发来源" },
         new() { RecordField = nameof(Storage.SummaryRun.Provider), FeishuField = "模型" },
         new() { RecordField = nameof(Storage.SummaryRun.RecordCount), FeishuField = "记录条数" },
-        new() { RecordField = nameof(Storage.SummaryRun.Markdown), FeishuField = "小结" },
+        new() { RecordField = nameof(Storage.SummaryRun.Markdown), FeishuField = "总结" },
     ];
 }
 
@@ -503,7 +494,7 @@ public sealed class FeishuFieldMapping
 public sealed class LlmProviderOptions
 {
     [Category("模型"), DisplayName("名称"),
-     Description("只是给这个配置起个便于识别的名字，会显示在日志和总结文件里。")]
+     Description("便于识别的名称，会显示在日志与总结文件中。")]
     public string Name { get; set; } = "主模型";
 
     [Category("模型"), DisplayName("启用")]
@@ -515,11 +506,11 @@ public sealed class LlmProviderOptions
     public string Endpoint { get; set; } = "https://api.openai.com/v1";
 
     [Category("模型"), DisplayName("模型名称"),
-     Description("例如 gpt-4o-mini / deepseek-chat / qwen-plus 。要用图片时必须有视觉能力（如 gpt-4o、qwen-vl-max）。")]
+     Description("例如 gpt-4o-mini / deepseek-chat / qwen-plus 。使用图片时需具备视觉能力（如 gpt-4o、qwen-vl-max）。")]
     public string Model { get; set; } = "gpt-4o-mini";
 
     [Category("模型"), DisplayName("API Key"),
-     Description("留空则从下面的环境变量读取。推荐用环境变量，避免明文落盘。")]
+     Description("留空则从下方环境变量读取。建议使用环境变量，避免明文写入磁盘。")]
     public string ApiKey { get; set; } = "";
 
     [Category("模型"), DisplayName("读取密钥的环境变量名"),
@@ -585,6 +576,6 @@ public sealed class UiOptions
     public bool StartMinimizedToTray { get; set; } = true;
 
     [Category("界面"), DisplayName("关闭按钮收起而不退出"),
-     Description("主窗口点关闭时只收起到托盘，进程继续记录。关闭后只能在主窗口里退出。")]
+     Description("主窗口关闭时仅收起到托盘，进程继续记录；退出需通过主窗口或托盘菜单。")]
     public bool CloseToTrayInsteadOfExit { get; set; } = true;
 }

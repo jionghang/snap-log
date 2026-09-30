@@ -7,7 +7,7 @@ using SnapLog.Storage;
 
 namespace SnapLog.Core;
 
-/// <summary>把 Pending 记录批量补识别。对应「识别方式 = 每日定时」。</summary>
+/// <summary>把 Pending 记录批量补识别。对应“识别方式 = 每日定时”。</summary>
 public sealed class OcrBatchJob : IScheduledJob
 {
     /// <summary>一批最多处理多少条。设上限是为了别让单次任务跑几个小时，剩下的下一轮继续。</summary>
@@ -160,7 +160,7 @@ public sealed class SummaryJob : IScheduledJob
     }
 }
 
-/// <summary>定时把还没写入过的小结写进飞书多维表格。</summary>
+/// <summary>定时把还没写入过的总结写进飞书多维表格。</summary>
 public sealed class FeishuPushJob : IScheduledJob
 {
     private readonly FeishuWriter _writer;
@@ -172,7 +172,7 @@ public sealed class FeishuPushJob : IScheduledJob
 
     public string Key => "feishu-push";
 
-    public string DisplayName => "定时写入小结到飞书";
+    public string DisplayName => "定时写入总结到飞书";
 
     public bool IsEnabled(AppOptions options) => options.Feishu.Enabled;
 

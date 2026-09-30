@@ -155,7 +155,7 @@ public sealed class PaddleOcrEngine : IOcrEngine
             var text = TextNormalizer.ComposeFromLines(result.Lines);
 
             // notes 里的内容不是装饰：可能是"某个区域拆到最深仍超限、已跳过"，
-            // 也就是真实的数据丢失。成功也要带出去，落进记录的「错误」列让用户看得见。
+            // 也就是真实的数据丢失。成功也要带出去，落进记录的“错误”列让用户看得见。
             var warning = result.Notes.Count > 0 ? string.Join("；", result.Notes) : null;
 
             if (warning is not null)
@@ -218,7 +218,7 @@ public sealed class PaddleOcrEngine : IOcrEngine
 
         if (run.Tiles > 1)
         {
-            run.Notes.Add($"内容超过免费版单次 {BoxCountLimit} 块的限制，已拆成 {run.Tiles} 块识别");
+            run.Notes.Add($"内容超过免费版单次 {BoxCountLimit} 块上限，已拆分为 {run.Tiles} 块识别");
         }
 
         run.Lines = ToReadingOrder(run.Blocks);
@@ -259,7 +259,7 @@ public sealed class PaddleOcrEngine : IOcrEngine
                 if (depth >= MaxSplitDepth)
                 {
                     // 拆到上限还是超，只能放弃这一块，但不能让整次抓取失败。
-                    run.Notes.Add($"有区域拆到 {depth} 层仍超过免费版单次上限，该区域文字已跳过");
+                    run.Notes.Add($"部分区域拆分至 {depth} 层仍超出免费版单次上限，该区域文字已跳过");
                     return result;
                 }
 
@@ -476,7 +476,7 @@ public sealed class PaddleOcrEngine : IOcrEngine
 
     private sealed record PositionedBlock(double X, double Y, string Text);
 
-    /// <summary>一次识别过程的临时状态。「块」= 成功返回结果的调用，「调用」含失败重试。</summary>
+    /// <summary>一次识别过程的临时状态。“块”= 成功返回结果的调用，“调用”含失败重试。</summary>
     private sealed class RecognizeRun
     {
         public int Calls { get; set; }

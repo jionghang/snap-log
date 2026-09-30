@@ -53,7 +53,7 @@ internal sealed class SystemPromptEditForm : Form
         var loadTemplate = new Button { Text = "填入内置模板", Width = 120, Height = 32 };
         loadTemplate.Click += (_, _) => LoadBuiltInTemplate();
 
-        var restore = new Button { Text = "清空（用内置模板）", Width = 150, Height = 32 };
+        var restore = new Button { Text = "清空（改用内置模板）", Width = 150, Height = 32 };
         restore.Click += (_, _) =>
         {
             _editor.Clear();
@@ -84,10 +84,10 @@ internal sealed class SystemPromptEditForm : Form
         var projects = _options.WorkProjects.Count(p => !string.IsNullOrWhiteSpace(p.Name));
 
         _hint.Text = (overridden
-                ? "当前用的是你写的这段提示词（完全替换内置模板）。"
+                ? "当前使用下方提示词，完全替换内置模板。"
                 : "当前留空，使用内置模板。")
             + (projects > 0
-                ? $"　另外会自动附上 {projects} 条工作项目清单，那部分是结构化数据，不跟着这里的内容走。"
+                ? $"　另自动附上 {projects} 条工作项目清单，该部分为结构化数据，不受此处内容影响。"
                 : string.Empty);
     }
 

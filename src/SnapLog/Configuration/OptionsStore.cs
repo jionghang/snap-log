@@ -77,7 +77,7 @@ public static class OptionsStore
     }
 
     /// <summary>
-    /// 深拷贝。设置窗体用它来编辑副本，这样点「取消」时不会污染正在运行的实例。
+    /// 深拷贝。设置窗体用它来编辑副本，这样点“取消”时不会污染正在运行的实例。
     /// 走一次 JSON 往返而不是手写克隆：加字段时不会漏掉。
     /// </summary>
     public static AppOptions Clone(AppOptions options)
@@ -172,9 +172,9 @@ public static class OptionsStore
     }
 
     /// <summary>
-    /// 写入飞书的内容从"抓取记录"改成了"大模型小结"，旧配置里的记录字段（Timestamp、OcrText…）
-    /// 在小结上取不到任何值——留着的话每次写入都会被整条跳过，而且不会有报错。
-    /// 所以这里整组换成小结字段的默认映射，并把这件事记在
+    /// 写入飞书的内容从"抓取记录"改成了"大模型总结"，旧配置里的记录字段（Timestamp、OcrText…）
+    /// 在总结上取不到任何值——留着的话每次写入都会被整条跳过，而且不会有报错。
+    /// 所以这里整组换成总结字段的默认映射，并把这件事记在
     /// <see cref="FeishuOptions.LegacyMappingsReplaced"/> 上，由界面提示用户重新核对列名。
     /// </summary>
     private static void MigrateLegacyFeishuMappings(FeishuOptions feishu)

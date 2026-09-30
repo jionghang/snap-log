@@ -62,7 +62,7 @@ internal sealed class OcrPreviewForm : Form
             Font = new Font("Consolas", 10f),
             WordWrap = true,
             BackColor = SystemColors.Window,
-            Text = outcome.Text.Length == 0 ? "(没有识别到文字)" : outcome.Text,
+            Text = outcome.Text.Length == 0 ? "（未识别到文字）" : outcome.Text,
         };
 
         var split = new SplitContainer

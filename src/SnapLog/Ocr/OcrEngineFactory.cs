@@ -25,7 +25,7 @@ internal sealed class DisabledOcrEngine : IOcrEngine
 {
     public bool IsAvailable => true;
 
-    public string Description => "已关闭（只记录时间戳和窗口标题）";
+    public string Description => "已关闭（仅记录时间与窗口标题）";
 
     public Task<OcrOutcome> RecognizeAsync(Bitmap bitmap, CancellationToken cancellationToken) =>
         Task.FromResult(OcrOutcome.Skipped());

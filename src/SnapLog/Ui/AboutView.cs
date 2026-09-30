@@ -33,7 +33,7 @@ internal sealed class AboutView : SettingsViewBase
 
         var subtitle = new Label
         {
-            Text = "把屏幕活动变成可查、可总结、可推送的记录",
+            Text = "屏幕活动的记录、识别、总结与归档",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 0, 0, 10),
@@ -82,8 +82,8 @@ internal sealed class AboutView : SettingsViewBase
 
         var note = new Label
         {
-            Text = "一切都在本机：抓取、OCR、数据库、截图都存在你自己的电脑上。"
-                   + "只有你主动点「生成小结」或「写入飞书」，或者自己打开了定时/自动写入开关时，内容才会发出去。",
+            Text = "抓取、文字识别、数据库与截图均保存在本机。"
+                   + "仅在主动执行“生成总结”“写入飞书”，或已开启相应定时与自动开关时，内容才会发送至外部服务。",
             AutoSize = true,
             MaximumSize = new Size(560, 0),
             ForeColor = SystemColors.GrayText,

@@ -12,25 +12,25 @@ namespace SnapLog.Core;
 /// <summary>一次推送的结果。</summary>
 public sealed record FeishuPushResult(bool Success, string Message, int Written, int Skipped)
 {
-    /// <summary>写成功的那些小结的 id。调用方拿它去库里打「已写入」标记，下次就不会重复写。</summary>
+    /// <summary>写成功的那些总结的 id。调用方拿它去库里打“已写入”标记，下次就不会重复写。</summary>
     public IReadOnlyList<long> WrittenIds { get; init; } = [];
 
     public static FeishuPushResult Fail(string message) => new(false, message, 0, 0);
 }
 
 /// <summary>
-/// 把大模型生成的小结写进飞书多维表格：一条小结 = 表里一行。
+/// 把大模型生成的总结写进飞书多维表格：一条总结 = 表里一行。
 ///
 /// 分三层：
 ///   ① 数据层：app_token（整张多维表格）+ table_id（一张数据表）
 ///   ② 通道层：App ID + App Secret → tenant_access_token → 多维表格开放接口
-///   ③ 触发层：生成小结后自动 / 定时任务 / 手动（由 SummaryRunner、ScheduledJobsService 与界面按钮负责）
+///   ③ 触发层：生成总结后自动 / 定时任务 / 手动（由 SummaryRunner、ScheduledJobsService 与界面按钮负责）
 ///
 /// 三个"踩过坑"的点都在这里落实了：
 ///   1. 用应用身份 tenant_access_token，令牌缓存并提前 5 分钟刷新，不会每条记录都换令牌。
 ///   2. 权限要两层同时满足：API 权限范围（bitable:app）+ 文档级协作授权。
 ///      缺前者飞书报 99991672（会列出缺哪个权限），缺后者报 91403 Forbidden —— 这两个码在本类里被翻译成人话。
-///   3. 写入前先调「列出字段」核对字段名：飞书按名称精确匹配，
+///   3. 写入前先调“列出字段”核对字段名：飞书按名称精确匹配，
 ///      差一个空格就报 1254045 FieldNameNotFound。核对之后能在推送前就说清是哪一列对不上。
 /// </summary>
 public sealed class FeishuBitablePublisher
@@ -69,36 +69,36 @@ public sealed class FeishuBitablePublisher
     {
         if (string.IsNullOrWhiteSpace(options.AppId))
         {
-            return "没有填飞书应用的 App ID。";
+            return "未填写飞书应用的 App ID。";
         }
 
         if (ResolveSecret(options) is null)
         {
-            return $"拿不到 App Secret：请填 App Secret，或先设置环境变量 {SecretVariableName(options)}。";
+            return $"未获取到 App Secret：请填写 App Secret，或设置环境变量 {SecretVariableName(options)}。";
         }
 
         if (string.IsNullOrWhiteSpace(options.AppToken))
         {
-            return "没有填多维表格的 app_token。";
+            return "未填写多维表格的 app_token。";
         }
 
         if (string.IsNullOrWhiteSpace(options.TableId))
         {
-            return "没有填数据表的 table_id。";
+            return "未填写数据表的 table_id。";
         }
 
         if (!TimeOnly.TryParse(options.ScheduleTimeOfDay, out _))
         {
-            return $"推送时间「{options.ScheduleTimeOfDay}」不是合法的 HH:mm 格式。";
+            return $"写入时间“{options.ScheduleTimeOfDay}”不是合法的 HH:mm 格式。";
         }
 
         return null;
     }
 
     /// <summary>
-    /// 只读表里的字段清单，给界面上的「读取表字段名」用：
+    /// 只读表里的字段清单，给界面上的“读取表字段名”用：
     /// 让用户从真实列名里挑，而不是手打——手打错一个空格就是 1254045。
-    /// 只做一次「列出字段」请求，不写任何数据。
+    /// 只做一次“列出字段”请求，不写任何数据。
     /// </summary>
     public async Task<(IReadOnlyList<FeishuTableField>? Fields, string? Error)> FetchFieldsAsync(
         CancellationToken cancellationToken)
@@ -129,7 +129,7 @@ public sealed class FeishuBitablePublisher
     }
 
     /// <summary>
-    /// 只做验证，不写入：换一次令牌 + 调「列出字段」，顺便核对字段映射。
+    /// 只做验证，不写入：换一次令牌 + 调“列出字段”，顺便核对字段映射。
     /// 这是最有用的一步——权限两层是否都配好、字段名对不对，一次全查出来。
     /// </summary>
     public async Task<FeishuPushResult> TestAsync(CancellationToken cancellationToken)
@@ -165,8 +165,8 @@ public sealed class FeishuBitablePublisher
             var (missing, unused) = CheckMapping(fields);
             if (missing.Count > 0)
             {
-                lines.Add("⚠ 这些映射在表里找不到同名字段，推送会失败：" + string.Join("、", missing));
-                lines.Add("　请按表里的实际列名改「字段映射」，注意空格和换行也要一致。");
+                lines.Add("以下映射在表内找不到同名字段，写入会失败：" + string.Join("、", missing));
+                lines.Add("　请按表内实际列名修改“字段映射”，注意空格与换行需完全一致。");
             }
             else
             {
@@ -186,7 +186,7 @@ public sealed class FeishuBitablePublisher
         }
     }
 
-    /// <summary>把一批小结写进多维表格。返回写成功、跳过（这条的映射恰好都没值）的条数。</summary>
+    /// <summary>把一批总结写进多维表格。返回写成功、跳过（这条的映射恰好都没值）的条数。</summary>
     public async Task<FeishuPushResult> PushAsync(
         IReadOnlyList<SummaryRun> runs,
         CancellationToken cancellationToken)
@@ -199,7 +199,7 @@ public sealed class FeishuBitablePublisher
 
         if (runs.Count == 0)
         {
-            return new FeishuPushResult(true, "没有需要写入的小结", 0, 0);
+            return new FeishuPushResult(true, "没有需要写入的总结", 0, 0);
         }
 
         // 字段映射全部留空时，写进去就是一堆空行——直接拦下来说清楚，别浪费一次请求。
@@ -210,9 +210,9 @@ public sealed class FeishuBitablePublisher
         if (activeMappings.Count == 0)
         {
             return FeishuPushResult.Fail(
-                "字段映射里没有任何一条填了「飞书字段名」，没有可写入的列。"
+                "字段映射中没有任何一条填写了“飞书字段名”，没有可写入的列。"
                 + Environment.NewLine
-                + "请在「推送配置」里给至少一条映射填上飞书表里的列名。");
+                + "请在“推送配置”中为至少一条映射填写表内列名。");
         }
 
         using var http = CreateClient();
@@ -234,10 +234,10 @@ public sealed class FeishuBitablePublisher
         if (missing.Count > 0)
         {
             return FeishuPushResult.Fail(
-                "数据表里找不到这些字段：" + string.Join("、", missing)
+                "数据表中不存在以下字段：" + string.Join("、", missing)
                 + Environment.NewLine
-                + "飞书按字段名精确匹配（差一个空格都会报 1254045），"
-                + "请按表里实际的列名修改「字段映射」，或先在表里加上这些列。");
+                + "飞书按字段名精确匹配（含空格差异会返回 1254045），"
+                + "请按表内实际列名修改“字段映射”，或先在表中添加这些列。");
         }
 
         var typeByName = fields.ToDictionary(f => f.Name, f => f.Type, StringComparer.Ordinal);
@@ -267,8 +267,8 @@ public sealed class FeishuBitablePublisher
             var batch = runs.Skip(offset).Take(batchSize).ToList();
             var payloadRecords = new List<FeishuRecordPayload>(batch.Count);
 
-            // 与 payloadRecords 一一对应的 SnapLog 小结 id：整批成功才算写上，
-            // 所以拿它去打「已写入」标记，同一批里跳过的那几条不会被误标。
+            // 与 payloadRecords 一一对应的 SnapLog 总结 id：整批成功才算写上，
+            // 所以拿它去打“已写入”标记，同一批里跳过的那几条不会被误标。
             var batchRunIds = new List<long>(batch.Count);
 
             foreach (var run in batch)
@@ -301,8 +301,8 @@ public sealed class FeishuBitablePublisher
                 // 这一批发出去没有、飞书收没收下，本地无法确定——如实说出来，别假装没发生。
                 return new FeishuPushResult(
                     false,
-                    $"写入中断：已写 {written} 条。第 {offset / batchSize + 1} 批的状态不确定（可能已经写进表里），"
-                    + "请到表里核对过再决定要不要重试。",
+                    $"写入中断：已写入 {written} 条。第 {offset / batchSize + 1} 批状态不确定（可能已写入表内），"
+                    + "请核对后再决定是否重试。",
                     written,
                     skipped)
                 {
@@ -325,7 +325,7 @@ public sealed class FeishuBitablePublisher
         {
             return new FeishuPushResult(
                 false,
-                $"写入未全部成功：已写 {written} 条，失败 {failures.Count} 批 —— " + string.Join("；", failures),
+                $"写入未全部成功：已写入 {written} 条，失败 {failures.Count} 批 —— " + string.Join("；", failures),
                 written,
                 skipped)
             {
@@ -333,16 +333,16 @@ public sealed class FeishuBitablePublisher
             };
         }
 
-        var summary = $"已写入 {written} 条小结到飞书多维表格";
+        var summary = $"已写入 {written} 条总结到飞书多维表格";
         if (skipped > 0)
         {
-            summary += $"（{skipped} 条因为映射字段都没有值被跳过）";
+            summary += $"（{skipped} 条因映射字段均无值被跳过）";
         }
 
         return new FeishuPushResult(true, summary, written, skipped) { WrittenIds = writtenIds };
     }
 
-    /// <summary>把一条小结按映射和表里字段类型组装成飞书的 fields 对象。</summary>
+    /// <summary>把一条总结按映射和表里字段类型组装成飞书的 fields 对象。</summary>
     private Dictionary<string, object?> BuildFields(
         SummaryRun run,
         IReadOnlyList<FeishuFieldMapping> mappings,
@@ -373,7 +373,7 @@ public sealed class FeishuBitablePublisher
         return fields;
     }
 
-    /// <summary>按名字取小结里的字段值。返回 null 表示这个字段不存在或这条没值。</summary>
+    /// <summary>按名字取总结里的字段值。返回 null 表示这个字段不存在或这条没值。</summary>
     private object? ReadSummaryField(SummaryRun run, string fieldName) => fieldName switch
     {
         nameof(SummaryRun.StartedAt) => run.StartedAt,
@@ -421,7 +421,7 @@ public sealed class FeishuBitablePublisher
     private static string Truncate(string value, int maxLength)
     {
         var limit = Math.Clamp(maxLength, 1, 100_000);
-        return value.Length <= limit ? value : value[..limit] + "…(已截断)";
+        return value.Length <= limit ? value : value[..limit] + "…（已截断）";
     }
 
     /// <summary>核对映射里的字段名在不在表里。返回（表里没有的、被跳过不写的）。</summary>
@@ -610,10 +610,10 @@ public sealed class FeishuBitablePublisher
         var hint = code switch
         {
             99991672 => "缺少 API 权限范围：到开发者后台给这个应用开通多维表格的读写权限（bitable:app）",
-            91403 => "文档级授权不足：把这个应用加为目标多维表格的可编辑协作者（只开 API 权限不够）",
-            1254045 => "字段名对不上：飞书按字段名精确匹配，请核对「字段映射」里的名字是否与表里完全一致",
-            1254005 => "数据表不存在或 app_token/table_id 不对",
-            1254302 or 1254303 => "应用不是这张多维表格的协作者，或表格权限里没给编辑权",
+            91403 => "文档级授权不足：需将该应用添加为目标多维表格的可编辑协作者（仅开通 API 权限不足）",
+            1254045 => "字段名不匹配：飞书按字段名精确匹配，请核对“字段映射”中的名称是否与表内完全一致",
+            1254005 => "数据表不存在，或 app_token / table_id 不正确",
+            1254302 or 1254303 => "应用不是该多维表格的协作者，或未授予编辑权限",
             _ => null,
         };
 

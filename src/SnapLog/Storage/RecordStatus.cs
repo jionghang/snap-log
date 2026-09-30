@@ -13,7 +13,7 @@ public enum RecordStatus
     Error,
 
     /// <summary>
-    /// 只截了图、还没识别（「识别方式 = 每日定时」下的正常状态）。
+    /// 只截了图、还没识别（“识别方式 = 每日定时”下的正常状态）。
     /// 批次任务跑完会变成 Ok / NoText / Error。
     /// </summary>
     Pending,

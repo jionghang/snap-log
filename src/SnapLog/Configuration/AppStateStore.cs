@@ -10,7 +10,7 @@ namespace SnapLog.Configuration;
 /// 随程序发布的默认值。程序为了记一个"提示看过了"就去写整份配置，会导致
 /// 以后每次升级改默认值都被这份旧快照挡住——开发过程中被这件事坑了两次
 /// （换了 OCR 引擎却发现没生效）。所以拆开：程序只写这个状态文件，
-/// appsettings.json 只在用户点「保存设置」时才写。
+/// appsettings.json 只在用户点“保存设置”时才写。
 /// </summary>
 public sealed class AppState
 {

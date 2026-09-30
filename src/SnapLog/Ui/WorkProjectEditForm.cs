@@ -59,12 +59,12 @@ internal sealed class WorkProjectEditForm : Form
         _description.Multiline = true;
         _description.Height = 120;
         _description.ScrollBars = ScrollBars.Vertical;
-        _description.PlaceholderText = "大概写这个项目在做什么、涉及哪些系统或关键词。写得越具体，模型归类越准。";
+        _description.PlaceholderText = "填写该项目的工作内容、涉及的系统或关键词。描述越具体，模型归类越准确。";
         grid.Controls.Add(_description, 1, 1);
 
         var hint = new Label
         {
-            Text = "这段说明会随提示词一起发给模型，用来把活动归类到这个项目下。",
+            Text = "该说明随提示词发送给模型，用于将活动归类到本项目。",
             AutoSize = true,
             MaximumSize = new Size(430, 0),
             ForeColor = SystemColors.GrayText,

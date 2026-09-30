@@ -6,9 +6,9 @@ namespace SnapLog.Ui;
 
 /// <summary>
 /// 新增/编辑一条字段映射。
-/// 「小结字段」用下拉限定，避免手打错名字导致映射静默失效
-/// （映射的 RecordField 对不上任何小结字段时，那一列就是空的）。
-/// 「飞书字段名」允许留空，表示这一列不写——表里没有对应列时就这么用。
+/// “总结字段”用下拉限定，避免手打错名字导致映射静默失效
+/// （映射的 RecordField 对不上任何总结字段时，那一列就是空的）。
+/// “飞书字段名”允许留空，表示这一列不写——表里没有对应列时就这么用。
 /// </summary>
 internal sealed class FeishuFieldMappingEditForm : Form
 {
@@ -62,7 +62,7 @@ internal sealed class FeishuFieldMappingEditForm : Form
             grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
 
-        grid.Controls.Add(NewLabel("小结字段"), 0, 0);
+        grid.Controls.Add(NewLabel("总结字段"), 0, 0);
         _recordField.DropDownStyle = ComboBoxStyle.DropDownList;
         _recordField.Dock = DockStyle.Fill;
         foreach (var field in FeishuFieldMapping.AvailableFields)
@@ -76,7 +76,7 @@ internal sealed class FeishuFieldMappingEditForm : Form
 
         grid.Controls.Add(NewLabel("飞书字段名"), 0, 1);
 
-        // 下拉里放的是表里真实的列名（点「读取表字段名」拿到的），但也允许直接输入：
+        // 下拉里放的是表里真实的列名（点“读取表字段名”拿到的），但也允许直接输入：
         // 没读取过、或者想先填着、等表建好再用，都不该被挡住。
         _feishuField.DropDownStyle = ComboBoxStyle.DropDown;
         _feishuField.Dock = DockStyle.Fill;
@@ -162,7 +162,7 @@ internal sealed class FeishuFieldMappingEditForm : Form
 
         var lines = new List<string>
         {
-            $"把小结的「{FeishuFieldMapping.DescribeField(field)}」写到飞书的「{(target.Length == 0 ? "(未设置)" : target)}」列。",
+            $"把总结的“{FeishuFieldMapping.DescribeField(field)}”写到飞书的“{(target.Length == 0 ? "(未设置)" : target)}”列。",
         };
 
         lines.Add(field switch
@@ -173,9 +173,9 @@ internal sealed class FeishuFieldMappingEditForm : Form
                 or nameof(Storage.SummaryRun.ElapsedMilliseconds) or nameof(Storage.SummaryRun.Attempts) =>
                 "这一项是数字，飞书列建议用数字类型。",
             nameof(Storage.SummaryRun.Markdown) =>
-                "小结正文可能很长，超出长度上限会被截断并标注（上限在配置文件的 Feishu.MaxTextLength 里调）。",
-            nameof(Storage.SummaryRun.Preview) => "小结摘要取正文前 120 字，适合放短文本列。",
-            nameof(Storage.SummaryRun.SavedPath) => "小结 Markdown 文件在本机的路径，只对这台机器有意义。",
+                "总结正文可能很长，超出长度上限会被截断并标注（上限在配置文件的 Feishu.MaxTextLength 里调）。",
+            nameof(Storage.SummaryRun.Preview) => "总结摘要取正文前 120 字，适合放短文本列。",
+            nameof(Storage.SummaryRun.SavedPath) => "总结 Markdown 文件在本机的路径，只对这台机器有意义。",
             nameof(Storage.SummaryRun.Message) => "成功时是保存说明，失败时是失败原因。",
             _ => "飞书列建议用文本类型。",
         });
@@ -190,8 +190,8 @@ internal sealed class FeishuFieldMappingEditForm : Form
                 f => string.Equals(f.Name, target, StringComparison.Ordinal));
 
             lines.Add(matched is null
-                ? "⚠ 表里没有这个列名。从下拉里选一个，或核对表里实际的列名（空格、换行都要一致）。"
-                : $"表里这一列的类型是「{matched.TypeName}」，写入时会按它自动转换。");
+                ? "表内没有该列名。请从下拉中选择，或核对表内实际列名（空格与换行需完全一致）。"
+                : $"表里这一列的类型是“{matched.TypeName}”，写入时会按它自动转换。");
         }
 
         _hint.Text = string.Join(Environment.NewLine, lines);
@@ -202,7 +202,7 @@ internal sealed class FeishuFieldMappingEditForm : Form
         var field = (_recordField.SelectedItem as FieldChoice)?.Field ?? string.Empty;
         if (field.Length == 0)
         {
-            MessageBox.Show("请选择小结字段。", "字段映射", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("请选择总结字段。", "字段映射", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -213,7 +213,7 @@ internal sealed class FeishuFieldMappingEditForm : Form
         Close();
     }
 
-    /// <summary>下拉项：值是小结字段名，显示的是它的中文说明。</summary>
+    /// <summary>下拉项：值是总结字段名，显示的是它的中文说明。</summary>
     private sealed record FieldChoice(string Field, string Label)
     {
         public override string ToString() => $"{Label}（{Field}）";

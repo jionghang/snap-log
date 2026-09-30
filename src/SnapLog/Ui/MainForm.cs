@@ -128,7 +128,7 @@ internal sealed class MainForm : Form
         _tabs.TabPages.Add(BuildRecordsTab(context));
         _tabs.TabPages.Add(BuildSummaryTab(context));
         _tabs.TabPages.Add(BuildLazyTab("抓取配置", () => new CaptureSettingsView(context)));
-        _tabs.TabPages.Add(BuildLazyTab("OCR配置", () => new OcrSettingsView(context)));
+        _tabs.TabPages.Add(BuildLazyTab("OCR 配置", () => new OcrSettingsView(context)));
         _tabs.TabPages.Add(BuildLazyTab("大模型配置", () => new LlmSettingsView(context)));
         _tabs.TabPages.Add(BuildLazyTab("推送配置", () => new FeishuSettingsView(context)));
         _tabs.TabPages.Add(BuildLazyTab("关于", () => new AboutView(context)));
@@ -443,11 +443,11 @@ internal sealed class MainForm : Form
 
         _countValue.Text = $"{_sessionRecordCount} 条（本次运行）";
 
-        _ocrValue.Text = _options.Ocr.Enabled ? _ocrDescription : "已关闭（只记录标题）";
+        _ocrValue.Text = _options.Ocr.Enabled ? _ocrDescription : "已关闭（仅记录标题）";
 
         var last = _engine.LastRecord;
         _lastValue.Text = last is null
-            ? "还没有记录"
+            ? "暂无记录"
             : $"{last.Timestamp:HH:mm:ss} · {last.WindowTitle} · {last.TextLength} 字";
 
         _dataDirValue.Text = _paths.DataDirectory;

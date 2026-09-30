@@ -4,7 +4,7 @@ using SnapLog.Diagnostics;
 namespace SnapLog.Ui;
 
 /// <summary>
-/// 「全部选项（高级）」：把配置对象整棵丢给 PropertyGrid。
+/// “全部选项（高级）”：把配置对象整棵丢给 PropertyGrid。
 /// 常用项已经放在设置页里了，这里只服务于需要改冷门选项的场景。
 /// </summary>
 internal sealed class AdvancedOptionsForm : Form
@@ -33,7 +33,7 @@ internal sealed class AdvancedOptionsForm : Form
             AutoSize = true,
             Padding = new Padding(10, 8, 10, 6),
             ForeColor = SystemColors.GrayText,
-            Text = "改完点「保存设置」写盘并生效。这一页会直接改内存里的配置对象，所以和设置页的常用项是同一份数据。",
+            Text = "修改后点“保存设置”写入磁盘并生效。本页直接修改内存中的配置对象，与设置页各项为同一份数据。",
         };
 
         _grid.Dock = DockStyle.Fill;
@@ -77,7 +77,7 @@ internal sealed class AdvancedOptionsForm : Form
             return;
         }
 
-        _log.Info("已通过「全部选项（高级）」保存配置");
+        _log.Info("已通过“全部选项（高级）”保存配置");
         MessageBox.Show("已保存并生效。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 

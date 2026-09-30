@@ -203,7 +203,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
 
         if (!snapshot.IsUsable)
         {
-            return CaptureOutcome.Skipped("前台窗口没有标题，跳过");
+            return CaptureOutcome.Skipped("前台窗口无标题，已跳过");
         }
 
         var skipReason = CheckFilters(snapshot, trigger);
@@ -244,7 +244,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
                 // 没存下图就永远识别不了。标成 Error 而不是挂一个永远处理不掉的 Pending。
                 record.Status = RecordStatus.Error;
                 record.Error = "定时识别需要截图，但截图保存失败";
-                ReportStatus("截图保存失败，这条记录无法在批次里识别");
+                ReportStatus("截图保存失败，该记录无法参与批量识别");
             }
             else
             {
@@ -252,7 +252,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
 
                 if (!_options.Capture.SaveImages)
                 {
-                    _log.Warn("识别方式是「每日定时」，必须保存截图才能事后识别，已自动为这条记录存图");
+                    _log.Warn("识别方式为“每日定时批量识别”，该模式必须保存截图，已自动为本次记录存图");
                 }
             }
         }
@@ -270,7 +270,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
             record.OcrMilliseconds = (long)outcome.Elapsed.TotalMilliseconds;
 
             // 识别成功但有需要留意的点（例如某个区域超过引擎的单次上限被跳过）。
-            // 状态仍是 Ok，但把提示写进「错误」列，记录查看器的详情里能看到。
+            // 状态仍是 Ok，但把提示写进“错误”列，记录查看器的详情里能看到。
             if (outcome.Warning is not null)
             {
                 record.Error = outcome.Warning;
@@ -283,7 +283,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
                 record.Status = RecordStatus.NoText;
                 if (_options.Ocr.DropEmptyRecords)
                 {
-                    ReportStatus($"「{Truncate(snapshot.WindowTitle)}」没有识别到文字，未记录");
+                    ReportStatus($"“{Truncate(snapshot.WindowTitle)}”未识别到文字，未记录");
                     return CaptureOutcome.Skipped("没有识别到有效文字");
                 }
             }
@@ -323,12 +323,12 @@ public sealed class SnapLogEngine : IAsyncDisposable
         if (batchMode)
         {
             ReportStatus(record.Status == RecordStatus.Error
-                ? "已记录「" + Truncate(snapshot.WindowTitle) + "」但截图保存失败，无法在批次里识别"
-                : $"已记录「{Truncate(snapshot.WindowTitle)}」（等定时识别）");
+                ? "已记录“" + Truncate(snapshot.WindowTitle) + "”但截图保存失败，无法参与批量识别"
+                : $"已记录“{Truncate(snapshot.WindowTitle)}”（等定时识别）");
         }
         else
         {
-            ReportStatus($"已记录「{Truncate(snapshot.WindowTitle)}」{record.TextLength} 字（{capture.Method}）");
+            ReportStatus($"已记录“{Truncate(snapshot.WindowTitle)}”{record.TextLength} 字（{capture.Method}）");
         }
 
         return CaptureOutcome.Ok(record);
@@ -340,7 +340,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
                 name => !string.IsNullOrWhiteSpace(name)
                         && string.Equals(name.Trim(), snapshot.ProcessName, StringComparison.OrdinalIgnoreCase)))
         {
-            return $"进程 {snapshot.ProcessName} 在排除列表里";
+            return $"进程 {snapshot.ProcessName} 位于排除列表";
         }
 
         if (_options.Triggers.ExcludedWindowTitles.Any(
@@ -368,7 +368,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
 
             if (_capturedThisCycle.Contains(WindowIdentity(snapshot)))
             {
-                return "这个窗口在这个抓取周期里已经记录过了";
+                return "该窗口在本抓取周期内已记录";
             }
         }
 

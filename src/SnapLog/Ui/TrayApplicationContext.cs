@@ -65,13 +65,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("记录查看器…", null, (_, _) => ShowRecordsForm()));
         menu.Items.Add(new ToolStripMenuItem("设置…", null, (_, _) => ShowSettingsTab()));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("生成小结…", null, (_, _) => ShowSummaryTab()));
+        menu.Items.Add(new ToolStripMenuItem("生成总结…", null, (_, _) => ShowSummaryTab()));
         menu.Items.Add(new ToolStripMenuItem("打开总结目录", null, (_, _) => OpenPath(_paths.SummariesDirectory)));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("打开数据目录", null, (_, _) => OpenPath(_paths.DataDirectory)));
         menu.Items.Add(new ToolStripMenuItem("导出全部记录为 CSV…", null, Guarded(ExportAllAsync)));
         menu.Items.Add(new ToolStripMenuItem("批量识别待识别记录…", null, Guarded(RunOcrBatchAsync)));
-        menu.Items.Add(new ToolStripMenuItem("把小结写入飞书表格…", null, Guarded(PushToFeishuNowAsync)));
+        menu.Items.Add(new ToolStripMenuItem("把总结写入飞书表格…", null, Guarded(PushToFeishuNowAsync)));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
 
@@ -134,17 +134,17 @@ internal sealed class TrayApplicationContext : ApplicationContext
     }
 
     private string BuildBalloonText() =>
-        $"记录前台窗口并做 OCR，数据写在本机：\n{_paths.DataDirectory}\n\n双击图标打开主窗口。";
+        $"记录前台窗口并识别文字，数据保存在本机：\n{_paths.DataDirectory}\n\n双击图标可打开主窗口。";
 
     private void ShowFirstRunNotice()
     {
         MessageBox.Show(
-            "SnapLog 已在托盘里开始记录。\n\n"
-            + $"- 数据（数据库、日志）都存在本机：{_paths.DataDirectory}\n"
-            + "- 默认不联网：只有你点「生成小结」并确认后，才会把记录发送到配置的模型接口\n"
-            + "- 记录的窗口进程可以用「常用设置」或「排除的进程名」屏蔽\n"
-            + "- 随时可以在托盘菜单里暂停记录\n\n"
-            + "如果不想让它记录某个应用（比如密码管理器），请先在设置里排除。",
+            "SnapLog 已在托盘运行，并开始记录。\n\n"
+            + $"- 数据库与日志均保存在本机：{_paths.DataDirectory}\n"
+            + "- 默认不联网：仅在主动执行“生成总结”并确认后，才会把内容发送到所配置的模型接口\n"
+            + "- 不需要记录的进程可在“抓取配置”的排除列表中屏蔽\n"
+            + "- 可随时在托盘菜单中暂停记录\n\n"
+            + "如需屏蔽密码管理器等敏感应用，请先在设置中将其排除。",
             "SnapLog 首次运行",
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);
@@ -336,8 +336,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
             if (problem is not null)
             {
                 MessageBox.Show(
-                    "飞书推送配置不完整：" + Environment.NewLine + Environment.NewLine + problem
-                    + Environment.NewLine + Environment.NewLine + "请在设置里补全后再试。",
+                    "飞书写入配置不完整：" + Environment.NewLine + Environment.NewLine + problem
+                    + Environment.NewLine + Environment.NewLine + "请在“推送配置”中补全后重试。",
                     "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -348,18 +348,18 @@ internal sealed class TrayApplicationContext : ApplicationContext
             if (pending == 0)
             {
                 MessageBox.Show(
-                    "没有待写入的小结。" + Environment.NewLine + Environment.NewLine
-                    + $"只写 {FeishuWriter.GetEarliestRunTime(_options.Feishu):yyyy-MM-dd} 之后生成、"
-                    + "而且还没写进飞书的小结。先生成一次小结，或在设置里把「写入范围」调大。",
+                    "没有待写入的总结。" + Environment.NewLine + Environment.NewLine
+                    + $"仅写入 {FeishuWriter.GetEarliestRunTime(_options.Feishu):yyyy-MM-dd} 之后生成且尚未写入的总结。"
+                    + "请先生成总结，或在“推送配置”中将“写入范围”调大。",
                     "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             var confirm = MessageBox.Show(
-                $"将把 {pending} 条小结写进飞书多维表格：{Environment.NewLine}{Environment.NewLine}"
+                $"将向飞书多维表格写入 {pending} 条总结：{Environment.NewLine}{Environment.NewLine}"
                 + $"app_token：{_options.Feishu.AppToken}{Environment.NewLine}"
                 + $"table_id：{_options.Feishu.TableId}{Environment.NewLine}{Environment.NewLine}"
-                + "小结正文（可能包含屏幕上识别出的内容）会上传到飞书，确认继续？",
+                + "总结正文可能包含屏幕上识别出的内容，将上传至飞书。确认继续？",
                 "写入飞书", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
 
             if (confirm != DialogResult.OK)
@@ -410,7 +410,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
             else
             {
-                _trayIcon.ShowBalloonTip(3000, "SnapLog", $"路径还不存在：{path}", ToolTipIcon.Info);
+                _trayIcon.ShowBalloonTip(3000, "SnapLog", $"路径尚不存在：{path}", ToolTipIcon.Info);
             }
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)

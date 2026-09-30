@@ -46,7 +46,7 @@ internal sealed class RecordsView : UserControl
     private int _totalCount;
     private bool _busy;
 
-    /// <summary>当前详情里显示的记录，供「打开截图」按钮使用。</summary>
+    /// <summary>当前详情里显示的记录，供“打开截图”按钮使用。</summary>
     private ActivityRecord? _selectedRecord;
 
     public RecordsView(AppOptions options, IActivityRepository store, AppPaths paths, FileLogger log)
@@ -108,7 +108,7 @@ internal sealed class RecordsView : UserControl
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "进程", FillWeight = 9 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "窗口标题", FillWeight = 24 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "字数", FillWeight = 6 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "耗时ms", FillWeight = 8 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "耗时(ms)", FillWeight = 8 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", FillWeight = 7 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "识别文字摘要", FillWeight = 33 });
         _grid.SelectionChanged += async (_, _) => await ShowSelectedDetailAsync();
@@ -118,7 +118,7 @@ internal sealed class RecordsView : UserControl
         _detail.Font = new Font("Consolas", 9.5f);
         _detail.BackColor = SystemColors.Window;
         _detail.WordWrap = true;
-        _detail.Text = "在上方选中一行查看完整记录。";
+        _detail.Text = "请在上方选择一行查看完整记录。";
 
         var detailHeader = new FlowLayoutPanel
         {
@@ -229,7 +229,7 @@ internal sealed class RecordsView : UserControl
 
         filterRow.Controls.Add(new Label { Text = "关键词", AutoSize = true, Margin = new Padding(12, 8, 4, 0) });
         _keyword.Width = 200;
-        _keyword.PlaceholderText = "匹配窗口标题和识别文字";
+        _keyword.PlaceholderText = "匹配窗口标题与识别文字";
         _keyword.KeyDown += async (_, e) =>
         {
             if (e.KeyCode == Keys.Enter)
@@ -428,7 +428,7 @@ internal sealed class RecordsView : UserControl
             }
             else
             {
-                _detail.Text = "没有匹配的记录。可以放宽时间范围或清空关键词再试。";
+                _detail.Text = "没有匹配的记录，可放宽时间范围或清空关键词。";
             }
         }
         catch (Exception ex)
@@ -533,7 +533,7 @@ internal sealed class RecordsView : UserControl
             if (record is null)
             {
                 _selectedRecord = null;
-                _detail.Text = "这条记录已经不在了。";
+                _detail.Text = "该记录已不存在。";
                 return;
             }
 
@@ -554,8 +554,8 @@ internal sealed class RecordsView : UserControl
     {
         var stored = _paths.ResolveStoredImagePath(record.ImagePath);
         var imageState = stored.Length == 0
-            ? "(未留档，可在设置里开启「保存截图文件」)"
-            : File.Exists(stored) ? stored : $"{stored}（文件已不存在，可能被保留策略清理了）";
+            ? "（未留档，可在设置中开启“保存截图文件”）"
+            : File.Exists(stored) ? stored : $"{stored}（文件已不存在，可能已被保留策略清理）";
 
         return $"""
                 # 记录 #{record.Id}
@@ -583,7 +583,7 @@ internal sealed class RecordsView : UserControl
     {
         if (_totalCount == 0)
         {
-            MessageBox.Show("当前筛选条件下没有记录可导出。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("当前筛选条件下没有可导出的记录。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -616,7 +616,7 @@ internal sealed class RecordsView : UserControl
             _statusLabel.Text = $"已导出 {count} 条到 {dialog.FileName}";
 
             var open = MessageBox.Show(
-                $"已导出 {count} 条记录到：\n{dialog.FileName}\n\n要打开它吗？",
+                $"已导出 {count} 条记录到：\n{dialog.FileName}\n\n是否打开所在位置？",
                 "SnapLog",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Information);
@@ -681,8 +681,8 @@ internal sealed class RecordsView : UserControl
         if (!File.Exists(path))
         {
             MessageBox.Show(
-                "截图文件不在了：" + Environment.NewLine + path + Environment.NewLine + Environment.NewLine
-                + "可能被「截图保留天数」的清理删掉了。",
+                "截图文件不存在：" + Environment.NewLine + path + Environment.NewLine + Environment.NewLine
+                + "可能已被“截图保留天数”的清理删除。",
                 "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
             _openScreenshot.Enabled = false;
             return;

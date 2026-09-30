@@ -29,7 +29,7 @@ public enum CliCommand
     /// <summary>立刻把待识别（Pending）的记录批量识别掉。</summary>
     OcrPending,
 
-    /// <summary>立刻把还没写入过的小结写进飞书多维表格。</summary>
+    /// <summary>立刻把还没写入过的总结写进飞书多维表格。</summary>
     Publish,
 
     /// <summary>
@@ -219,16 +219,16 @@ public sealed record CommandLineOptions
           SnapLog --once [--target 关键字]
                                        立即抓取当前前台窗口一次并写库后退出；--target 可指定窗口
           SnapLog --summarize [--yes] [--preview]
-                                       对已有记录生成小结；--yes 跳过外发确认，
+                                       对已有记录生成总结；--yes 跳过外发确认，
                                        --preview 只打印要发送的内容而不真的发请求
           SnapLog --cleanup            按配置的保留天数清理过期记录与截图
           SnapLog --ocr-pending        立刻批量识别待识别（Pending）的记录
           SnapLog --publish [--dry-run|--test]
-                                       把还没写入过的小结写进飞书多维表格；
+                                       把还没写入过的总结写进飞书多维表格；
                                        --dry-run 只列待写入清单与字段映射，--test 只验证权限与字段名
           SnapLog --diagnose           打印环境、配置、OCR 语言包等诊断信息
           SnapLog --selftest           端到端自检：抓取策略、OCR、CSV 读写往返
-          SnapLog --windows            列出当前可见的顶层窗口（挑"排除的进程"时用）
+          SnapLog --windows            列出当前可见的顶层窗口（用于确定“排除的进程名”）
           SnapLog --export-csv [路径]  把全部记录导出成 CSV（缺省写到数据目录）
           SnapLog --ui-smoke           界面自检：依次构造并短暂显示各窗口，报告是否报错
 

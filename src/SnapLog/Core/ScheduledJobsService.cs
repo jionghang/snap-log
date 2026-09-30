@@ -198,7 +198,7 @@ public sealed class ScheduledJobsService : IDisposable
                 continue;
             }
 
-            _log.Info($"定时任务「{job.DisplayName}」开始执行");
+            _log.Info($"定时任务“{job.DisplayName}”开始执行");
 
             // 先记下"今天跑过了"再执行：任务本身跑很久或中途被杀，也不该在半小时后再来一遍。
             state.JobLastRunLocal[job.Key] = now;
@@ -216,11 +216,11 @@ public sealed class ScheduledJobsService : IDisposable
             }
             catch (Exception ex)
             {
-                _log.Error($"定时任务「{job.DisplayName}」执行失败", ex);
+                _log.Error($"定时任务“{job.DisplayName}”执行失败", ex);
                 result = new JobRunResult(false, $"{ex.GetType().Name}: {ex.Message}");
             }
 
-            _log.Info($"定时任务「{job.DisplayName}」结束：{(result.Success ? "成功" : "失败")} —— {result.Message}");
+            _log.Info($"定时任务“{job.DisplayName}”结束：{(result.Success ? "成功" : "失败")} —— {result.Message}");
             JobCompleted?.Invoke(this, (job, result));
         }
 

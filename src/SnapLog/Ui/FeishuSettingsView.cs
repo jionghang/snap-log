@@ -6,8 +6,8 @@ using SnapLog.Storage;
 namespace SnapLog.Ui;
 
 /// <summary>
-/// 推送配置页：把大模型生成的小结写进飞书多维表格。
-/// 一条小结写表里的一行，字段映射决定哪些小结字段落到哪些列。
+/// 推送配置页：把大模型生成的总结写进飞书多维表格。
+/// 一条总结写表里的一行，字段映射决定哪些总结字段落到哪些列。
 /// </summary>
 internal sealed class FeishuSettingsView : SettingsViewBase
 {
@@ -26,7 +26,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
     private Label _pendingHint = null!;
     private Label _legacyHint = null!;
 
-    /// <summary>上一次「读取表字段名」拿到的真实列名，供映射编辑窗体的下拉使用。</summary>
+    /// <summary>上一次“读取表字段名”拿到的真实列名，供映射编辑窗体的下拉使用。</summary>
     private IReadOnlyList<FeishuBitablePublisher.FeishuTableField> _knownFields = [];
 
     public FeishuSettingsView(SettingsContext context)
@@ -51,7 +51,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         var enableRow = NewRow();
         _feishuEnabled = new CheckBox
         {
-            Text = "把大模型生成的小结写进飞书多维表格",
+            Text = "将大模型生成的总结写入飞书多维表格",
             AutoSize = true,
             Margin = new Padding(3, 6, 12, 0),
         };
@@ -60,8 +60,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         AddRow(grid, "写入内容", enableRow);
 
         AddRow(grid, string.Empty, NewHint(
-            "写入的是小结本身（正文 + 时间、触发来源、模型、条数等元数据），每条小结一行。"
-            + "已经写进表里的小结会打标记，重复点「立即写入」不会刷出重复行。"));
+            "每条总结写为一行，包含正文与元数据（时间、触发来源、模型、条数等）。"
+            + "已写入的总结会打标记，重复执行不会产生重复行。"));
 
         var scheduleRow = NewRow();
         scheduleRow.Controls.Add(new Label { Text = "每天", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
@@ -71,12 +71,12 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         _feishuAfterSummary = new CheckBox
         {
-            Text = "生成小结成功后立即写入",
+            Text = "生成总结成功后立即写入",
             AutoSize = true,
             Margin = new Padding(16, 6, 0, 0),
         };
         scheduleRow.Controls.Add(_feishuAfterSummary);
-        AddRow(grid, "什么时候写", scheduleRow);
+        AddRow(grid, "触发时机", scheduleRow);
 
         var scopeRow = NewRow();
         _feishuLookback = new NumericUpDown
@@ -89,7 +89,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         scopeRow.Controls.Add(_feishuLookback);
         scopeRow.Controls.Add(new Label
         {
-            Text = "天内生成的小结（调大可以把更早的补进表里）",
+            Text = "天内生成的总结（调大可补入更早的总结）",
             AutoSize = true,
             Margin = new Padding(6, 9, 0, 0),
         });
@@ -105,9 +105,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         AddRow(grid, "应用凭证", appRow);
 
         AddRow(grid, string.Empty, NewHint(
-            "App Secret 留空则读环境变量 SNAPLOG_FEISHU_APP_SECRET（推荐）。"
-            + "这个应用需要两层权限：开发者后台开通多维表格读写（bitable:app），"
-            + "并且被加为这张多维表格的可编辑协作者——只开一层会分别报 99991672 和 91403。"));
+            "App Secret 留空时读取环境变量 SNAPLOG_FEISHU_APP_SECRET（推荐）。应用需同时具备多维表格读写权限"
+            + "（bitable:app）与本文档的可编辑协作权限，缺失时分别返回 99991672 与 91403。"));
 
         // ---- 数据表 ----
         var tableRow = NewRow();
@@ -158,9 +157,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         AddRow(grid, "字段映射", mappingRow);
         AddRow(grid, string.Empty, NewHint(
-            "小结字段 → 飞书表里的列名，条数随意：用不到的映射点「删除」，表里缺的列把「飞书字段名」留空即可跳过，"
-            + "不必每条都填。飞书按字段名精确匹配（差一个空格或换行都会报 1254045），"
-            + "所以填的名字必须和表里的列名完全一致，点「测试连接」会先核对一遍。"));
+            "总结字段与飞书列名的对应关系，条数不限：无对应列的映射将“飞书字段名”留空即可跳过，不必逐条填写。"
+            + "飞书按名称精确匹配（含空格与换行），名称不一致会报 1254045；点“测试连接”可预先核对。"));
 
         _legacyHint = NewHint(string.Empty);
         _legacyHint.Visible = false;
@@ -208,7 +206,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
     }
 
     /// <summary>
-    /// 旧配置里的映射指向的是抓取记录，加载时已被换成小结字段的默认映射。
+    /// 旧配置里的映射指向的是抓取记录，加载时已被换成总结字段的默认映射。
     /// 这件事必须说出来——列名很可能对不上用户的表，静默换掉会让人一头雾水。
     /// </summary>
     private void UpdateLegacyHint()
@@ -222,9 +220,9 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         _legacyHint.ForeColor = Color.OrangeRed;
         _legacyHint.Visible = true;
         _legacyHint.Text =
-            "原配置里的字段映射是抓取记录的字段（时间/进程/识别文字…），已自动换成小结字段的默认映射。"
+            "原配置的字段映射基于抓取记录，已自动替换为总结字段的默认映射。"
             + Environment.NewLine
-            + "请按飞书表里的实际列名核对一遍上面的映射，再点「保存设置」。";
+            + "请按表内实际列名核对后再保存。";
     }
 
     protected override void WriteToOptions()
@@ -258,13 +256,13 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         _feishuHint.ForeColor = SystemColors.GrayText;
         _feishuHint.Text = fromEnvironment
-            ? $"已检测到环境变量 {variableName}"
+            ? $"已从环境变量 {variableName} 读取"
             : _feishuSecret.Text.Length > 0
-                ? "App Secret 来自这里的明文配置"
-                : $"等待配置（App Secret 可从环境变量 {variableName} 读取）";
+                ? "使用此处填写的明文配置"
+                : $"尚未配置（可设置环境变量 {variableName}）";
     }
 
-    /// <summary>查一下库里有多少条小结等着写，让用户点按钮之前心里有数。</summary>
+    /// <summary>查一下库里有多少条总结等着写，让用户点按钮之前心里有数。</summary>
     private async Task RefreshPendingHintAsync()
     {
         try
@@ -273,12 +271,12 @@ internal sealed class FeishuSettingsView : SettingsViewBase
                 .CountPendingAsync(Options, CancellationToken.None)
                 .ConfigureAwait(true);
 
-            _pendingHint.Text = $"待写入 {count} 条小结";
+            _pendingHint.Text = $"待写入 {count} 条";
         }
         catch (Exception ex)
         {
             _pendingHint.Text = string.Empty;
-            Log.Warn($"查询待写入小结条数失败：{ex.Message}");
+            Log.Warn($"查询待写入总结条数失败：{ex.Message}");
         }
     }
 
@@ -317,7 +315,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
     {
         if (_fieldMappingList.SelectedItem is not FeishuFieldMapping mapping)
         {
-            MessageBox.Show("先选中一条映射。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("请先选择一条映射。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -338,14 +336,14 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         var index = _fieldMappingList.SelectedIndex;
         if (index < 0 || index >= Options.Feishu.FieldMappings.Count)
         {
-            MessageBox.Show("先选中一条映射。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("请先选择一条映射。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
         var mapping = Options.Feishu.FieldMappings[index];
         var confirm = MessageBox.Show(
-            $"删掉这条映射？{Environment.NewLine}{Environment.NewLine}{mapping}{Environment.NewLine}{Environment.NewLine}"
-            + "删除只是不写这一列，飞书表里已有的数据不受影响。",
+            $"确认删除这条映射？{Environment.NewLine}{Environment.NewLine}{mapping}{Environment.NewLine}{Environment.NewLine}"
+            + "删除仅表示不再写入该列，飞书表中的现有数据不受影响。",
             "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
 
         if (confirm != DialogResult.OK)
@@ -365,9 +363,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
     private void ResetMappings()
     {
         var confirm = MessageBox.Show(
-            "把字段映射恢复成默认的 5 条？" + Environment.NewLine + Environment.NewLine
-            + "飞书列名会写回「时间 / 触发来源 / 模型 / 记录条数 / 小结」，"
-            + "你加过的映射会被覆盖。",
+            "将字段映射恢复为默认的 5 条？" + Environment.NewLine + Environment.NewLine
+            + "飞书列名将重置为“时间 / 触发来源 / 模型 / 记录条数 / 总结”，已添加的映射会被覆盖。",
             "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
 
         if (confirm != DialogResult.OK)
@@ -424,7 +421,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         _readFields.Enabled = false;
         _readFields.Text = "读取中…";
         _pendingHint.ForeColor = SystemColors.GrayText;
-        _pendingHint.Text = "正在读取数据表的字段名…";
+        _pendingHint.Text = "正在读取数据表字段名…";
 
         try
         {
@@ -454,17 +451,17 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
             var missing = mapped.Where(name => fields.All(f => !string.Equals(f.Name, name, StringComparison.Ordinal))).ToList();
 
-            var message = $"表里共 {fields.Count} 个字段：{Environment.NewLine}{names}"
+            var message = $"表内共 {fields.Count} 个字段：{Environment.NewLine}{names}"
                           + Environment.NewLine + Environment.NewLine
                           + (missing.Count == 0
-                              ? "当前映射的列名都能对上。"
-                              : $"⚠ 这些映射的列名在表里没有：{string.Join("、", missing)}"
+                              ? "当前映射的列名均可匹配。"
+                              : $"以下映射在表内不存在对应列：{string.Join("、", missing)}"
                                 + Environment.NewLine
-                                + "点「编辑…」时可以从下拉里直接选表里的列名。");
+                                + "编辑映射时可直接从下拉中选择表内列名。");
 
             MessageBox.Show(
                 message,
-                missing.Count == 0 ? "读取表字段名成功" : "有映射对不上",
+                missing.Count == 0 ? "读取表字段名成功" : "存在无法匹配的映射",
                 MessageBoxButtons.OK,
                 missing.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
         }
@@ -496,24 +493,24 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         catch (Exception ex)
         {
             pending = 0;
-            Log.Warn($"查询待写入小结条数失败：{ex.Message}");
+            Log.Warn($"查询待写入总结条数失败：{ex.Message}");
         }
 
         if (pending == 0)
         {
             MessageBox.Show(
-                "没有待写入的小结。" + Environment.NewLine + Environment.NewLine
-                + $"只写 {FeishuWriter.GetEarliestRunTime(Options.Feishu):yyyy-MM-dd} 之后生成、"
-                + "而且还没写进飞书的小结。先生成一次小结，或把「写入范围」调大。",
+                "没有待写入的总结。" + Environment.NewLine + Environment.NewLine
+                + $"仅写入 {FeishuWriter.GetEarliestRunTime(Options.Feishu):yyyy-MM-dd} 之后生成且尚未写入的总结。"
+                + "请先生成总结，或将“写入范围”调大。",
                 "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
         var confirm = MessageBox.Show(
-            $"将把 {pending} 条小结写进飞书多维表格：" + Environment.NewLine + Environment.NewLine
+            $"将向飞书多维表格写入 {pending} 条总结：" + Environment.NewLine + Environment.NewLine
             + $"app_token：{Options.Feishu.AppToken}" + Environment.NewLine
             + $"table_id：{Options.Feishu.TableId}" + Environment.NewLine + Environment.NewLine
-            + "小结正文（可能包含屏幕上识别出的内容）会上传到飞书，确认继续？",
+            + "总结正文可能包含屏幕上识别出的内容，将上传至飞书。确认继续？",
             "写入飞书", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
 
         if (confirm != DialogResult.OK)

@@ -10,7 +10,7 @@ namespace SnapLog.Summarization;
 /// <summary>
 /// 走 OpenAI 官方 .NET 客户端，接口地址可替换，因此任何 OpenAI 兼容网关都能用。
 ///
-/// 容错策略（配置里的「模型列表」+「失败重试次数」）：
+/// 容错策略（配置里的“模型列表”+“失败重试次数”）：
 ///   外层：按顺序遍历启用中的模型配置，前一个彻底失败就换下一个；
 ///   内层：同一个模型内部按指数退避重试若干次。
 ///
@@ -107,7 +107,7 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
         if (providers.Count == 0)
         {
             error = options.Providers.All(p => !p.Enabled)
-                ? "「模型列表」里没有启用中的模型。请至少启用一个。"
+                ? "“模型列表”里没有启用中的模型。请至少启用一个。"
                 : "没有可用的模型配置：\n" + string.Join("\n", problems.Select(p => "  · " + p));
             return false;
         }

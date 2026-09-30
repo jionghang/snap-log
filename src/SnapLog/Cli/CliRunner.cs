@@ -77,7 +77,7 @@ internal sealed class CliRunner
         }
 
         Console.WriteLine();
-        Console.WriteLine("把某个「进程」名填进 设置 → 排除的进程名，SnapLog 就不会记录它。");
+        Console.WriteLine("把某个“进程”名填进 设置 → 排除的进程名，SnapLog 就不会记录它。");
         return 0;
     }
 
@@ -205,7 +205,7 @@ internal sealed class CliRunner
             var match = WindowEnumerator.Find(targetTitle);
             if (match is null)
             {
-                report.AppendLine($"按标题/进程名「{targetTitle}」没有找到可见窗口，自检中止。");
+                report.AppendLine($"按标题/进程名“{targetTitle}”没有找到可见窗口，自检中止。");
                 report.AppendLine("可以先跑 SnapLog --windows 看看当前有哪些窗口。");
                 Console.WriteLine(report.ToString());
                 return 2;
@@ -302,7 +302,7 @@ internal sealed class CliRunner
             ImageHeight = capture.Image.Height,
             OcrMilliseconds = (long)outcome.Elapsed.TotalMilliseconds,
             OcrText = outcome.Text,
-            // 和引擎里的行为保持一致：识别成功但有需要留意的点，写进「错误」列。
+            // 和引擎里的行为保持一致：识别成功但有需要留意的点，写进“错误”列。
             Error = outcome.Warning ?? string.Empty,
             Status = outcome.Text.Length >= _options.Ocr.MinTextLength ? RecordStatus.Ok : RecordStatus.NoText,
         };
@@ -399,7 +399,7 @@ internal sealed class CliRunner
                 .ConfigureAwait(false);
         report.AppendLine(keyword is null
             ? "关键词筛选    : 跳过（本次没识别到可用文字）"
-            : $"关键词筛选    : 「{keyword}」命中 {byKeyword!.TotalCount} 条");
+            : $"关键词筛选    : “{keyword}”命中 {byKeyword!.TotalCount} 条");
 
         // 分页：每页 1 条，翻两页，确认偏移生效且结果不重叠。
         var page1 = await _store
@@ -497,7 +497,7 @@ internal sealed class CliRunner
             var match = WindowEnumerator.Find(targetTitle);
             if (match is null)
             {
-                Console.WriteLine($"[结果] 按标题/进程名「{targetTitle}」没有找到可见窗口。可以先跑 SnapLog --windows 看看。");
+                Console.WriteLine($"[结果] 按标题/进程名“{targetTitle}”没有找到可见窗口。可以先跑 SnapLog --windows 看看。");
                 return 2;
             }
 
@@ -548,7 +548,7 @@ internal sealed class CliRunner
                 Console.WriteLine($"         {provider.Name} · {provider.Model} @ {provider.Endpoint}");
             }
 
-            Console.WriteLine("       记录可能包含隐私内容，请确认这条链路对你可接受。");
+            Console.WriteLine("       记录可能包含隐私内容，请确认该发送链路可以接受。");
             if (_options.Summarization.PayloadMode != LlmPayloadMode.TextOnly)
             {
                 Console.WriteLine("       注意：当前配置会把**截图原图**发出去，画面里的所有内容都会被上传。");
@@ -674,7 +674,7 @@ internal sealed class CliRunner
 
         var settingsContext = new SettingsContext(_options, _paths, _log, _store, summaryRunner, () => true);
         ProbeForm("设置页（抓取）", () => WrapView("抓取配置", new CaptureSettingsView(settingsContext)), failures);
-        ProbeForm("设置页（OCR）", () => WrapView("OCR配置", new OcrSettingsView(settingsContext)), failures);
+        ProbeForm("设置页（OCR）", () => WrapView("OCR 配置", new OcrSettingsView(settingsContext)), failures);
         ProbeForm("设置页（大模型）", () => WrapView("大模型配置", new LlmSettingsView(settingsContext)), failures);
         ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures);
         ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
@@ -694,7 +694,7 @@ internal sealed class CliRunner
         ProbeForm(
             "字段映射（编辑已被删掉的列）",
             () => new FeishuFieldMappingEditForm(
-                new FeishuFieldMapping { RecordField = "Markdown", FeishuField = "小结" },
+                new FeishuFieldMapping { RecordField = "Markdown", FeishuField = "总结" },
                 isNew: false,
                 probeFields),
             failures);
@@ -844,7 +844,7 @@ internal sealed class CliRunner
         {
             if (_options.Ocr.Mode != OcrRunMode.ScheduledBatch)
             {
-                Console.WriteLine("提示：当前是「实时识别」，正常不会积压待识别记录。");
+                Console.WriteLine("提示：当前是“实时识别”，正常不会积压待识别记录。");
             }
 
             return 0;
@@ -857,7 +857,7 @@ internal sealed class CliRunner
         return result.Success ? 0 : 2;
     }
 
-    /// <summary>把大模型生成的小结写进飞书多维表格。</summary>
+    /// <summary>把大模型生成的总结写进飞书多维表格。</summary>
     private async Task<int> PublishAsync(bool dryRun, bool testOnly, CancellationToken cancellationToken)
     {
         var feishu = _options.Feishu;
@@ -896,7 +896,7 @@ internal sealed class CliRunner
             }
 
             Console.WriteLine();
-            Console.WriteLine($"待写入的小结（{from:yyyy-MM-dd} 之后生成、还没写进飞书的）：{pending.Count} 条");
+            Console.WriteLine($"待写入的总结（{from:yyyy-MM-dd} 之后生成、还没写进飞书的）：{pending.Count} 条");
             foreach (var run in pending.Take(10))
             {
                 Console.WriteLine($"  #{run.Id} {run.StartedAt:yyyy-MM-dd HH:mm} [{run.Trigger}] {run.Provider} - {run.Preview}");

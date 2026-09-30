@@ -5,7 +5,7 @@ using SnapLog.Storage;
 namespace SnapLog.Core;
 
 /// <summary>
-/// "写哪些小结到飞书"的那一层：取还没写入过的小结 → 调 <see cref="FeishuBitablePublisher"/> → 打上已写入标记。
+/// "写哪些总结到飞书"的那一层：取还没写入过的总结 → 调 <see cref="FeishuBitablePublisher"/> → 打上已写入标记。
 /// 单独拆出来是为了让生成后自动写入、定时任务、界面按钮、命令行四条入口共用同一段逻辑，
 /// 也方便在写之前先做一次"有没有东西要写"的判断（没有就别白跑一趟去换令牌）。
 /// </summary>
@@ -23,15 +23,15 @@ public sealed class FeishuWriter
         _log = log;
     }
 
-    /// <summary>写入范围的最早时间点：只写这么多天内生成的小结。</summary>
+    /// <summary>写入范围的最早时间点：只写这么多天内生成的总结。</summary>
     public static DateTime GetEarliestRunTime(FeishuOptions options) =>
         DateTime.Today.AddDays(-(Math.Clamp(options.PushLookbackDays, 1, 365) - 1));
 
-    /// <summary>符合写入条件的小结条数，界面上用来先说明"这一次会写几条"。</summary>
+    /// <summary>符合写入条件的总结条数，界面上用来先说明"这一次会写几条"。</summary>
     public Task<int> CountPendingAsync(AppOptions options, CancellationToken cancellationToken) =>
         _store.CountPendingPushRunsAsync(GetEarliestRunTime(options.Feishu), cancellationToken);
 
-    /// <summary>把还没写入过的小结写进飞书多维表格，成功后打标记，重复调用不会写出重复行。</summary>
+    /// <summary>把还没写入过的总结写进飞书多维表格，成功后打标记，重复调用不会写出重复行。</summary>
     public async Task<FeishuPushResult> WritePendingAsync(AppOptions options, CancellationToken cancellationToken)
     {
         var problem = FeishuBitablePublisher.Validate(options.Feishu);
@@ -49,13 +49,13 @@ public sealed class FeishuWriter
         {
             return new FeishuPushResult(
                 true,
-                $"没有待写入的小结（只写 {from:yyyy-MM-dd} 之后生成、且还没写进飞书的小结）。"
-                + "先生成一次小结，或把「写入范围（天）」调大以补上更早的。",
+                $"没有待写入的总结（只写 {from:yyyy-MM-dd} 之后生成、且还没写进飞书的总结）。"
+                + "请先生成总结，或将“写入范围（天）”调大以补录更早的记录。",
                 0,
                 0);
         }
 
-        _log.Info($"准备写入 {runs.Count} 条小结到飞书多维表格");
+        _log.Info($"准备写入 {runs.Count} 条总结到飞书多维表格");
 
         var publisher = new FeishuBitablePublisher(options.Feishu, _log);
         var result = await publisher.PushAsync(runs, cancellationToken).ConfigureAwait(false);
@@ -72,7 +72,7 @@ public sealed class FeishuWriter
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // 标记失败只影响去重，不影响已经写进表里的数据，所以不当作推送失败。
-                _log.Warn($"标记「已写入飞书」失败（下次可能会重复写入这几条）：{ex.Message}");
+                _log.Warn($"标记“已写入飞书”失败（下次可能会重复写入这几条）：{ex.Message}");
             }
         }
 

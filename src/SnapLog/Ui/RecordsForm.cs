@@ -6,7 +6,7 @@ namespace SnapLog.Ui;
 
 /// <summary>
 /// 记录查看器的独立窗口形态。内容就是 <see cref="RecordsView"/>，
-/// 和主窗口「抓取记录」标签页里内嵌的是同一个控件，改一处两处都跟着变。
+/// 和主窗口“抓取记录”标签页里内嵌的是同一个控件，改一处两处都跟着变。
 /// </summary>
 internal sealed class RecordsForm : Form
 {

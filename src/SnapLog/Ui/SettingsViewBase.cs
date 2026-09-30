@@ -8,8 +8,8 @@ namespace SnapLog.Ui;
 /// <summary>
 /// 各设置页的公共底座：分组卡片、行布局、底部的保存/放弃按钮。
 ///
-/// 数据模型：直接编辑传入的 <see cref="AppOptions"/> 实例。底部「保存设置」写盘并生效，
-/// 「放弃修改」从磁盘重新读回来丢弃改动——这两个行为对所有设置页是一致的，
+/// 数据模型：直接编辑传入的 <see cref="AppOptions"/> 实例。底部“保存设置”写盘并生效，
+/// “放弃修改”从磁盘重新读回来丢弃改动——这两个行为对所有设置页是一致的，
 /// 所以放在基类里，每个子类只管自己的字段。
 /// </summary>
 internal abstract class SettingsViewBase : UserControl
@@ -120,7 +120,7 @@ internal abstract class SettingsViewBase : UserControl
     private void DiscardChanges()
     {
         var confirm = MessageBox.Show(
-            "放弃这一页的改动，从配置文件重新读取？",
+            "放弃本页改动并从配置文件重新读取？",
             "SnapLog",
             MessageBoxButtons.OKCancel,
             MessageBoxIcon.Question);

@@ -115,7 +115,7 @@ public interface IActivityStore : IAsyncDisposable
     // ---------------------------------------------------------------- 定时批量识别
 
     /// <summary>
-    /// 取还没识别过的记录（「识别方式 = 每日定时」下产生的 Pending 记录），按时间升序。
+    /// 取还没识别过的记录（“识别方式 = 每日定时”下产生的 Pending 记录），按时间升序。
     /// 升序是有意的：批次先处理最早的，积压时优先补上历史。
     /// </summary>
     Task<IReadOnlyList<ActivityRecord>> GetPendingRecordsAsync(int limit, CancellationToken cancellationToken);

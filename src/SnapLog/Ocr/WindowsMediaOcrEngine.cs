@@ -153,7 +153,7 @@ public sealed class WindowsMediaOcrEngine : IOcrEngine
             if (_engine is null)
             {
                 _initializationError =
-                    "系统未安装任何 OCR 语言包。请到「设置 → 时间和语言 → 语言和区域 → 中文 → 语言选项」确认已安装「光学字符识别」功能。";
+                    "系统未安装任何 OCR 语言包。请到“设置 → 时间和语言 → 语言和区域 → 中文 → 语言选项”确认已安装“光学字符识别”功能。";
             }
         }
         catch (Exception ex)
