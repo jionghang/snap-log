@@ -4,7 +4,7 @@ using SnapLog.Summarization;
 
 namespace SnapLog.Ui;
 
-/// <summary>编辑系统提示词。能一键载入内置模板，改坏了也能回来。</summary>
+/// <summary>编辑系统提示词。改坏了可以一键恢复默认模板。</summary>
 internal sealed class SystemPromptEditForm : Form
 {
     private readonly SummarizationOptions _options;
@@ -51,20 +51,12 @@ internal sealed class SystemPromptEditForm : Form
         var save = new Button { Text = "保存", Width = 88, Height = 32 };
         save.Click += (_, _) => Confirm();
 
-        var loadTemplate = new Button { Text = "填入内置模板", Width = 120, Height = 32 };
-        loadTemplate.Click += (_, _) => LoadBuiltInTemplate();
-
-        var restore = new Button { Text = "清空（改用内置模板）", Width = 150, Height = 32 };
-        restore.Click += (_, _) =>
-        {
-            _editor.Clear();
-            UpdateHint();
-        };
+        var restore = new Button { Text = "恢复默认模板", Width = 120, Height = 32 };
+        restore.Click += (_, _) => LoadDefaultTemplate();
 
         var cancel = new Button { Text = "取消", Width = 88, Height = 32, DialogResult = DialogResult.Cancel };
 
         buttons.Controls.Add(save);
-        buttons.Controls.Add(loadTemplate);
         buttons.Controls.Add(restore);
         buttons.Controls.Add(cancel);
 
@@ -81,22 +73,17 @@ internal sealed class SystemPromptEditForm : Form
 
     private void UpdateHint()
     {
-        var overridden = _editor.Text.Trim().Length > 0;
         var projects = _options.WorkProjects.Count(p => !string.IsNullOrWhiteSpace(p.Name));
 
-        _hint.Text = (overridden
-                ? "当前使用下方提示词，完全替换内置模板。"
-                : "当前留空，使用内置模板。")
-            + (projects > 0
-                ? $"　另自动附上 {projects} 条工作项目清单，该部分为结构化数据，不受此处内容影响。"
-                : string.Empty);
+        _hint.Text = "下面这段就是实际发给模型的提示词。"
+                     + "发送内容说明、输出语言、附加要求与工作项目清单在发送时自动追加，不受此处内容影响。"
+                     + (projects > 0 ? $"（当前会附上 {projects} 条工作项目）" : string.Empty);
     }
 
-    private void LoadBuiltInTemplate()
+    private void LoadDefaultTemplate()
     {
-        // 载入的是"当前配置下的内置模板"，所以措辞会跟着传参模式和输出语言变，
-        // 用户改的时候看到的就是程序实际会用的那份。
-        _editor.Text = ToEditorText(Prompts.BuildDefaultTemplate(_options));
+        _editor.Text = ToEditorText(Prompts.DefaultTemplate);
+        UpdateHint();
     }
 
     /// <summary>

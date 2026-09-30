@@ -77,7 +77,8 @@ public sealed class SqliteActivityStore : IActivityRepository
                         image_height   INTEGER NOT NULL DEFAULT 0,
                         image_path     TEXT    NOT NULL DEFAULT '',
                         status         TEXT    NOT NULL DEFAULT 'Ok',
-                        error          TEXT    NOT NULL DEFAULT ''
+                        error          TEXT    NOT NULL DEFAULT '',
+                        updated_at     TEXT    NOT NULL DEFAULT ''
                     );
 
                     CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity(timestamp DESC);
@@ -100,7 +101,8 @@ public sealed class SqliteActivityStore : IActivityRepository
                         elapsed_ms    INTEGER NOT NULL DEFAULT 0,
                         pushed_at     TEXT    NOT NULL DEFAULT '',
                         covered_day   TEXT    NOT NULL DEFAULT '',
-                        covered_marks INTEGER NOT NULL DEFAULT 0
+                        covered_marks INTEGER NOT NULL DEFAULT 0,
+                        covered_text_rev TEXT NOT NULL DEFAULT ''
                     );
 
                     CREATE INDEX IF NOT EXISTS idx_summary_runs_started ON summary_runs(started_at DESC);
@@ -110,24 +112,29 @@ public sealed class SqliteActivityStore : IActivityRepository
 
             // 老版本的库没有这两列。CREATE TABLE IF NOT EXISTS 不会补列，必须显式迁移。
             EnsureColumn(connection, "activity", "window_class", "TEXT NOT NULL DEFAULT ''");
+            // 记录最后一次被改动的时间（目前只有"识别结果回填"会改），
+            // 用来判断某天的文字是不是在总结生成之后才补上的。
+            EnsureColumn(connection, "activity", "updated_at", "TEXT NOT NULL DEFAULT ''");
             EnsureColumn(connection, "summary_runs", "pushed_at", "TEXT NOT NULL DEFAULT ''");
             EnsureColumn(connection, "summary_runs", "covered_day", "TEXT NOT NULL DEFAULT ''");
             EnsureColumn(connection, "summary_runs", "covered_marks", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "summary_runs", "covered_text_rev", "TEXT NOT NULL DEFAULT ''");
 
             _insertCommand = connection.CreateCommand();
             _insertCommand.CommandText =
                 """
                 INSERT INTO activity
                     (timestamp, process, title, window_class, text, ocr_ms, capture_method,
-                     image_width, image_height, image_path, status, error)
+                     image_width, image_height, image_path, status, error, updated_at)
                 VALUES
                     ($timestamp, $process, $title, $windowClass, $text, $ocrMs, $captureMethod,
-                     $imageWidth, $imageHeight, $imagePath, $status, $error)
+                     $imageWidth, $imageHeight, $imagePath, $status, $error, $updatedAt)
                 """;
             foreach (var name in new[]
                      {
                          "$timestamp", "$process", "$title", "$windowClass", "$text", "$ocrMs",
                          "$captureMethod", "$imageWidth", "$imageHeight", "$imagePath", "$status", "$error",
+                         "$updatedAt",
                      })
             {
                 _insertCommand.Parameters.Add(new SqliteParameter(name, DBNull.Value));
@@ -274,7 +281,8 @@ public sealed class SqliteActivityStore : IActivityRepository
             using var command = connection.CreateCommand();
             command.CommandText =
                 """
-                SELECT date(timestamp) AS day, COUNT(*), MAX(id)
+                SELECT date(timestamp) AS day, COUNT(*), MAX(id),
+                       MAX(CASE WHEN updated_at = '' THEN timestamp ELSE updated_at END)
                 FROM activity
                 WHERE timestamp >= $from
                 GROUP BY day
@@ -288,7 +296,7 @@ public sealed class SqliteActivityStore : IActivityRepository
             {
                 if (DateTime.TryParse(reader.GetString(0), CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
                 {
-                    marks.Add(new DayMark(day, reader.GetInt32(1), reader.GetInt64(2)));
+                    marks.Add(new DayMark(day, reader.GetInt32(1), reader.GetInt64(2), reader.GetString(3)));
                 }
             }
 
@@ -524,7 +532,11 @@ public sealed class SqliteActivityStore : IActivityRepository
         {
             using var command = connection.CreateCommand();
             command.CommandText =
-                "UPDATE activity SET text = $text, ocr_ms = $ocrMs, status = $status, error = $error WHERE id = $id";
+                "UPDATE activity SET text = $text, ocr_ms = $ocrMs, status = $status, error = $error, " +
+                "updated_at = $updatedAt WHERE id = $id";
+            // 文字是这一天才补上的话，按天统计里的"最后改动时间"就会变，
+            // 定时总结据此知道那一天的总结需要重新生成。
+            command.Parameters.AddWithValue("$updatedAt", DateTime.Now.ToString(TimeFormat, CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$text", text);
             command.Parameters.AddWithValue("$ocrMs", ocrMilliseconds);
             command.Parameters.AddWithValue("$status", status.ToString());
@@ -544,11 +556,11 @@ public sealed class SqliteActivityStore : IActivityRepository
                 INSERT INTO summary_runs
                     (started_at, finished_at, trigger, success, provider, attempts,
                      markdown, saved_path, message, record_count, image_count, elapsed_ms,
-                     covered_day, covered_marks)
+                     covered_day, covered_marks, covered_text_rev)
                 VALUES
                     ($startedAt, $finishedAt, $trigger, $success, $provider, $attempts,
                      $markdown, $savedPath, $message, $recordCount, $imageCount, $elapsedMs,
-                     $coveredDay, $coveredMarks)
+                     $coveredDay, $coveredMarks, $coveredTextRev)
                 """;
             command.Parameters.AddWithValue("$startedAt", run.StartedAt.ToString(TimeFormat, CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$finishedAt", run.FinishedAt.ToString(TimeFormat, CultureInfo.InvariantCulture));
@@ -564,6 +576,7 @@ public sealed class SqliteActivityStore : IActivityRepository
             command.Parameters.AddWithValue("$elapsedMs", run.ElapsedMilliseconds);
             command.Parameters.AddWithValue("$coveredDay", run.CoveredDay);
             command.Parameters.AddWithValue("$coveredMarks", run.CoveredMarks);
+            command.Parameters.AddWithValue("$coveredTextRev", run.CoveredTextRevision);
             return command.ExecuteNonQuery();
         }, cancellationToken);
 
@@ -575,7 +588,7 @@ public sealed class SqliteActivityStore : IActivityRepository
                 """
                 SELECT id, started_at, finished_at, trigger, success, provider, attempts,
                        markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at,
-                       covered_day, covered_marks
+                       covered_day, covered_marks, covered_text_rev
                 FROM summary_runs
                 ORDER BY started_at DESC, id DESC
                 LIMIT $limit
@@ -603,7 +616,7 @@ public sealed class SqliteActivityStore : IActivityRepository
                 """
                 SELECT id, started_at, finished_at, trigger, success, provider, attempts,
                        markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at,
-                       covered_day, covered_marks
+                       covered_day, covered_marks, covered_text_rev
                 FROM summary_runs
                 WHERE success = 1 AND pushed_at = '' AND markdown <> '' AND started_at >= $from
                 ORDER BY started_at ASC, id ASC
@@ -739,6 +752,7 @@ public sealed class SqliteActivityStore : IActivityRepository
             PushedAt = pushedAt.Length == 0 ? null : ParseTimestamp(pushedAt),
             CoveredDay = reader.GetString(14),
             CoveredMarks = reader.GetInt64(15),
+            CoveredTextRevision = reader.GetString(16),
         };
     }
 
@@ -837,6 +851,8 @@ public sealed class SqliteActivityStore : IActivityRepository
         p["$imagePath"].Value = record.ImagePath;
         p["$status"].Value = record.Status.ToString();
         p["$error"].Value = record.Error;
+        // 新建时"最后改动时间"就是抓取时间。
+        p["$updatedAt"].Value = record.Timestamp.ToString(TimeFormat, CultureInfo.InvariantCulture);
     }
 
     private static (string WhereSql, List<(string Name, object Value)> Parameters) BuildWhere(ActivityQuery query)

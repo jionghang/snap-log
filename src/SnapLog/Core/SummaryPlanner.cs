@@ -20,7 +20,9 @@ public sealed record SummaryPlanItem(DateOnly Day, SummaryPlanReason Reason, int
 ///
 /// 两条规则（用户给定）：
 ///   1. 之前没生成过的天 → 生成；
-///   2. 之前生成过、但那天后来又有了新记录 → 重新生成，覆盖旧的那份。
+///   2. 之前生成过、但那天的数据在那之后又变了 → 重新生成，覆盖旧的那份。
+///      "变了"包括两种：新增了记录（最大 id 变大），或者已有记录的文字被后补上
+///      （定时批量识别把当时没识别的截图补识别了——条数和 id 都不变，只有改动时间会变）。
 ///
 /// 纯函数，不碰数据库也不调模型，便于单独验证。
 /// </summary>
@@ -46,13 +48,13 @@ public static class SummaryPlanner
         var earliest = today.AddDays(-LookbackDays);
         var yesterday = today.AddDays(-1);
 
-        // 每一天已生成总结时的数据指纹：取该天最近一次"成功且按天生成"的记录。
+        // 每一天已生成总结时的数据指纹（最大 id + 最后改动时间）：取该天最近一次"成功且按天生成"的记录。
         var covered = existingRuns
             .Where(run => run.Success && run.CoveredDay.Length > 0)
             .GroupBy(run => run.CoveredDay, StringComparer.Ordinal)
             .ToDictionary(
                 group => group.Key,
-                group => group.OrderByDescending(run => run.Id).First().CoveredMarks,
+                group => group.OrderByDescending(run => run.Id).First(),
                 StringComparer.Ordinal);
 
         var plan = new List<SummaryPlanItem>();
@@ -68,13 +70,21 @@ public static class SummaryPlanner
 
             var key = day.ToString("yyyy-MM-dd");
 
-            if (!covered.TryGetValue(key, out var marksAtGeneration))
+            if (!covered.TryGetValue(key, out var previous))
             {
                 plan.Add(new SummaryPlanItem(day, SummaryPlanReason.Missing, mark.Count));
+                continue;
             }
-            else if (mark.MaxId > marksAtGeneration)
+
+            // 新增了记录（id 变大）或已有记录的文字被后补（改动时间变了）→ 都要重新生成。
+            // 旧版本没记下改动时间（空串），这时按"可能有后补"处理，重生成一次即可自愈。
+            var textChanged = !string.Equals(
+                mark.TextRevision,
+                previous.CoveredTextRevision,
+                StringComparison.Ordinal);
+
+            if (mark.MaxId > previous.CoveredMarks || textChanged)
             {
-                // 生成之后这一天又多了记录：重新生成，覆盖旧的那份。
                 plan.Add(new SummaryPlanItem(day, SummaryPlanReason.Updated, mark.Count));
             }
         }

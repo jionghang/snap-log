@@ -477,9 +477,13 @@ internal sealed class LlmSettingsView : SettingsViewBase
     private void UpdatePromptState()
     {
         var projects = Options.Summarization.WorkProjects.Count(p => !string.IsNullOrWhiteSpace(p.Name));
-        var overridden = Options.Summarization.SystemPromptOverride.Trim().Length > 0;
+        // 配置里的提示词现在总会有一份（加载时填的默认模板），所以"是否自定义"要比内容，不能看空不空。
+        var overridden = !string.Equals(
+            Options.Summarization.SystemPromptOverride.Trim(),
+            Prompts.DefaultTemplate.Trim(),
+            StringComparison.Ordinal);
 
-        _promptState.Text = (overridden ? "已自定义（替换内置模板）" : "使用内置模板")
+        _promptState.Text = (overridden ? "已自定义" : "使用默认模板")
                             + (projects > 0 ? $"，另附 {projects} 条工作项目" : string.Empty);
     }
 

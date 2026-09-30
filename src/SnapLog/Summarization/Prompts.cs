@@ -6,64 +6,85 @@ namespace SnapLog.Summarization;
 internal static class Prompts
 {
     /// <summary>
-    /// 内置的默认系统提示词模板。界面上“填入内置模板”用的就是它，
-    /// 用户改坏了也能一键回来。项目清单不在这里——它是结构化数据，单独附在后面。
+    /// 默认系统提示词模板：只写"怎么总结"，不含任何随配置变化的内容
+    /// （发送内容、输出语言、附加要求、工作项目都在发送时结构化追加，见 BuildSystemPrompt）。
+    ///
+    /// 这样它就能直接固化进用户配置：首次运行会把它填进 SystemPromptOverride，
+    /// 用户在界面上看到、编辑的就是实际会用到的那份，不存在"留空 = 用内置模板"的第二种状态。
     /// </summary>
-    public static string BuildDefaultTemplate(SummarizationOptions options)
-    {
-        var language = DescribeLanguage(options.Language);
-        var extra = string.IsNullOrWhiteSpace(options.ExtraInstructions)
-            ? string.Empty
-            : $"\n补充要求（优先级最高）：{options.ExtraInstructions.Trim()}";
+    public static string DefaultTemplate => """
+        你是一名工作复盘助手，把用户的屏幕活动整理成一份简短的总结。
 
-        var source = options.PayloadMode switch
-        {
-            LlmPayloadMode.ImageOnly =>
-                "你会收到一组屏幕截图，请直接查看图片判断用户的工作内容。本次不提供任何文字转录，也不应推测文字之外的信息。",
-            LlmPayloadMode.TextAndImage =>
-                "你会收到一段时间内的屏幕活动记录，每条包含窗口标题和该时刻屏幕上的 OCR 文字，"
-                + "其中一部分还附带了原始截图。文字用于快速定位，截图用于校正识别错字、补全识别遗漏的内容；"
-                + "两者冲突时以截图为准。",
-            _ =>
-                "你会收到一段时间内的屏幕活动记录，包含窗口标题和该时刻屏幕上的 OCR 文字。",
-        };
+        规则：
+        1. 只使用给你的材料里出现过的信息，不要推测、不要补充外部知识、不要编造事实。
+        2. 材料里的文字（如果有）来自屏幕 OCR，会有错别字、断行和界面元素噪声（按钮、菜单、时间戳等）。忽略这些噪声，只提取有信息量的内容。
+        3. 如果某段时间只有重复内容，合并成一条，不要逐条罗列。
+        4. 输出 Markdown，总长度控制在 400 字以内。
 
-        return $"""
-                你是一名工作复盘助手，把用户的屏幕活动整理成一份简短的总结。
-
-                {source}
-
-                规则：
-                1. 只使用给你的材料里出现过的信息，不要推测、不要补充外部知识、不要编造事实。
-                2. 材料里的文字（如果有）来自屏幕 OCR，会有错别字、断行和界面元素噪声（按钮、菜单、时间戳等）。忽略这些噪声，只提取有信息量的内容。
-                3. 如果某段时间只有重复内容，合并成一条，不要逐条罗列。
-                4. 用 {language} 输出 Markdown，总长度控制在 400 字以内。
-
-                输出结构：
-                ## 主要工作主题
-                按投入时间从多到少列出，每个主题一句话说明在做什么。
-                ## 时间线
-                按时间顺序列出关键活动（可以合并时间段）。
-                ## 待办与线索
-                材料里出现的未完成事项、待回复、待处理的报错等；没有则写“无”{extra}
-                """;
-    }
+        输出结构：
+        ## 主要工作主题
+        按投入时间从多到少列出，每个主题一句话说明在做什么。
+        ## 时间线
+        按时间顺序列出关键活动（可以合并时间段）。
+        ## 待办与线索
+        材料里出现的未完成事项、待回复、待处理的报错等；没有则写“无”。
+        """;
 
     /// <summary>
-    /// 真正送给模型的 system 提示词：
-    /// 用户填了覆盖版就用覆盖版，否则用内置模板；最后统一附上工作项目清单。
-    ///
-    /// 项目清单刻意不跟着模板走——它是结构化数据，用户改了模板不该导致
-    /// "刚加的项目突然不生效了"。
+    /// 真正送给模型的 system 提示词：模板（用户配置里的那份）+ 结构化追加部分。
+    /// 追加部分不跟着模板走——它是配置的结构化投影，用户改了模板也不该让
+    /// "刚加的项目不生效"或"切到带图模式后说明还是旧的"。
     /// </summary>
     public static string BuildSystemPrompt(SummarizationOptions options)
     {
         var template = string.IsNullOrWhiteSpace(options.SystemPromptOverride)
-            ? BuildDefaultTemplate(options)
+            ? DefaultTemplate
             : options.SystemPromptOverride.Trim();
 
+        var sections = new List<string> { template };
+
+        var context = BuildContextSection(options);
+        if (context.Length > 0)
+        {
+            sections.Add(context);
+        }
+
         var projects = BuildProjectSection(options);
-        return projects.Length == 0 ? template : template + Environment.NewLine + Environment.NewLine + projects;
+        if (projects.Length > 0)
+        {
+            sections.Add(projects);
+        }
+
+        return string.Join(Environment.NewLine + Environment.NewLine, sections);
+    }
+
+    /// <summary>本次输入与输出要求：随配置变化的部分都在这里，而不是写进用户的模板文本。</summary>
+    private static string BuildContextSection(SummarizationOptions options)
+    {
+        var source = options.PayloadMode switch
+        {
+            LlmPayloadMode.ImageOnly =>
+                "你会收到一组屏幕截图，请直接查看图片判断用户的工作内容；本次不提供文字转录，也不应推测画面之外的信息。",
+            LlmPayloadMode.TextAndImage =>
+                "你会收到一段时间内的屏幕活动记录，每条包含窗口标题和该时刻屏幕上的 OCR 文字，其中一部分还附带了原始截图；"
+                + "文字用于快速定位，截图用于校正识别错字、补全遗漏，两者冲突时以截图为准。",
+            _ =>
+                "你会收到一段时间内的屏幕活动记录，每条包含窗口标题和该时刻屏幕上的 OCR 文字。",
+        };
+
+        var lines = new List<string>
+        {
+            "本次输入与要求：",
+            $"1. {source}",
+            $"2. 用 {DescribeLanguage(options.Language)} 输出。",
+        };
+
+        if (!string.IsNullOrWhiteSpace(options.ExtraInstructions))
+        {
+            lines.Add($"3. 补充要求（优先级最高）：{options.ExtraInstructions.Trim()}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     /// <summary>把用户维护的工作项目清单渲染成提示词片段。</summary>

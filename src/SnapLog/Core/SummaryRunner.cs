@@ -358,19 +358,24 @@ public sealed class SummaryRunner
             // 按天生成时记下"覆盖哪一天"和当时的数据指纹：
             // 定时任务靠它判断这一天是否已经生成过、生成之后有没有又冒出新的记录。
             var coveredMarks = 0L;
+            var coveredTextRevision = string.Empty;
+
             if (day is { } covered)
             {
                 var marks = await _store
                     .GetDayMarksAsync(covered.ToDateTime(TimeOnly.MinValue), cancellationToken)
                     .ConfigureAwait(false);
 
-                coveredMarks = marks.FirstOrDefault(m => DateOnly.FromDateTime(m.Day) == covered)?.MaxId ?? 0;
+                var today = marks.FirstOrDefault(m => DateOnly.FromDateTime(m.Day) == covered);
+                coveredMarks = today?.MaxId ?? 0;
+                coveredTextRevision = today?.TextRevision ?? string.Empty;
             }
 
             var run = new SummaryRun
             {
                 CoveredDay = day is { } coveredDay ? coveredDay.ToString("yyyy-MM-dd") : string.Empty,
                 CoveredMarks = coveredMarks,
+                CoveredTextRevision = coveredTextRevision,
                 StartedAt = startedAt,
                 FinishedAt = DateTime.Now,
                 Trigger = trigger,

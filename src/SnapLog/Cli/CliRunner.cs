@@ -367,10 +367,13 @@ internal sealed class CliRunner
         var exportOk = await VerifyExportAsync(record, cancellationToken).ConfigureAwait(false);
         report.AppendLine($"导出校验      : {(exportOk ? "通过" : "失败")}");
 
-        // 6) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
+        // 6) 提示词组装：模板固化进配置后，随配置变化的说明仍要自动追加
+        var promptOk = VerifySystemPrompt(report);
+
+        // 7) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
         var planOk = VerifySummaryPlan(report);
 
-        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk;
+        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk && promptOk;
 
         if (restored.TextLength == 0)
         {
@@ -389,31 +392,87 @@ internal sealed class CliRunner
     }
 
     /// <summary>
+    /// 验证提示词组装：模板现在直接存在配置里（不再是"留空用内置模板"），
+    /// 但"发送内容/输出语言/附加要求"这些随配置变化的说明必须仍然自动追加——
+    /// 否则切到带图模式后，提示词还在说"只发文字"。
+    /// </summary>
+    private static bool VerifySystemPrompt(StringBuilder report)
+    {
+        var textOnly = new SummarizationOptions
+        {
+            SystemPromptOverride = Prompts.DefaultTemplate,
+            PayloadMode = LlmPayloadMode.TextOnly,
+            Language = "zh-CN",
+        };
+
+        var imageOnly = new SummarizationOptions
+        {
+            SystemPromptOverride = "自定义模板：随便写点什么。",
+            PayloadMode = LlmPayloadMode.ImageOnly,
+            Language = "en-US",
+            ExtraInstructions = "按项目分组",
+        };
+
+        var textPrompt = Prompts.BuildSystemPrompt(textOnly);
+        var imagePrompt = Prompts.BuildSystemPrompt(imageOnly);
+
+        var checks = new (string Name, bool Ok)[]
+        {
+            ("模板被采用", textPrompt.Contains("工作复盘助手", StringComparison.Ordinal)),
+            ("文字模式的输入说明", textPrompt.Contains("屏幕活动记录", StringComparison.Ordinal)
+                                   && !textPrompt.Contains("不提供文字转录", StringComparison.Ordinal)),
+            ("输出语言（简中）", textPrompt.Contains("简体中文", StringComparison.Ordinal)),
+            ("自定义模板被采用", imagePrompt.Contains("自定义模板", StringComparison.Ordinal)),
+            ("只发图模式的输入说明", imagePrompt.Contains("不提供文字转录", StringComparison.Ordinal)),
+            ("输出语言（英文）", imagePrompt.Contains("English", StringComparison.Ordinal)),
+            ("附加要求被追加", imagePrompt.Contains("按项目分组", StringComparison.Ordinal)),
+        };
+
+        var ok = checks.All(c => c.Ok);
+
+        report.AppendLine();
+        report.AppendLine("--- 提示词组装 ---");
+        report.AppendLine($"判定          : {(ok ? "通过" : "不符合预期")}");
+        foreach (var (name, passed) in checks.Where(c => !c.Ok))
+        {
+            report.AppendLine($"  未通过      : {name}");
+        }
+
+        return ok;
+    }
+
+    /// <summary>
     /// 验证定时生成的按天规划：没生成过的天要生成；生成过但之后又有新记录的天要覆盖；
     /// 已经生成且没有新记录的天要跳过。用合成数据，不碰数据库也不调模型。
     /// </summary>
     private static bool VerifySummaryPlan(StringBuilder report)
     {
         var today = new DateOnly(2026, 9, 30);
+        string Rev(int days) => today.AddDays(days).ToString("yyyy-MM-dd") + " 10:00:00";
+
         var marks = new List<DayMark>
         {
-            new(today.AddDays(-1).ToDateTime(TimeOnly.MinValue), 40, 400),  // 昨天：已生成，无新记录 → 跳过
-            new(today.AddDays(-2).ToDateTime(TimeOnly.MinValue), 35, 355),  // 前天：生成过但最大 id 涨了 → 覆盖
-            new(today.AddDays(-3).ToDateTime(TimeOnly.MinValue), 12, 300),  // 大前天：没生成过 → 新增
-            new(today.ToDateTime(TimeOnly.MinValue), 5, 401),               // 今天：还没过完 → 跳过
+            new(today.AddDays(-1).ToDateTime(TimeOnly.MinValue), 40, 400, Rev(-1)),  // 昨天：已生成、无变化 → 跳过
+            new(today.AddDays(-2).ToDateTime(TimeOnly.MinValue), 35, 355, Rev(-2)),  // 前天：最大 id 涨了 → 覆盖
+            new(today.AddDays(-3).ToDateTime(TimeOnly.MinValue), 12, 300, Rev(-3)),  // 大前天：没生成过 → 新增
+            new(today.AddDays(-4).ToDateTime(TimeOnly.MinValue), 8, 320, Rev(-4)),   // 4 天前：条数/id 没变，但文字后补 → 覆盖
+            new(today.ToDateTime(TimeOnly.MinValue), 5, 401, Rev(0)),                // 今天：还没过完 → 跳过
         };
 
         var history = new List<SummaryRun>
         {
-            new() { Id = 2, Success = true, CoveredDay = today.AddDays(-1).ToString("yyyy-MM-dd"), CoveredMarks = 400 },
-            new() { Id = 1, Success = true, CoveredDay = today.AddDays(-2).ToString("yyyy-MM-dd"), CoveredMarks = 300 },
+            new() { Id = 3, Success = true, CoveredDay = today.AddDays(-1).ToString("yyyy-MM-dd"), CoveredMarks = 400, CoveredTextRevision = Rev(-1) },
+            new() { Id = 2, Success = true, CoveredDay = today.AddDays(-2).ToString("yyyy-MM-dd"), CoveredMarks = 300, CoveredTextRevision = Rev(-2) },
+            // 4 天前那次是在文字补上之前生成的：id 一样，但文字版本还是旧的
+            new() { Id = 1, Success = true, CoveredDay = today.AddDays(-4).ToString("yyyy-MM-dd"), CoveredMarks = 320, CoveredTextRevision = "2026-09-26 08:00:00" },
         };
 
         var plan = SummaryPlanner.Plan(today, marks, history);
         var expected = new[]
         {
-            (today.AddDays(-2), SummaryPlanReason.Updated),
-            (today.AddDays(-3), SummaryPlanReason.Missing),
+            (today.AddDays(-2), SummaryPlanReason.Updated),   // 新增了记录
+            (today.AddDays(-3), SummaryPlanReason.Missing),   // 从没生成过
+            (today.AddDays(-4), SummaryPlanReason.Updated),   // 文字后补（id 没变）
         };
 
         var ok = plan.Count == expected.Length;
@@ -434,7 +493,7 @@ internal sealed class CliRunner
         report.AppendLine("--- 定时生成的按天规划 ---");
         report.AppendLine($"判定          : {(ok ? "通过" : "不符合预期")}");
         report.AppendLine($"规划结果      : {SummaryPlanner.Describe(plan)}");
-        report.AppendLine($"期望          : 前天（有更新，覆盖）、大前天（新增）");
+        report.AppendLine($"期望          : 前天（新增记录，覆盖）、大前天（新增）、4 天前（文字后补，覆盖）");
 
         return ok;
     }
@@ -1093,18 +1152,18 @@ internal sealed class CliRunner
     }
 
     /// <summary>
-    /// 点"填入内置模板"之后，多行编辑框里必须真的有换行。
+    /// 点"恢复默认模板"之后，多行编辑框里必须真的有换行。
     /// 内置模板来自源码的原始字符串（LF 行尾），而 EDIT 控件只认 CRLF——
     /// 少这一步转换，模板会显示成一整行。
     /// </summary>
     private static string? CheckPromptTemplateInsert(Form form)
     {
-        var insert = FindControls<Button>(form).FirstOrDefault(b => b.Text == "填入内置模板");
+        var insert = FindControls<Button>(form).FirstOrDefault(b => b.Text == "恢复默认模板");
         var editor = FindControls<TextBox>(form).FirstOrDefault(t => t.Multiline);
 
         if (insert is null || editor is null)
         {
-            return "找不到“填入内置模板”按钮或多行编辑框";
+            return "找不到“恢复默认模板”按钮或多行编辑框";
         }
 
         insert.PerformClick();
@@ -1112,12 +1171,12 @@ internal sealed class CliRunner
         var text = editor.Text;
         if (text.Length == 0)
         {
-            return "填入内置模板后编辑框是空的";
+            return "恢复默认模板后编辑框是空的";
         }
 
         if (!text.Contains("\r\n"))
         {
-            return "填入的模板里没有 CRLF 换行，多行编辑框会把它显示成一整行";
+            return "模板里没有 CRLF 换行，多行编辑框会把它显示成一整行";
         }
 
         var lines = text.Split("\r\n").Length;

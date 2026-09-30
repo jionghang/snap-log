@@ -154,5 +154,8 @@ public interface IActivityStore : IAsyncDisposable
         CancellationToken cancellationToken);
 }
 
-/// <summary>某一天的记录统计：条数与当天最大记录 id（用作"数据指纹"）。</summary>
-public sealed record DayMark(DateTime Day, int Count, long MaxId);
+/// <summary>
+/// 某一天的记录统计，用作"数据指纹"：
+/// 条数、当天最大记录 id（判断有没有新增记录）、当天最后一次改动时间（判断文字是不是后补的）。
+/// </summary>
+public sealed record DayMark(DateTime Day, int Count, long MaxId, string TextRevision);

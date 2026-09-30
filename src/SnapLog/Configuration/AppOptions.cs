@@ -294,7 +294,7 @@ public sealed class SummarizationOptions
      Description("格式 HH:mm，例如 18:30。程序在那个时间点之后第一次运行时执行，当天只跑一次。")]
     public string ScheduleTimeOfDay { get; set; } = "18:30";
 
-    [Category("总结"), DisplayName("系统提示词（留空用内置模板）"),
+    [Category("总结"), DisplayName("系统提示词"),
      Description("填写后以此作为 system 提示词，完全替换内置模板。"
                  + "“工作项目清单”仍会自动附加（属结构化数据，不受模板影响）。"
                  + "界面提供“填入内置模板”按钮，可先载入默认内容再修改。")]

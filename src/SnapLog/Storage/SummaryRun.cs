@@ -51,6 +51,12 @@ public sealed class SummaryRun
     public long CoveredMarks { get; set; }
 
     /// <summary>
+    /// 生成时那一天"最后一次记录改动时间"（yyyy-MM-dd HH:mm:ss）。
+    /// 记录被后续识别回填过文字，这个值就会变，定时任务据此重新生成那天的总结。
+    /// </summary>
+    public string CoveredTextRevision { get; set; } = string.Empty;
+
+    /// <summary>
     /// 写进飞书多维表格的时间；null = 还没写入过。
     /// 去重就靠这个标记：写成功才打标，重复点“立即写入”不会在表里刷出重复行。
     /// </summary>

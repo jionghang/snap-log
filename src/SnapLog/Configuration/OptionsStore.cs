@@ -166,8 +166,23 @@ public static class OptionsStore
 
         MigrateLegacyProvider(options.Summarization);
         MigrateLegacyFeishuMappings(options.Feishu);
+        FillDefaultPrompt(options.Summarization);
 
         options.Logging.RetentionDays = Math.Clamp(options.Logging.RetentionDays, 0, 3650);
+    }
+
+    /// <summary>
+    /// 提示词留空时直接填入默认模板。
+    /// 以前是"留空就用内置模板"，配置里因此存在两种状态；现在统一成一种：
+    /// 配置里存的就是实际会用到的那份，用户在界面上看到、编辑的就是它。
+    /// 默认模板本身不含随配置变化的内容（那些在发送时结构化追加），所以固化下来不会失准。
+    /// </summary>
+    private static void FillDefaultPrompt(SummarizationOptions summarization)
+    {
+        if (string.IsNullOrWhiteSpace(summarization.SystemPromptOverride))
+        {
+            summarization.SystemPromptOverride = Summarization.Prompts.DefaultTemplate;
+        }
     }
 
     /// <summary>
