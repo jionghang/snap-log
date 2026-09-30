@@ -26,7 +26,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly ScheduledJobsService _scheduler;
     /// <summary>UI 线程的同步上下文。引擎的事件在后台线程触发，操作托盘/窗口前必须先切回去。</summary>
     private readonly SynchronizationContext? _uiContext;
-    private RecordsForm? _recordsForm;
     private bool _disposed;
 
     public TrayApplicationContext(
@@ -57,21 +56,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
             Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold),
         };
 
+        // 菜单只留三件事：启停、打开主窗口、退出。
+        // 其余操作（抓取、记录、设置、总结、飞书、导出）都在主窗口的页签里，不必在这里重复一遍。
         var menu = new ContextMenuStrip();
         menu.Items.Add(_stateMenuItem);
-        menu.Items.Add(new ToolStripMenuItem("立即抓取一次", null, Guarded(CaptureOnceAsync)));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("显示主窗口", null, (_, _) => ShowMainWindow()));
-        menu.Items.Add(new ToolStripMenuItem("记录查看器…", null, (_, _) => ShowRecordsForm()));
-        menu.Items.Add(new ToolStripMenuItem("设置…", null, (_, _) => ShowSettingsTab()));
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("生成总结…", null, (_, _) => ShowSummaryTab()));
-        menu.Items.Add(new ToolStripMenuItem("打开总结目录", null, (_, _) => OpenPath(_paths.SummariesDirectory)));
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("打开数据目录", null, (_, _) => OpenPath(_paths.DataDirectory)));
-        menu.Items.Add(new ToolStripMenuItem("导出全部记录为 CSV…", null, Guarded(ExportAllAsync)));
-        menu.Items.Add(new ToolStripMenuItem("批量识别待识别记录…", null, Guarded(RunOcrBatchAsync)));
-        menu.Items.Add(new ToolStripMenuItem("把总结写入飞书表格…", null, Guarded(PushToFeishuNowAsync)));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
 
@@ -165,22 +155,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
         UpdateTrayState();
     }
 
-    private async Task CaptureOnceAsync()
-    {
-        try
-        {
-            var outcome = await _engine.CaptureNowAsync(CaptureTrigger.Manual, CancellationToken.None);
-            if (!outcome.Captured)
-            {
-                _trayIcon.ShowBalloonTip(3000, "没有记录", outcome.Reason, ToolTipIcon.Warning);
-            }
-        }
-        catch (Exception ex)
-        {
-            _log.Error("托盘手动抓取失败", ex);
-        }
-    }
-
     private void ShowMainWindow()
     {
         if (_mainForm.IsDisposed)
@@ -195,74 +169,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         _mainForm.Activate();
-    }
-
-    private void ShowRecordsForm()
-    {
-        // 复用同一个实例：重复点菜单只是把已有窗口带到前面，不会开出一堆。
-        if (_recordsForm is null || _recordsForm.IsDisposed)
-        {
-            _recordsForm = new RecordsForm(_options, _store, _paths, _log);
-        }
-
-        ShowOwnedDialog(_recordsForm);
-        _recordsForm = null;
-    }
-
-    private void ShowSettingsTab()
-    {
-        ShowMainWindow();
-        _mainForm.SelectTab("抓取配置");
-    }
-
-    /// <summary>把模态窗口居中显示在主窗口上；主窗口隐藏时回退到屏幕居中。</summary>
-    private void ShowOwnedDialog(Form form)
-    {
-        if (_mainForm.Visible)
-        {
-            form.ShowDialog(_mainForm);
-            return;
-        }
-
-        form.StartPosition = FormStartPosition.CenterScreen;
-        form.ShowDialog();
-    }
-
-    private void ShowSummaryTab()
-    {
-        ShowMainWindow();
-        _mainForm.SelectTab("总结");
-    }
-
-    private async Task ExportAllAsync()
-    {
-        using var dialog = new SaveFileDialog
-        {
-            Title = "导出全部记录",
-            Filter = "CSV 文件 (*.csv)|*.csv|所有文件 (*.*)|*.*",
-            DefaultExt = "csv",
-            FileName = $"snaplog-全部-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
-            InitialDirectory = Directory.Exists(_paths.DataDirectory) ? _paths.DataDirectory : null,
-            OverwritePrompt = true,
-        };
-
-        if (dialog.ShowDialog() != DialogResult.OK)
-        {
-            return;
-        }
-
-        try
-        {
-            var count = await CsvActivityTransfer.ExportAsync(
-                _store, new ActivityQuery(), dialog.FileName, _log, CancellationToken.None);
-
-            _trayIcon.ShowBalloonTip(4000, "导出完成", $"已导出 {count} 条记录到\n{dialog.FileName}", ToolTipIcon.Info);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            _log.Error("导出全部记录失败", ex);
-            _trayIcon.ShowBalloonTip(4000, "导出失败", ex.Message, ToolTipIcon.Warning);
-        }
     }
 
     /// <summary>
@@ -303,86 +209,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
-    private async Task RunOcrBatchAsync()
-    {
-        try
-        {
-            await _engine.StopAsync();
-
-            var job = new OcrBatchJob(_store, _paths, _log, () => OcrEngineFactory.Create(_options.Ocr, _log));
-            var result = await job.RunAsync(_options, CancellationToken.None);
-
-            _trayIcon.ShowBalloonTip(
-                5000,
-                result.Success ? "批量识别完成" : "批量识别有失败",
-                result.Message,
-                result.Success ? ToolTipIcon.Info : ToolTipIcon.Warning);
-        }
-        catch (Exception ex)
-        {
-            _log.Error("手动批量识别失败", ex);
-        }
-        finally
-        {
-            _engine.Start();
-            _mainForm.ReloadStatus();
-        }
-    }
-
-    private async Task PushToFeishuNowAsync()
-    {
-        try
-        {
-            var problem = FeishuBitablePublisher.Validate(_options.Feishu);
-            if (problem is not null)
-            {
-                MessageBox.Show(
-                    "飞书写入配置不完整：" + Environment.NewLine + Environment.NewLine + problem
-                    + Environment.NewLine + Environment.NewLine + "请在“推送配置”中补全后重试。",
-                    "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var writer = new FeishuWriter(_store, _log);
-            var pending = await writer.CountPendingAsync(_options, CancellationToken.None).ConfigureAwait(true);
-
-            if (pending == 0)
-            {
-                MessageBox.Show(
-                    "没有待写入的总结。" + Environment.NewLine + Environment.NewLine
-                    + $"仅写入 {FeishuWriter.GetEarliestRunTime(_options.Feishu):yyyy-MM-dd} 之后生成且尚未写入的总结。"
-                    + "请先生成总结，或在“推送配置”中将“写入范围”调大。",
-                    "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            var confirm = MessageBox.Show(
-                $"将向飞书多维表格写入 {pending} 条总结：{Environment.NewLine}{Environment.NewLine}"
-                + $"app_token：{_options.Feishu.AppToken}{Environment.NewLine}"
-                + $"table_id：{_options.Feishu.TableId}{Environment.NewLine}{Environment.NewLine}"
-                + "总结正文可能包含屏幕上识别出的内容，将上传至飞书。确认继续？",
-                "写入飞书", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
-
-            if (confirm != DialogResult.OK)
-            {
-                return;
-            }
-
-            var result = await writer.WritePendingAsync(_options, CancellationToken.None);
-
-            _trayIcon.ShowBalloonTip(
-                5000,
-                result.Success ? "已写入飞书" : "写入失败",
-                result.Message.Length > 200 ? result.Message[..200] : result.Message,
-                result.Success ? ToolTipIcon.Info : ToolTipIcon.Warning);
-        }
-        catch (Exception ex)
-        {
-            _log.Error("手动写入飞书失败", ex);
-            _trayIcon.ShowBalloonTip(5000, "写入失败", ex.Message, ToolTipIcon.Warning);
-        }
-    }
-
     /// <summary>
     /// 给 async void 的菜单处理器统一包一层：里面的任何异常都不该炸掉程序，
     /// 记日志 + 托盘提示即可。这层兜底比挨个去每个方法里 try/catch 更可靠。
@@ -400,25 +226,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 TrayBalloon.TryShow($"{ex.GetType().Name}: {ex.Message}", ToolTipIcon.Warning);
             }
         };
-
-    private void OpenPath(string path)
-    {
-        try
-        {
-            if (Directory.Exists(path) || File.Exists(path))
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            else
-            {
-                _trayIcon.ShowBalloonTip(3000, "SnapLog", $"路径尚不存在：{path}", ToolTipIcon.Info);
-            }
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
-        {
-            _log.Warn($"打开路径失败：{ex.Message}");
-        }
-    }
 
     /// <summary>
     /// 引擎的状态事件在后台线程触发。NotifyIcon 虽然不强制 STA，但它背后有一个
@@ -463,7 +270,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
             _mainForm.Dispose();
-            _recordsForm?.Dispose();
 
             _scheduler.JobCompleted -= OnJobCompleted;
             _scheduler.Dispose();

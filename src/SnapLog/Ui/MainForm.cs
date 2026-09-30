@@ -2,6 +2,7 @@ using System.Diagnostics;
 using SnapLog.Configuration;
 using SnapLog.Core;
 using SnapLog.Diagnostics;
+using SnapLog.Interop;
 using SnapLog.Ocr;
 using SnapLog.Storage;
 
@@ -33,6 +34,7 @@ internal sealed class MainForm : Form
     private readonly Label _totalValue = new();
     private readonly ListBox _logList = new();
     private readonly Button _toggleButton = new();
+    private readonly CheckBox _autoStart = new();
     private readonly ToolStripStatusLabel _statusStripLabel = new();
     private readonly TabControl _tabs = new();
 
@@ -229,19 +231,6 @@ internal sealed class MainForm : Form
 
     /// <summary>外部操作（如托盘里的批量识别）之后刷新状态显示。</summary>
     public void ReloadStatus() => OnUiThread(RefreshStatus);
-
-    public void SelectTab(string tabText)
-    {
-        foreach (TabPage page in _tabs.TabPages)
-        {
-            if (string.Equals(page.Text, tabText, StringComparison.Ordinal))
-            {
-                _tabs.SelectedTab = page;
-                return;
-            }
-        }
-    }
-
     // ---------------------------------------------------------------- 状态页
 
     private TabPage BuildStatusTab()
@@ -262,6 +251,13 @@ internal sealed class MainForm : Form
         AddInfoRow(info, "本次运行抓取", _countValue);
         AddInfoRow(info, "最近一次抓取", _lastValue);
         AddInfoRow(info, "总共抓取", _totalValue);
+
+        // 开机自启动：改了立刻写注册表并生效（这一页没有"保存设置"，勾选本身就是动作）。
+        _autoStart.Text = "开机自动启动（登录后最小化到托盘）";
+        _autoStart.AutoSize = true;
+        _autoStart.Margin = new Padding(3, 6, 0, 0);
+        _autoStart.CheckedChanged += (_, _) => ToggleAutoStart();
+        AddInfoRow(info, "开机自启动", _autoStart);
 
         var buttons = new FlowLayoutPanel
         {
@@ -303,7 +299,7 @@ internal sealed class MainForm : Form
         return page;
     }
 
-    private static void AddInfoRow(TableLayoutPanel panel, string caption, Label value)
+    private static void AddInfoRow(TableLayoutPanel panel, string caption, Control value)
     {
         var row = panel.RowCount++;
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -440,6 +436,7 @@ internal sealed class MainForm : Form
     private void RefreshStatus()
     {
         UpdateRunState();
+        RefreshAutoStart();
 
         _countValue.Text = $"{_sessionRecordCount} 条";
 
@@ -471,6 +468,36 @@ internal sealed class MainForm : Form
         {
             AppendLog(entry);
         }
+    }
+
+    /// <summary>把注册表里的真实状态读回复选框：用户可能在"任务管理器 → 启动"里改过。</summary>
+    private void RefreshAutoStart()
+    {
+        var enabled = AutoStart.IsEnabled();
+        if (_autoStart.Checked != enabled)
+        {
+            _autoStart.Checked = enabled;
+        }
+    }
+
+    private void ToggleAutoStart()
+    {
+        var wanted = _autoStart.Checked;
+
+        if (!AutoStart.SetEnabled(wanted))
+        {
+            SetStatus($"设置开机自启动失败（{AutoStart.ExecutablePath}）");
+            _log.Warn("设置开机自启动失败：写注册表被拒绝或路径为空");
+
+            // 回到真实状态，别让复选框显示成用户以为的样子。
+            RefreshAutoStart();
+            return;
+        }
+
+        SetStatus(wanted ? "已设为开机自动启动" : "已取消开机自动启动");
+        _log.Info(wanted
+            ? $"已设为开机自动启动：{AutoStart.ExecutablePath}"
+            : "已取消开机自动启动");
     }
 
     private void SetStatus(string message) => _statusStripLabel.Text = message;

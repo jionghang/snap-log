@@ -127,6 +127,7 @@ internal sealed class CliRunner
 
         report.AppendLine();
         report.AppendLine("--- 抓取与触发 ---");
+        report.AppendLine($"开机自启动    : {(AutoStart.IsEnabled() ? "已启用" : "未启用")}（程序：{AutoStart.ExecutablePath}）");
         report.AppendLine($"抓取周期      : {_options.Triggers.CaptureCycleMinutes} 分钟（同一窗口每周期一次）");
         report.AppendLine($"窗口稳定等待  : {_options.Triggers.ForegroundSettleMilliseconds} ms");
         report.AppendLine($"最小抓取间隔  : {_options.Triggers.MinSecondsBetweenCaptures} s");
@@ -677,6 +678,8 @@ internal sealed class CliRunner
             failures.Add($"UI 线程异常：{e.Exception.GetType().Name}: {e.Exception.Message}");
 
         using var ocr = OcrEngineFactory.Create(_options.Ocr, _log);
+        CheckAutoStartWiring();
+
         var engine = new SnapLogEngine(_options, _paths, _log, ocr, _store);
         var summaryRunner = new SummaryRunner(_store, _paths, _log);
 
@@ -992,6 +995,40 @@ internal sealed class CliRunner
     /// "删除"的可用状态必须跟着选中行数走：没有选中就不能点（否则可能误删），
     /// 选中了就该能点。两个方向都验一遍。
     /// </summary>
+    /// <summary>
+    /// 验证开机自启动的读写通路。刻意用一次性的项名（_selftest 后缀）：
+    /// 自检不该动用户真实的启动项——万一中途失败，留下的也只是个测试条目。
+    /// </summary>
+    private static void CheckAutoStartWiring()
+    {
+        const string probeName = "SnapLog_selftest";
+
+        try
+        {
+            var exe = AutoStart.ExecutablePath;
+            if (string.IsNullOrEmpty(exe))
+            {
+                Console.WriteLine("开机自启动自检  : 跳过（拿不到可执行文件路径）");
+                return;
+            }
+
+            var cleanBefore = !AutoStart.IsEnabled(probeName, exe);
+            var wrote = AutoStart.SetEnabled(probeName, true, exe);
+            var readBack = AutoStart.IsEnabled(probeName, exe);
+            var removed = AutoStart.SetEnabled(probeName, false, exe);
+            var cleanAfter = !AutoStart.IsEnabled(probeName, exe);
+
+            var ok = cleanBefore && wrote && readBack && removed && cleanAfter;
+            Console.WriteLine(ok
+                ? "开机自启动自检  : 通过（写入能读回、删除后归零，用的是临时项名）"
+                : $"开机自启动自检  : 未通过（写入={wrote} 读回={readBack} 删除={removed} 清空={cleanAfter}）");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"开机自启动自检  : 异常 {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
     private static string? CheckDeleteButtonState(Form form)
     {
         var grid = FindControls<DataGridView>(form).FirstOrDefault();
