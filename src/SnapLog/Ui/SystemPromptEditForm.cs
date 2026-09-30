@@ -32,7 +32,7 @@ internal sealed class SystemPromptEditForm : Form
         _editor.WordWrap = true;
         _editor.Dock = DockStyle.Fill;
         _editor.Font = new Font("Consolas", 9.5f);
-        _editor.Text = _options.SystemPromptOverride;
+        _editor.Text = ToEditorText(_options.SystemPromptOverride);
 
         _hint.Dock = DockStyle.Top;
         _hint.AutoSize = true;
@@ -95,8 +95,15 @@ internal sealed class SystemPromptEditForm : Form
     {
         // 载入的是"当前配置下的内置模板"，所以措辞会跟着传参模式和输出语言变，
         // 用户改的时候看到的就是程序实际会用的那份。
-        _editor.Text = Prompts.BuildDefaultTemplate(_options);
+        _editor.Text = ToEditorText(Prompts.BuildDefaultTemplate(_options));
     }
+
+    /// <summary>
+    /// 多行 TextBox 底下的 EDIT 控件只认 CRLF：喂给它纯 LF 的文本会显示成一整行。
+    /// 内置模板来自源码里的原始字符串字面量（文件是 LF 行尾），所以这里统一转成 CRLF 再显示。
+    /// </summary>
+    private static string ToEditorText(string text) =>
+        text.Replace("\r\n", "\n").Replace("\n", "\r\n");
 
     private void Confirm()
     {

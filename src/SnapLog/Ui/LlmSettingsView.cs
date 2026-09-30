@@ -21,7 +21,6 @@ internal sealed class LlmSettingsView : SettingsViewBase
     private Button _editPrompt = null!;
     private Label _promptState = null!;
     private ListBox _projectList = null!;
-    private Button _openHistory = null!;
     private Label _payloadHint = null!;
 
     public LlmSettingsView(SettingsContext context)
@@ -159,6 +158,9 @@ internal sealed class LlmSettingsView : SettingsViewBase
         scheduleRow.Controls.Add(new Label { Text = "(HH:mm)", AutoSize = true, Margin = new Padding(4, 9, 0, 0) });
         AddRow(grid, "定时生成", scheduleRow);
 
+        // 定时生成汇总的是前一天：定时点常设在当天收尾或次日凌晨，当天记录还没走完。
+        AddRow(grid, string.Empty, NewHint("定时生成汇总的是前一天的记录。"));
+
         // ---- 系统提示词 ----
         var promptRow = NewRow();
         _editPrompt = new Button { Text = "编辑提示词…", Width = 120, Height = 28, Margin = new Padding(0, 3, 8, 0) };
@@ -201,20 +203,6 @@ internal sealed class LlmSettingsView : SettingsViewBase
         AddRow(grid, "工作项目", projectRow);
         AddRow(grid, string.Empty, NewHint(
             "填写自己的工作项目（项目名与说明）。生成总结时会随提示词发送，模型据此将活动按项目归类。双击可编辑。"));
-
-        // ---- 总结历史 ----
-        var historyRow = NewRow();
-        _openHistory = new Button { Text = "查看总结历史…", Width = 130, Height = 28, Margin = new Padding(0, 3, 0, 0) };
-        _openHistory.Click += (_, _) => OpenHistory();
-        historyRow.Controls.Add(_openHistory);
-        historyRow.Controls.Add(new Label
-        {
-            Text = "成功与失败均会记录，便于事后排查",
-            AutoSize = true,
-            ForeColor = SystemColors.GrayText,
-            Margin = new Padding(8, 9, 0, 0),
-        });
-        AddRow(grid, "总结历史", historyRow);
 
         root.Controls.Add(grid);
         return root;
@@ -486,20 +474,6 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         _promptState.Text = (overridden ? "已自定义（替换内置模板）" : "使用内置模板")
                             + (projects > 0 ? $"，另附 {projects} 条工作项目" : string.Empty);
-    }
-
-    private void OpenHistory()
-    {
-        using var dialog = new SummaryHistoryForm(Context);
-        var parent = FindForm();
-        if (parent is null)
-        {
-            dialog.ShowDialog();
-        }
-        else
-        {
-            dialog.ShowDialog(parent);
-        }
     }
 
     private async Task GenerateSummaryNowAsync()

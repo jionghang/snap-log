@@ -703,6 +703,8 @@ internal sealed class CliRunner
             "删除确认框（总结·无文件）",
             () => new DeleteConfirmDialog("总结", 2, "总结文件（.md）", 0, "(none)"),
             failures);
+        ProbeForm("系统提示词（编辑）", () => new SystemPromptEditForm(new SummarizationOptions()), failures,
+            CheckPromptTemplateInsert);
         ProbeForm("SummaryHistoryForm（总结历史）", () => new SummaryHistoryForm(settingsContext), failures,
             CheckDeleteButtonState);
 
@@ -1034,6 +1036,48 @@ internal sealed class CliRunner
         {
             Console.WriteLine($"开机自启动自检  : 异常 {ex.GetType().Name}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 点"填入内置模板"之后，多行编辑框里必须真的有换行。
+    /// 内置模板来自源码的原始字符串（LF 行尾），而 EDIT 控件只认 CRLF——
+    /// 少这一步转换，模板会显示成一整行。
+    /// </summary>
+    private static string? CheckPromptTemplateInsert(Form form)
+    {
+        var insert = FindControls<Button>(form).FirstOrDefault(b => b.Text == "填入内置模板");
+        var editor = FindControls<TextBox>(form).FirstOrDefault(t => t.Multiline);
+
+        if (insert is null || editor is null)
+        {
+            return "找不到“填入内置模板”按钮或多行编辑框";
+        }
+
+        insert.PerformClick();
+
+        var text = editor.Text;
+        if (text.Length == 0)
+        {
+            return "填入内置模板后编辑框是空的";
+        }
+
+        if (!text.Contains("\r\n"))
+        {
+            return "填入的模板里没有 CRLF 换行，多行编辑框会把它显示成一整行";
+        }
+
+        var lines = text.Split("\r\n").Length;
+        if (lines < 10)
+        {
+            return $"填入的模板只有 {lines} 行，看起来不完整";
+        }
+
+        if (text.Contains("分心点"))
+        {
+            return "模板里还留着“分心点”一节";
+        }
+
+        return null;
     }
 
     private static string? CheckDeleteButtonState(Form form)

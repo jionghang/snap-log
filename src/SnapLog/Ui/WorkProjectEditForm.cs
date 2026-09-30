@@ -96,7 +96,8 @@ internal sealed class WorkProjectEditForm : Form
         CancelButton = cancel;
 
         _name.Text = _working.Name;
-        _description.Text = _working.Description;
+        // 多行编辑框只认 CRLF：配置里手写的 LF 换行会显示成一整行。
+        _description.Text = _working.Description.Replace("\r\n", "\n").Replace("\n", "\r\n");
     }
 
     private static Label NewLabel(string text) => new()

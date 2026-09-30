@@ -285,7 +285,7 @@ public sealed class SummarizationOptions
     // ---------------------------------------------------------------- 定时与提示词
 
     [Category("总结"), DisplayName("定时生成总结"),
-     Description("开启后每天到设定时间自动生成一次，结果与失败原因均记入“总结历史”。"
+     Description("开启后每天到设定时间自动汇总前一天的记录，结果与失败原因均记入“总结历史”。"
                  + "生成会实际把内容发送到模型接口，请先确认隐私提示。")]
     public bool ScheduleEnabled { get; set; }
 
