@@ -73,7 +73,7 @@ internal abstract class SettingsViewBase : UserControl
             // 钉底会让短页面在内容和按钮之间空出一大块，看起来像布局坏了。
             if (content is TableLayoutPanel root)
             {
-                footer.Margin = new Padding(4, 2, 4, 8);
+                footer.Margin = new Padding(4, 2, 4, 2);
                 root.Controls.Add(footer);
             }
             else
@@ -275,8 +275,8 @@ internal abstract class SettingsViewBase : UserControl
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 0, 0, 12),
-            Padding = new Padding(0, 0, 0, 6),
+            Margin = new Padding(0),
+            Padding = new Padding(0),
         };
         // 够放下最长的行标题（"PaddleOCR 模型："），避免标题折成两行。
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 148));
@@ -287,7 +287,7 @@ internal abstract class SettingsViewBase : UserControl
             Text = title,
             AutoSize = true,
             Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 8),
+            Margin = new Padding(0, 0, 0, 4),
         };
         grid.Controls.Add(header, 0, 0);
         grid.SetColumnSpan(header, 2);
@@ -313,10 +313,10 @@ internal abstract class SettingsViewBase : UserControl
             Text = caption.Length == 0 ? string.Empty : caption + "：",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
-            Margin = new Padding(4, 8, 6, 0),
+            Margin = new Padding(4, 3, 6, 0),
         };
 
-        control.Margin = new Padding(0, 3, 0, 3);
+        control.Margin = new Padding(0, 2, 0, 2);
         grid.Controls.Add(label, 0, row);
         grid.Controls.Add(control, 1, row);
     }
@@ -328,7 +328,7 @@ internal abstract class SettingsViewBase : UserControl
         // 限宽让它换行：不限宽的长说明会一路顶出窗口，窄窗口下就看不全了。
         MaximumSize = new Size(500, 0),
         ForeColor = SystemColors.GrayText,
-        Margin = new Padding(4, 8, 0, 0),
+        Margin = new Padding(4, 2, 0, 0),
     };
 
     protected static Button NewSmallButton(string text, Action onClick)

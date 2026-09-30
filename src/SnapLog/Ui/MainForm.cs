@@ -242,7 +242,7 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 2,
-            Padding = new Padding(0, 0, 0, 8),
+            Padding = new Padding(0),
         };
         info.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
         info.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -251,9 +251,6 @@ internal sealed class MainForm : Form
         AddInfoRow(info, "本次运行抓取", _countValue);
         AddInfoRow(info, "最近一次抓取", _lastValue);
         AddInfoRow(info, "总共抓取", _totalValue);
-
-        // 只读信息与可操作项之间留一段空白即可，不加分隔线。
-        AddInfoRow(info, string.Empty, new Label { Text = string.Empty, AutoSize = false, Height = 6 });
 
         // 开机自启动：改了立刻写注册表并生效（这一页没有"保存设置"，勾选本身就是动作）。
         _autoStart.Text = "开机自动启动（登录后最小化到托盘）";
@@ -266,7 +263,7 @@ internal sealed class MainForm : Form
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            Padding = new Padding(4, 0, 0, 12),
+            Padding = new Padding(0, 0, 0, 6),
             WrapContents = true,
         };
 
@@ -312,11 +309,11 @@ internal sealed class MainForm : Form
             Text = caption.Length == 0 ? string.Empty : caption + "：",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
-            Margin = new Padding(0, 3, 4, 3),
+            Margin = new Padding(0, 2, 4, 2),
         };
 
         value.AutoSize = true;
-        value.Margin = new Padding(0, 3, 0, 3);
+        value.Margin = new Padding(0, 2, 0, 2);
 
         panel.Controls.Add(label, 0, row);
         panel.Controls.Add(value, 1, row);
