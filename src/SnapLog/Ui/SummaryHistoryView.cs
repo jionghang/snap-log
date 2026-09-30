@@ -134,10 +134,11 @@ internal sealed class SummaryHistoryView : UserControl
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "开始时间", FillWeight = 14 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "触发", FillWeight = 7 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "结果", FillWeight = 7 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "飞书", FillWeight = 8 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "模型", FillWeight = 20 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "记录/图", FillWeight = 9 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "耗时", FillWeight = 7 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "内容摘要", FillWeight = 36 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "内容摘要", FillWeight = 34 });
         _grid.SelectionChanged += (_, _) => ShowSelected();
         _grid.RowPrePaint += (_, e) =>
         {
@@ -323,6 +324,7 @@ internal sealed class SummaryHistoryView : UserControl
                     run.StartedAt.ToString("MM-dd HH:mm:ss"),
                     run.Trigger,
                     run.Success ? "成功" : "失败",
+                    run.Pushed ? "已写入" : "—",
                     run.Provider.Length > 0 ? run.Provider : "—",
                     $"{run.RecordCount}/{run.ImageCount}",
                     run.ElapsedText,
@@ -389,6 +391,7 @@ internal sealed class SummaryHistoryView : UserControl
             run.Attempts > 1 ? $"尝试次数  ：第 {run.Attempts} 次成功" : "尝试次数  ：1",
             $"输入记录  ：{run.RecordCount} 条，附带截图 {run.ImageCount} 张",
             $"耗时      ：{run.ElapsedText}",
+            $"飞书写入  ：{(run.PushedAt is { } pushedAt ? pushedAt.ToString("yyyy-MM-dd HH:mm:ss") : "还没写入")}",
             $"文件      ：{(run.SavedPath.Length == 0 ? "(未落盘)" : run.SavedPath)}",
             $"说明      ：{run.Message}",
             string.Empty,

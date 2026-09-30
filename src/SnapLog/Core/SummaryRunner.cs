@@ -219,7 +219,47 @@ public sealed class SummaryRunner
         await RecordAsync(result, trigger, startedAt, stopwatch.ElapsedMilliseconds, cancellationToken)
             .ConfigureAwait(false);
 
+        // 记完历史才写飞书：这段时间刚好把这条小结落到库里，推送那边是按库里的待写入清单走的。
+        if (result.Success)
+        {
+            await PushToFeishuAsync(options, cancellationToken).ConfigureAwait(false);
+        }
+
         return result;
+    }
+
+    /// <summary>
+    /// 按配置把刚生成的小结写进飞书。推送失败不影响小结本身——正文已经落盘也落库了，
+    /// 这里只记日志，剩下的交给定时写入或用户手动补一次。
+    /// </summary>
+    private async Task PushToFeishuAsync(AppOptions options, CancellationToken cancellationToken)
+    {
+        if (!options.Feishu.Enabled || !options.Feishu.PushAfterSummary)
+        {
+            return;
+        }
+
+        try
+        {
+            var writer = new FeishuWriter(_store, _log);
+            var result = await writer.WritePendingAsync(options, cancellationToken).ConfigureAwait(false);
+            if (result.Success)
+            {
+                _log.Info($"已按配置写入飞书：{result.Message}");
+            }
+            else
+            {
+                _log.Warn($"写入飞书未成功（小结本身已保存）：{result.Message}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"写入飞书失败（小结本身已保存）：{ex.Message}");
+        }
     }
 
     private async Task<SummaryRunResult> RunCoreAsync(AppOptions options, CancellationToken cancellationToken)

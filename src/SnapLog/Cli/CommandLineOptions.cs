@@ -224,8 +224,8 @@ public sealed record CommandLineOptions
           SnapLog --cleanup            按配置的保留天数清理过期记录与截图
           SnapLog --ocr-pending        立刻批量识别待识别（Pending）的记录
           SnapLog --publish [--dry-run|--test]
-                                       把当天记录写进飞书多维表格；
-                                       --dry-run 只列清单与字段映射，--test 只验证权限与字段名
+                                       把还没写入过的小结写进飞书多维表格；
+                                       --dry-run 只列待写入清单与字段映射，--test 只验证权限与字段名
           SnapLog --diagnose           打印环境、配置、OCR 语言包等诊断信息
           SnapLog --selftest           端到端自检：抓取策略、OCR、CSV 读写往返
           SnapLog --windows            列出当前可见的顶层窗口（挑"排除的进程"时用）

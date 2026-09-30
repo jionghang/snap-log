@@ -12,16 +12,19 @@ namespace SnapLog.Core;
 /// <summary>一次推送的结果。</summary>
 public sealed record FeishuPushResult(bool Success, string Message, int Written, int Skipped)
 {
+    /// <summary>写成功的那些小结的 id。调用方拿它去库里打「已写入」标记，下次就不会重复写。</summary>
+    public IReadOnlyList<long> WrittenIds { get; init; } = [];
+
     public static FeishuPushResult Fail(string message) => new(false, message, 0, 0);
 }
 
 /// <summary>
-/// 把记录写进飞书多维表格。
+/// 把大模型生成的小结写进飞书多维表格：一条小结 = 表里一行。
 ///
 /// 分三层：
 ///   ① 数据层：app_token（整张多维表格）+ table_id（一张数据表）
 ///   ② 通道层：App ID + App Secret → tenant_access_token → 多维表格开放接口
-///   ③ 触发层：定时任务 / 手动（由 ScheduledJobsService 与界面按钮负责）
+///   ③ 触发层：生成小结后自动 / 定时任务 / 手动（由 SummaryRunner、ScheduledJobsService 与界面按钮负责）
 ///
 /// 三个"踩过坑"的点都在这里落实了：
 ///   1. 用应用身份 tenant_access_token，令牌缓存并提前 5 分钟刷新，不会每条记录都换令牌。
@@ -93,6 +96,39 @@ public sealed class FeishuBitablePublisher
     }
 
     /// <summary>
+    /// 只读表里的字段清单，给界面上的「读取表字段名」用：
+    /// 让用户从真实列名里挑，而不是手打——手打错一个空格就是 1254045。
+    /// 只做一次「列出字段」请求，不写任何数据。
+    /// </summary>
+    public async Task<(IReadOnlyList<FeishuTableField>? Fields, string? Error)> FetchFieldsAsync(
+        CancellationToken cancellationToken)
+    {
+        var problem = Validate(_options);
+        if (problem is not null)
+        {
+            return (null, problem);
+        }
+
+        using var http = CreateClient();
+
+        try
+        {
+            var token = await GetTokenAsync(http, cancellationToken).ConfigureAwait(false);
+            if (token is null)
+            {
+                return (null, _lastError ?? "换取 tenant_access_token 失败。");
+            }
+
+            var (fields, error) = await ListFieldsAsync(http, token, cancellationToken).ConfigureAwait(false);
+            return fields is null ? (null, error ?? "读取数据表字段失败。") : (fields, null);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return (null, $"连接失败：{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// 只做验证，不写入：换一次令牌 + 调「列出字段」，顺便核对字段映射。
     /// 这是最有用的一步——权限两层是否都配好、字段名对不对，一次全查出来。
     /// </summary>
@@ -150,9 +186,9 @@ public sealed class FeishuBitablePublisher
         }
     }
 
-    /// <summary>把一批记录写进多维表格。返回写成功、跳过（字段留空或值无意义）的条数。</summary>
+    /// <summary>把一批小结写进多维表格。返回写成功、跳过（这条的映射恰好都没值）的条数。</summary>
     public async Task<FeishuPushResult> PushAsync(
-        IReadOnlyList<ActivityRecord> records,
+        IReadOnlyList<SummaryRun> runs,
         CancellationToken cancellationToken)
     {
         var problem = Validate(_options);
@@ -161,9 +197,22 @@ public sealed class FeishuBitablePublisher
             return FeishuPushResult.Fail(problem);
         }
 
-        if (records.Count == 0)
+        if (runs.Count == 0)
         {
-            return new FeishuPushResult(true, "没有需要推送的记录", 0, 0);
+            return new FeishuPushResult(true, "没有需要写入的小结", 0, 0);
+        }
+
+        // 字段映射全部留空时，写进去就是一堆空行——直接拦下来说清楚，别浪费一次请求。
+        var activeMappings = _options.FieldMappings
+            .Where(m => m is not null && !string.IsNullOrWhiteSpace(m.RecordField) && !string.IsNullOrWhiteSpace(m.FeishuField))
+            .ToList();
+
+        if (activeMappings.Count == 0)
+        {
+            return FeishuPushResult.Fail(
+                "字段映射里没有任何一条填了「飞书字段名」，没有可写入的列。"
+                + Environment.NewLine
+                + "请在「推送配置」里给至少一条映射填上飞书表里的列名。");
         }
 
         using var http = CreateClient();
@@ -191,27 +240,40 @@ public sealed class FeishuBitablePublisher
                 + "请按表里实际的列名修改「字段映射」，或先在表里加上这些列。");
         }
 
-        var activeMappings = _options.FieldMappings
-            .Where(m => m is not null && !string.IsNullOrWhiteSpace(m.RecordField) && !string.IsNullOrWhiteSpace(m.FeishuField))
-            .ToList();
-
         var typeByName = fields.ToDictionary(f => f.Name, f => f.Type, StringComparer.Ordinal);
 
         var written = 0;
         var skipped = 0;
+        var writtenIds = new List<long>();
         var batchSize = Math.Clamp(_options.BatchSize, 1, 500);
         var failures = new List<string>();
 
-        for (var offset = 0; offset < records.Count; offset += batchSize)
+        for (var offset = 0; offset < runs.Count; offset += batchSize)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            // 取消不直接抛：已经把前几批写进去了，得把"写了哪些"带回去打标记，
+            // 否则下次重试会在表里刷出一批重复行。
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return new FeishuPushResult(
+                    false,
+                    $"写入被取消：已写 {written} 条，剩余 {runs.Count - offset} 条没写。已写入的已标记，下次接着写不会重复。",
+                    written,
+                    skipped)
+                {
+                    WrittenIds = writtenIds,
+                };
+            }
 
-            var batch = records.Skip(offset).Take(batchSize).ToList();
+            var batch = runs.Skip(offset).Take(batchSize).ToList();
             var payloadRecords = new List<FeishuRecordPayload>(batch.Count);
 
-            foreach (var record in batch)
+            // 与 payloadRecords 一一对应的 SnapLog 小结 id：整批成功才算写上，
+            // 所以拿它去打「已写入」标记，同一批里跳过的那几条不会被误标。
+            var batchRunIds = new List<long>(batch.Count);
+
+            foreach (var run in batch)
             {
-                var fieldsPayload = BuildFields(record, activeMappings, typeByName, out var hasValue);
+                var fieldsPayload = BuildFields(run, activeMappings, typeByName, out var hasValue);
                 if (!hasValue)
                 {
                     skipped++;
@@ -219,6 +281,7 @@ public sealed class FeishuBitablePublisher
                 }
 
                 payloadRecords.Add(new FeishuRecordPayload { Fields = fieldsPayload });
+                batchRunIds.Add(run.Id);
             }
 
             if (payloadRecords.Count == 0)
@@ -226,10 +289,31 @@ public sealed class FeishuBitablePublisher
                 continue;
             }
 
-            var (ok, error) = await BatchCreateAsync(http, token, payloadRecords, cancellationToken).ConfigureAwait(false);
+            bool ok;
+            string? error;
+            try
+            {
+                (ok, error) = await BatchCreateAsync(http, token, payloadRecords, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // 这一批发出去没有、飞书收没收下，本地无法确定——如实说出来，别假装没发生。
+                return new FeishuPushResult(
+                    false,
+                    $"写入中断：已写 {written} 条。第 {offset / batchSize + 1} 批的状态不确定（可能已经写进表里），"
+                    + "请到表里核对过再决定要不要重试。",
+                    written,
+                    skipped)
+                {
+                    WrittenIds = writtenIds,
+                };
+            }
+
             if (ok)
             {
                 written += payloadRecords.Count;
+                writtenIds.AddRange(batchRunIds);
             }
             else
             {
@@ -243,21 +327,24 @@ public sealed class FeishuBitablePublisher
                 false,
                 $"写入未全部成功：已写 {written} 条，失败 {failures.Count} 批 —— " + string.Join("；", failures),
                 written,
-                skipped);
+                skipped)
+            {
+                WrittenIds = writtenIds,
+            };
         }
 
-        var summary = $"已写入 {written} 条到飞书多维表格";
+        var summary = $"已写入 {written} 条小结到飞书多维表格";
         if (skipped > 0)
         {
-            summary += $"（{skipped} 条因为映射字段全空被跳过）";
+            summary += $"（{skipped} 条因为映射字段都没有值被跳过）";
         }
 
-        return new FeishuPushResult(true, summary, written, skipped);
+        return new FeishuPushResult(true, summary, written, skipped) { WrittenIds = writtenIds };
     }
 
-    /// <summary>把一条记录按映射和表里字段类型组装成飞书的 fields 对象。</summary>
+    /// <summary>把一条小结按映射和表里字段类型组装成飞书的 fields 对象。</summary>
     private Dictionary<string, object?> BuildFields(
-        ActivityRecord record,
+        SummaryRun run,
         IReadOnlyList<FeishuFieldMapping> mappings,
         IReadOnlyDictionary<string, int> typeByName,
         out bool hasValue)
@@ -267,7 +354,7 @@ public sealed class FeishuBitablePublisher
 
         foreach (var mapping in mappings)
         {
-            var raw = ReadRecordField(record, mapping.RecordField);
+            var raw = ReadSummaryField(run, mapping.RecordField);
             if (raw is null)
             {
                 continue;
@@ -286,19 +373,21 @@ public sealed class FeishuBitablePublisher
         return fields;
     }
 
-    /// <summary>按名字取记录里的字段值。返回 null 表示这个字段不存在或没值。</summary>
-    private object? ReadRecordField(ActivityRecord record, string fieldName) => fieldName switch
+    /// <summary>按名字取小结里的字段值。返回 null 表示这个字段不存在或这条没值。</summary>
+    private object? ReadSummaryField(SummaryRun run, string fieldName) => fieldName switch
     {
-        nameof(ActivityRecord.Timestamp) => record.Timestamp,
-        nameof(ActivityRecord.ProcessName) => Blank(record.ProcessName),
-        nameof(ActivityRecord.WindowTitle) => Blank(record.WindowTitle),
-        nameof(ActivityRecord.WindowClass) => Blank(record.WindowClass),
-        nameof(ActivityRecord.TextLength) => record.TextLength,
-        nameof(ActivityRecord.OcrMilliseconds) => record.OcrMilliseconds,
-        nameof(ActivityRecord.CaptureMethod) => Blank(record.CaptureMethod),
-        nameof(ActivityRecord.Status) => record.Status.ToString(),
-        nameof(ActivityRecord.Error) => Blank(record.Error),
-        nameof(ActivityRecord.OcrText) => Blank(Truncate(record.OcrText, _options.MaxTextLength)),
+        nameof(SummaryRun.StartedAt) => run.StartedAt,
+        nameof(SummaryRun.FinishedAt) => run.FinishedAt,
+        nameof(SummaryRun.Trigger) => Blank(run.Trigger),
+        nameof(SummaryRun.Provider) => Blank(run.Provider),
+        nameof(SummaryRun.RecordCount) => run.RecordCount,
+        nameof(SummaryRun.ImageCount) => run.ImageCount,
+        nameof(SummaryRun.ElapsedMilliseconds) => run.ElapsedMilliseconds,
+        nameof(SummaryRun.Attempts) => run.Attempts,
+        nameof(SummaryRun.Markdown) => Blank(Truncate(run.Markdown, _options.MaxTextLength)),
+        nameof(SummaryRun.Preview) => Blank(run.Preview),
+        nameof(SummaryRun.SavedPath) => Blank(run.SavedPath),
+        nameof(SummaryRun.Message) => Blank(run.Message),
         _ => null,
     };
 
@@ -349,7 +438,7 @@ public sealed class FeishuBitablePublisher
 
         var unused = _options.FieldMappings
             .Where(m => m is not null && string.IsNullOrWhiteSpace(m.FeishuField))
-            .Select(m => m.RecordField)
+            .Select(m => FeishuFieldMapping.DescribeField(m.RecordField))
             .ToList();
 
         return (missing, unused);
@@ -635,5 +724,28 @@ public sealed class FeishuBitablePublisher
     }
 
     /// <summary>表里的一个字段（名字 + 类型码）。</summary>
-    private sealed record FeishuTableField(string Name, int Type);
+    public sealed record FeishuTableField(string Name, int Type)
+    {
+        /// <summary>把类型码说成人话，界面下拉里显示它，方便用户判断这一列能不能放数字/日期。</summary>
+        public string TypeName => Type switch
+        {
+            1 => "文本",
+            2 => "数字",
+            3 => "单选",
+            4 => "多选",
+            5 => "日期",
+            7 => "复选框",
+            11 => "人员",
+            13 => "电话",
+            15 => "超链接",
+            17 => "附件",
+            18 => "关联",
+            19 => "公式",
+            20 => "创建时间",
+            21 => "修改时间",
+            1001 => "创建时间",
+            1002 => "修改时间",
+            _ => $"类型 {Type}",
+        };
+    }
 }

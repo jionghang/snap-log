@@ -1,26 +1,33 @@
 using SnapLog.Configuration;
+using SnapLog.Core;
 using SnapLog.Diagnostics;
 
 namespace SnapLog.Ui;
 
 /// <summary>
-/// 编辑一条字段映射。
-/// 界面上的「记录字段」用下拉限定，避免手打错名字导致映射静默失效
-/// （映射的 RecordField 对不上任何记录字段时，那一列就是空的）。
+/// 新增/编辑一条字段映射。
+/// 「小结字段」用下拉限定，避免手打错名字导致映射静默失效
+/// （映射的 RecordField 对不上任何小结字段时，那一列就是空的）。
+/// 「飞书字段名」允许留空，表示这一列不写——表里没有对应列时就这么用。
 /// </summary>
 internal sealed class FeishuFieldMappingEditForm : Form
 {
     private readonly FeishuFieldMapping _working;
+    private readonly IReadOnlyList<FeishuBitablePublisher.FeishuTableField> _knownFields;
 
     private readonly ComboBox _recordField = new();
-    private readonly TextBox _feishuField = new();
+    private readonly ComboBox _feishuField = new();
     private readonly Label _hint = new();
 
-    public FeishuFieldMappingEditForm(FeishuFieldMapping mapping)
+    public FeishuFieldMappingEditForm(
+        FeishuFieldMapping mapping,
+        bool isNew,
+        IReadOnlyList<FeishuBitablePublisher.FeishuTableField>? knownFields = null)
     {
         _working = mapping.Clone();
+        _knownFields = knownFields ?? [];
 
-        Text = "字段映射";
+        Text = isNew ? "新增字段映射" : "编辑字段映射";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = false;
@@ -55,24 +62,40 @@ internal sealed class FeishuFieldMappingEditForm : Form
             grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
 
-        grid.Controls.Add(NewLabel("记录字段"), 0, 0);
+        grid.Controls.Add(NewLabel("小结字段"), 0, 0);
         _recordField.DropDownStyle = ComboBoxStyle.DropDownList;
         _recordField.Dock = DockStyle.Fill;
-        foreach (var field in FeishuFieldMapping.AvailableRecordFields)
+        foreach (var field in FeishuFieldMapping.AvailableFields)
         {
-            _recordField.Items.Add(field);
+            _recordField.Items.Add(new FieldChoice(field, FeishuFieldMapping.DescribeField(field)));
         }
 
-        var index = _recordField.Items.IndexOf(_working.RecordField);
-        _recordField.SelectedIndex = index >= 0 ? index : 0;
+        SelectRecordField(_working.RecordField);
         _recordField.SelectedIndexChanged += (_, _) => UpdateHint();
         grid.Controls.Add(_recordField, 1, 0);
 
         grid.Controls.Add(NewLabel("飞书字段名"), 0, 1);
+
+        // 下拉里放的是表里真实的列名（点「读取表字段名」拿到的），但也允许直接输入：
+        // 没读取过、或者想先填着、等表建好再用，都不该被挡住。
+        _feishuField.DropDownStyle = ComboBoxStyle.DropDown;
         _feishuField.Dock = DockStyle.Fill;
+        foreach (var field in _knownFields)
+        {
+            _feishuField.Items.Add(new ColumnChoice(field.Name, field.TypeName));
+        }
+
         _feishuField.Text = _working.FeishuField;
-        _feishuField.PlaceholderText = "必须与数据表里的列名完全一致；留空表示不写这一列";
         _feishuField.TextChanged += (_, _) => UpdateHint();
+        _feishuField.SelectedIndexChanged += (_, _) =>
+        {
+            // 下拉项显示成"列名（类型）"，选中后只把列名留在输入框里，别把类型也带进映射。
+            if (_feishuField.SelectedItem is ColumnChoice choice)
+            {
+                _feishuField.Text = choice.Name;
+            }
+        };
+
         grid.Controls.Add(_feishuField, 1, 1);
 
         _hint.AutoSize = true;
@@ -115,25 +138,60 @@ internal sealed class FeishuFieldMappingEditForm : Form
         Margin = new Padding(0, 8, 6, 0),
     };
 
+    private void SelectRecordField(string field)
+    {
+        foreach (var item in _recordField.Items)
+        {
+            if (item is FieldChoice choice && string.Equals(choice.Field, field, StringComparison.Ordinal))
+            {
+                _recordField.SelectedItem = item;
+                return;
+            }
+        }
+
+        if (_recordField.Items.Count > 0)
+        {
+            _recordField.SelectedIndex = 0;
+        }
+    }
+
     private void UpdateHint()
     {
-        var recordField = _recordField.SelectedItem as string ?? string.Empty;
+        var field = (_recordField.SelectedItem as FieldChoice)?.Field ?? string.Empty;
         var target = _feishuField.Text.Trim();
 
-        var lines = new List<string> { $"把记录里的 {recordField} 写到飞书的「{(target.Length == 0 ? "(未设置)" : target)}」列。" };
-
-        lines.Add(recordField switch
+        var lines = new List<string>
         {
-            "Timestamp" => "时间会按飞书列的类型自动处理：日期列发毫秒时间戳，文本列发 yyyy-MM-dd HH:mm:ss。",
-            "TextLength" or "OcrMilliseconds" => "这一项是数字，飞书列建议用数字类型。",
-            "OcrText" => "OCR 文字可能很长，超出长度上限会被截断并标注（上限在「全部选项」里调）。",
-            "Status" => "状态取值为 Ok / NoText / Error / Pending。",
+            $"把小结的「{FeishuFieldMapping.DescribeField(field)}」写到飞书的「{(target.Length == 0 ? "(未设置)" : target)}」列。",
+        };
+
+        lines.Add(field switch
+        {
+            nameof(Storage.SummaryRun.StartedAt) or nameof(Storage.SummaryRun.FinishedAt) =>
+                "时间会按飞书列的类型自动处理：日期列发毫秒时间戳，文本列发 yyyy-MM-dd HH:mm:ss。",
+            nameof(Storage.SummaryRun.RecordCount) or nameof(Storage.SummaryRun.ImageCount)
+                or nameof(Storage.SummaryRun.ElapsedMilliseconds) or nameof(Storage.SummaryRun.Attempts) =>
+                "这一项是数字，飞书列建议用数字类型。",
+            nameof(Storage.SummaryRun.Markdown) =>
+                "小结正文可能很长，超出长度上限会被截断并标注（上限在配置文件的 Feishu.MaxTextLength 里调）。",
+            nameof(Storage.SummaryRun.Preview) => "小结摘要取正文前 120 字，适合放短文本列。",
+            nameof(Storage.SummaryRun.SavedPath) => "小结 Markdown 文件在本机的路径，只对这台机器有意义。",
+            nameof(Storage.SummaryRun.Message) => "成功时是保存说明，失败时是失败原因。",
             _ => "飞书列建议用文本类型。",
         });
 
         if (target.Length == 0)
         {
-            lines.Add("目标字段留空 = 这一列不写。");
+            lines.Add("目标字段留空 = 这一列不写。表里没有这一列时就留空，不必为了凑齐而硬填。");
+        }
+        else if (_knownFields.Count > 0)
+        {
+            var matched = _knownFields.FirstOrDefault(
+                f => string.Equals(f.Name, target, StringComparison.Ordinal));
+
+            lines.Add(matched is null
+                ? "⚠ 表里没有这个列名。从下拉里选一个，或核对表里实际的列名（空格、换行都要一致）。"
+                : $"表里这一列的类型是「{matched.TypeName}」，写入时会按它自动转换。");
         }
 
         _hint.Text = string.Join(Environment.NewLine, lines);
@@ -141,16 +199,29 @@ internal sealed class FeishuFieldMappingEditForm : Form
 
     private void Confirm()
     {
-        _working.RecordField = _recordField.SelectedItem as string ?? string.Empty;
-        _working.FeishuField = _feishuField.Text.Trim();
-
-        if (_working.RecordField.Length == 0)
+        var field = (_recordField.SelectedItem as FieldChoice)?.Field ?? string.Empty;
+        if (field.Length == 0)
         {
-            MessageBox.Show("请选择记录字段。", "字段映射", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("请选择小结字段。", "字段映射", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
+        _working.RecordField = field;
+        _working.FeishuField = _feishuField.Text.Trim();
+
         DialogResult = DialogResult.OK;
         Close();
+    }
+
+    /// <summary>下拉项：值是小结字段名，显示的是它的中文说明。</summary>
+    private sealed record FieldChoice(string Field, string Label)
+    {
+        public override string ToString() => $"{Label}（{Field}）";
+    }
+
+    /// <summary>飞书列的下拉项：显示"列名（类型）"，选中后只取列名。</summary>
+    private sealed record ColumnChoice(string Name, string TypeName)
+    {
+        public override string ToString() => $"{Name}（{TypeName}）";
     }
 }

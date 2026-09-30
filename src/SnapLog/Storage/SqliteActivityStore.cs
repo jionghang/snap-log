@@ -97,7 +97,8 @@ public sealed class SqliteActivityStore : IActivityRepository
                         message       TEXT    NOT NULL DEFAULT '',
                         record_count  INTEGER NOT NULL DEFAULT 0,
                         image_count   INTEGER NOT NULL DEFAULT 0,
-                        elapsed_ms    INTEGER NOT NULL DEFAULT 0
+                        elapsed_ms    INTEGER NOT NULL DEFAULT 0,
+                        pushed_at     TEXT    NOT NULL DEFAULT ''
                     );
 
                     CREATE INDEX IF NOT EXISTS idx_summary_runs_started ON summary_runs(started_at DESC);
@@ -105,8 +106,9 @@ public sealed class SqliteActivityStore : IActivityRepository
                 schema.ExecuteNonQuery();
             }
 
-            // 老版本的库没有 window_class 列。CREATE TABLE IF NOT EXISTS 不会补列，必须显式迁移。
+            // 老版本的库没有这两列。CREATE TABLE IF NOT EXISTS 不会补列，必须显式迁移。
             EnsureColumn(connection, "activity", "window_class", "TEXT NOT NULL DEFAULT ''");
+            EnsureColumn(connection, "summary_runs", "pushed_at", "TEXT NOT NULL DEFAULT ''");
 
             _insertCommand = connection.CreateCommand();
             _insertCommand.CommandText =
@@ -448,7 +450,7 @@ public sealed class SqliteActivityStore : IActivityRepository
             command.CommandText =
                 """
                 SELECT id, started_at, finished_at, trigger, success, provider, attempts,
-                       markdown, saved_path, message, record_count, image_count, elapsed_ms
+                       markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at
                 FROM summary_runs
                 ORDER BY started_at DESC, id DESC
                 LIMIT $limit
@@ -459,26 +461,104 @@ public sealed class SqliteActivityStore : IActivityRepository
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                runs.Add(new SummaryRun
-                {
-                    Id = reader.GetInt64(0),
-                    StartedAt = ParseTimestamp(reader.GetString(1)),
-                    FinishedAt = ParseTimestamp(reader.GetString(2)),
-                    Trigger = reader.GetString(3),
-                    Success = reader.GetInt32(4) != 0,
-                    Provider = reader.GetString(5),
-                    Attempts = reader.GetInt32(6),
-                    Markdown = reader.GetString(7),
-                    SavedPath = reader.GetString(8),
-                    Message = reader.GetString(9),
-                    RecordCount = reader.GetInt32(10),
-                    ImageCount = reader.GetInt32(11),
-                    ElapsedMilliseconds = reader.GetInt64(12),
-                });
+                runs.Add(ReadSummaryRun(reader));
             }
 
             return runs;
         }, cancellationToken);
+
+    public Task<IReadOnlyList<SummaryRun>> GetPendingPushRunsAsync(
+        DateTime from,
+        int limit,
+        CancellationToken cancellationToken) =>
+        RunAsync<IReadOnlyList<SummaryRun>>(connection =>
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                """
+                SELECT id, started_at, finished_at, trigger, success, provider, attempts,
+                       markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at
+                FROM summary_runs
+                WHERE success = 1 AND pushed_at = '' AND markdown <> '' AND started_at >= $from
+                ORDER BY started_at ASC, id ASC
+                LIMIT $limit
+                """;
+            command.Parameters.AddWithValue("$from", from.ToString(TimeFormat, CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 5000));
+
+            var runs = new List<SummaryRun>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                runs.Add(ReadSummaryRun(reader));
+            }
+
+            return runs;
+        }, cancellationToken);
+
+    public Task<int> CountPendingPushRunsAsync(DateTime from, CancellationToken cancellationToken) =>
+        RunAsync(connection =>
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                """
+                SELECT COUNT(*) FROM summary_runs
+                WHERE success = 1 AND pushed_at = '' AND markdown <> '' AND started_at >= $from
+                """;
+            command.Parameters.AddWithValue("$from", from.ToString(TimeFormat, CultureInfo.InvariantCulture));
+            return Convert.ToInt32(command.ExecuteScalar() ?? 0, CultureInfo.InvariantCulture);
+        }, cancellationToken);
+
+    public Task MarkSummaryRunsPushedAsync(
+        IReadOnlyList<long> ids,
+        DateTime pushedAt,
+        CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        return RunAsync(connection =>
+        {
+            using var command = connection.CreateCommand();
+
+            // 参数化拼 IN：id 是数据库里读出来的整数，但照样不拼字符串。
+            var names = new string[ids.Count];
+            for (var i = 0; i < ids.Count; i++)
+            {
+                names[i] = $"$id{i}";
+                command.Parameters.AddWithValue(names[i], ids[i]);
+            }
+
+            command.CommandText =
+                $"UPDATE summary_runs SET pushed_at = $pushedAt WHERE id IN ({string.Join(", ", names)})";
+            command.Parameters.AddWithValue("$pushedAt", pushedAt.ToString(TimeFormat, CultureInfo.InvariantCulture));
+            return command.ExecuteNonQuery();
+        }, cancellationToken);
+    }
+
+    private static SummaryRun ReadSummaryRun(SqliteDataReader reader)
+    {
+        var pushedAt = reader.GetString(13);
+        return new SummaryRun
+        {
+            Id = reader.GetInt64(0),
+            StartedAt = ParseTimestamp(reader.GetString(1)),
+            FinishedAt = ParseTimestamp(reader.GetString(2)),
+            Trigger = reader.GetString(3),
+            Success = reader.GetInt32(4) != 0,
+            Provider = reader.GetString(5),
+            Attempts = reader.GetInt32(6),
+            Markdown = reader.GetString(7),
+            SavedPath = reader.GetString(8),
+            Message = reader.GetString(9),
+            RecordCount = reader.GetInt32(10),
+            ImageCount = reader.GetInt32(11),
+            ElapsedMilliseconds = reader.GetInt64(12),
+            PushedAt = pushedAt.Length == 0 ? null : ParseTimestamp(pushedAt),
+        };
+    }
 
     public Task<int> DeleteSummaryRunsBeforeAsync(DateTime cutoff, CancellationToken cancellationToken) =>
         RunAsync(connection =>

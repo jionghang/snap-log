@@ -679,6 +679,25 @@ internal sealed class CliRunner
         ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures);
         ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
         ProbeForm("RecordsForm（记录查看器）", () => new RecordsForm(_options, _store, _paths, _log), failures);
+        ProbeForm("SummaryHistoryForm（总结历史）", () => new SummaryHistoryForm(settingsContext), failures);
+
+        // 字段映射窗体：带上"已知飞书字段"两种情形各构造一次（命中/不命中列名走的是不同提示分支）。
+        var probeFields = new List<FeishuBitablePublisher.FeishuTableField>
+        {
+            new("时间", 5),
+            new("工作内容", 1),
+        };
+        ProbeForm(
+            "字段映射（新增）",
+            () => new FeishuFieldMappingEditForm(new FeishuFieldMapping(), isNew: true, probeFields),
+            failures);
+        ProbeForm(
+            "字段映射（编辑已被删掉的列）",
+            () => new FeishuFieldMappingEditForm(
+                new FeishuFieldMapping { RecordField = "Markdown", FeishuField = "小结" },
+                isNew: false,
+                probeFields),
+            failures);
 
         // 主窗口放最后：它会拦截 Close（只隐藏），需要直接结束消息循环。
         ProbeForm(
@@ -691,7 +710,7 @@ internal sealed class CliRunner
         Console.WriteLine();
         if (failures.Count == 0)
         {
-            Console.WriteLine("界面自检      : 通过 ✅（三个窗口都能构造、显示、关闭）");
+            Console.WriteLine("界面自检      : 通过 ✅（各窗口都能构造、显示、关闭）");
             return 0;
         }
 
@@ -838,7 +857,7 @@ internal sealed class CliRunner
         return result.Success ? 0 : 2;
     }
 
-    /// <summary>把当天的记录写进飞书多维表格。</summary>
+    /// <summary>把大模型生成的小结写进飞书多维表格。</summary>
     private async Task<int> PublishAsync(bool dryRun, bool testOnly, CancellationToken cancellationToken)
     {
         var feishu = _options.Feishu;
@@ -866,11 +885,8 @@ internal sealed class CliRunner
 
         if (dryRun)
         {
-            var today = DateTime.Today;
-            var page = await _store
-                .QueryAsync(new ActivityQuery { From = today, To = today.AddDays(1).AddSeconds(-1), Limit = 5000 },
-                            cancellationToken)
-                .ConfigureAwait(false);
+            var from = FeishuWriter.GetEarliestRunTime(feishu);
+            var pending = await _store.GetPendingPushRunsAsync(from, 200, cancellationToken).ConfigureAwait(false);
 
             Console.WriteLine($"目标表格：app_token={feishu.AppToken} table_id={feishu.TableId}");
             Console.WriteLine($"字段映射（{feishu.FieldMappings.Count(m => !string.IsNullOrWhiteSpace(m.FeishuField))} 条生效）：");
@@ -880,19 +896,31 @@ internal sealed class CliRunner
             }
 
             Console.WriteLine();
-            Console.WriteLine($"[结果] 今天有 {page.TotalCount} 条记录待写入，按每批 {feishu.BatchSize} 条提交");
+            Console.WriteLine($"待写入的小结（{from:yyyy-MM-dd} 之后生成、还没写进飞书的）：{pending.Count} 条");
+            foreach (var run in pending.Take(10))
+            {
+                Console.WriteLine($"  #{run.Id} {run.StartedAt:yyyy-MM-dd HH:mm} [{run.Trigger}] {run.Provider} - {run.Preview}");
+            }
+
+            if (pending.Count > 10)
+            {
+                Console.WriteLine($"  …另有 {pending.Count - 10} 条");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine($"[结果] 按每批 {feishu.BatchSize} 条提交");
             Console.WriteLine("       --dry-run：只列清单，没有发起任何写入");
 
             if (problem is not null)
             {
-                Console.WriteLine($"       另外，正式推送会被拦下：{problem}");
+                Console.WriteLine($"       另外，正式写入会被拦下：{problem}");
             }
 
             return 0;
         }
 
         var writer = new FeishuWriter(_store, _log);
-        var result = await writer.WriteTodayAsync(_options, cancellationToken).ConfigureAwait(false);
+        var result = await writer.WritePendingAsync(_options, cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine();
         Console.WriteLine($"[结果] {(result.Success ? "成功" : "失败")}：{result.Message}");

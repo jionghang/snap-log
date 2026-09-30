@@ -71,7 +71,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("打开数据目录", null, (_, _) => OpenPath(_paths.DataDirectory)));
         menu.Items.Add(new ToolStripMenuItem("导出全部记录为 CSV…", null, Guarded(ExportAllAsync)));
         menu.Items.Add(new ToolStripMenuItem("批量识别待识别记录…", null, Guarded(RunOcrBatchAsync)));
-        menu.Items.Add(new ToolStripMenuItem("立即写入飞书表格…", null, Guarded(PushToFeishuNowAsync)));
+        menu.Items.Add(new ToolStripMenuItem("把小结写入飞书表格…", null, Guarded(PushToFeishuNowAsync)));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("退出", null, (_, _) => ExitApplication()));
 
@@ -342,11 +342,24 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 return;
             }
 
+            var writer = new FeishuWriter(_store, _log);
+            var pending = await writer.CountPendingAsync(_options, CancellationToken.None).ConfigureAwait(true);
+
+            if (pending == 0)
+            {
+                MessageBox.Show(
+                    "没有待写入的小结。" + Environment.NewLine + Environment.NewLine
+                    + $"只写 {FeishuWriter.GetEarliestRunTime(_options.Feishu):yyyy-MM-dd} 之后生成、"
+                    + "而且还没写进飞书的小结。先生成一次小结，或在设置里把「写入范围」调大。",
+                    "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             var confirm = MessageBox.Show(
-                $"将把今天的记录写进飞书多维表格：{Environment.NewLine}{Environment.NewLine}"
+                $"将把 {pending} 条小结写进飞书多维表格：{Environment.NewLine}{Environment.NewLine}"
                 + $"app_token：{_options.Feishu.AppToken}{Environment.NewLine}"
                 + $"table_id：{_options.Feishu.TableId}{Environment.NewLine}{Environment.NewLine}"
-                + "记录内容会上传到飞书，确认继续？",
+                + "小结正文（可能包含屏幕上识别出的内容）会上传到飞书，确认继续？",
                 "写入飞书", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
 
             if (confirm != DialogResult.OK)
@@ -354,8 +367,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 return;
             }
 
-            var writer = new FeishuWriter(_store, _log);
-            var result = await writer.WriteTodayAsync(_options, CancellationToken.None);
+            var result = await writer.WritePendingAsync(_options, CancellationToken.None);
 
             _trayIcon.ShowBalloonTip(
                 5000,

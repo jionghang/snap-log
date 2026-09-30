@@ -5,18 +5,29 @@ using SnapLog.Storage;
 
 namespace SnapLog.Ui;
 
-/// <summary>推送配置页：飞书多维表格的定时写入。</summary>
+/// <summary>
+/// 推送配置页：把大模型生成的小结写进飞书多维表格。
+/// 一条小结写表里的一行，字段映射决定哪些小结字段落到哪些列。
+/// </summary>
 internal sealed class FeishuSettingsView : SettingsViewBase
 {
     private CheckBox _feishuEnabled = null!;
     private TextBox _feishuTime = null!;
+    private CheckBox _feishuAfterSummary = null!;
+    private NumericUpDown _feishuLookback = null!;
     private TextBox _feishuAppId = null!;
     private TextBox _feishuSecret = null!;
     private TextBox _feishuAppToken = null!;
     private TextBox _feishuTableId = null!;
     private ListBox _fieldMappingList = null!;
     private Button _testFeishu = null!;
+    private Button _readFields = null!;
     private Label _feishuHint = null!;
+    private Label _pendingHint = null!;
+    private Label _legacyHint = null!;
+
+    /// <summary>上一次「读取表字段名」拿到的真实列名，供映射编辑窗体的下拉使用。</summary>
+    private IReadOnlyList<FeishuBitablePublisher.FeishuTableField> _knownFields = [];
 
     public FeishuSettingsView(SettingsContext context)
         : base(context)
@@ -40,18 +51,49 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         var enableRow = NewRow();
         _feishuEnabled = new CheckBox
         {
-            Text = "每天定时把当天的记录写进飞书多维表格",
+            Text = "把大模型生成的小结写进飞书多维表格",
             AutoSize = true,
             Margin = new Padding(3, 6, 12, 0),
         };
         _feishuEnabled.CheckedChanged += (_, _) => UpdateEnabledState();
         enableRow.Controls.Add(_feishuEnabled);
+        AddRow(grid, "写入内容", enableRow);
 
-        enableRow.Controls.Add(new Label { Text = "时间", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
+        AddRow(grid, string.Empty, NewHint(
+            "写入的是小结本身（正文 + 时间、触发来源、模型、条数等元数据），每条小结一行。"
+            + "已经写进表里的小结会打标记，重复点「立即写入」不会刷出重复行。"));
+
+        var scheduleRow = NewRow();
+        scheduleRow.Controls.Add(new Label { Text = "每天", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
         _feishuTime = new TextBox { Width = 70, PlaceholderText = "HH:mm" };
-        enableRow.Controls.Add(_feishuTime);
-        enableRow.Controls.Add(new Label { Text = "(HH:mm)", AutoSize = true, Margin = new Padding(4, 9, 0, 0) });
-        AddRow(grid, "定时推送", enableRow);
+        scheduleRow.Controls.Add(_feishuTime);
+        scheduleRow.Controls.Add(new Label { Text = "(HH:mm)", AutoSize = true, Margin = new Padding(4, 9, 4, 0) });
+
+        _feishuAfterSummary = new CheckBox
+        {
+            Text = "生成小结成功后立即写入",
+            AutoSize = true,
+            Margin = new Padding(16, 6, 0, 0),
+        };
+        scheduleRow.Controls.Add(_feishuAfterSummary);
+        AddRow(grid, "什么时候写", scheduleRow);
+
+        var scopeRow = NewRow();
+        _feishuLookback = new NumericUpDown
+        {
+            Width = 60,
+            Minimum = 1,
+            Maximum = 365,
+            Value = 1,
+        };
+        scopeRow.Controls.Add(_feishuLookback);
+        scopeRow.Controls.Add(new Label
+        {
+            Text = "天内生成的小结（调大可以把更早的补进表里）",
+            AutoSize = true,
+            Margin = new Padding(6, 9, 0, 0),
+        });
+        AddRow(grid, "写入范围", scopeRow);
 
         // ---- 应用凭证 ----
         var appRow = NewRow();
@@ -74,6 +116,16 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         tableRow.Controls.Add(new Label { Text = "table_id", AutoSize = true, Margin = new Padding(12, 9, 4, 0) });
         _feishuTableId = new TextBox { Width = 150, PlaceholderText = "tbl…" };
         tableRow.Controls.Add(_feishuTableId);
+
+        _readFields = new Button
+        {
+            Text = "读取表字段名",
+            Width = 110,
+            Height = 26,
+            Margin = new Padding(12, 4, 0, 0),
+        };
+        _readFields.Click += async (_, _) => await ReadTableFieldsAsync();
+        tableRow.Controls.Add(_readFields);
         AddRow(grid, "数据表", tableRow);
 
         // ---- 字段映射 ----
@@ -87,7 +139,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         mappingRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 440));
         mappingRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        _fieldMappingList = new ListBox { Height = 120, Width = 440, IntegralHeight = false };
+        _fieldMappingList = new ListBox { Height = 132, Width = 440, IntegralHeight = false };
         _fieldMappingList.DoubleClick += (_, _) => EditSelectedMapping();
         mappingRow.Controls.Add(_fieldMappingList, 0, 0);
 
@@ -98,14 +150,21 @@ internal sealed class FeishuSettingsView : SettingsViewBase
             WrapContents = false,
             Margin = new Padding(8, 0, 0, 0),
         };
+        mappingButtons.Controls.Add(NewSmallButton("新增…", AddMapping));
         mappingButtons.Controls.Add(NewSmallButton("编辑…", EditSelectedMapping));
+        mappingButtons.Controls.Add(NewSmallButton("删除", RemoveSelectedMapping));
         mappingButtons.Controls.Add(NewSmallButton("恢复默认", ResetMappings));
         mappingRow.Controls.Add(mappingButtons, 1, 0);
 
         AddRow(grid, "字段映射", mappingRow);
         AddRow(grid, string.Empty, NewHint(
-            "飞书按字段名精确匹配（差一个空格或换行都会报 1254045），"
-            + "所以这里写的名字必须和表里的列名完全一致。点「测试连接」会先核对一遍。"));
+            "小结字段 → 飞书表里的列名，条数随意：用不到的映射点「删除」，表里缺的列把「飞书字段名」留空即可跳过，"
+            + "不必每条都填。飞书按字段名精确匹配（差一个空格或换行都会报 1254045），"
+            + "所以填的名字必须和表里的列名完全一致，点「测试连接」会先核对一遍。"));
+
+        _legacyHint = NewHint(string.Empty);
+        _legacyHint.Visible = false;
+        AddRow(grid, string.Empty, _legacyHint);
 
         // ---- 操作 ----
         var actionsRow = NewRow();
@@ -117,7 +176,10 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         pushNow.Click += async (_, _) => await PushToFeishuNowAsync();
         actionsRow.Controls.Add(pushNow);
 
-        _feishuHint = new Label { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(4, 9, 0, 0) };
+        _pendingHint = new Label { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(4, 9, 0, 0) };
+        actionsRow.Controls.Add(_pendingHint);
+
+        _feishuHint = new Label { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(12, 9, 0, 0) };
         actionsRow.Controls.Add(_feishuHint);
         AddRow(grid, "操作", actionsRow);
 
@@ -131,6 +193,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         _feishuEnabled.Checked = feishu.Enabled;
         _feishuTime.Text = feishu.ScheduleTimeOfDay;
+        _feishuAfterSummary.Checked = feishu.PushAfterSummary;
+        _feishuLookback.Value = Math.Clamp(feishu.PushLookbackDays, 1, 365);
         _feishuAppId.Text = feishu.AppId;
         _feishuSecret.Text = feishu.AppSecret;
         _feishuAppToken.Text = feishu.AppToken;
@@ -139,6 +203,28 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         RefreshFieldMappingList();
         UpdateEnabledState();
         UpdateFeishuHint();
+        UpdateLegacyHint();
+        _ = RefreshPendingHintAsync();
+    }
+
+    /// <summary>
+    /// 旧配置里的映射指向的是抓取记录，加载时已被换成小结字段的默认映射。
+    /// 这件事必须说出来——列名很可能对不上用户的表，静默换掉会让人一头雾水。
+    /// </summary>
+    private void UpdateLegacyHint()
+    {
+        if (!Options.Feishu.LegacyMappingsReplaced)
+        {
+            _legacyHint.Visible = false;
+            return;
+        }
+
+        _legacyHint.ForeColor = Color.OrangeRed;
+        _legacyHint.Visible = true;
+        _legacyHint.Text =
+            "原配置里的字段映射是抓取记录的字段（时间/进程/识别文字…），已自动换成小结字段的默认映射。"
+            + Environment.NewLine
+            + "请按飞书表里的实际列名核对一遍上面的映射，再点「保存设置」。";
     }
 
     protected override void WriteToOptions()
@@ -147,15 +233,22 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         feishu.Enabled = _feishuEnabled.Checked;
         feishu.ScheduleTimeOfDay = _feishuTime.Text.Trim();
+        feishu.PushAfterSummary = _feishuAfterSummary.Checked;
+        feishu.PushLookbackDays = (int)_feishuLookback.Value;
         feishu.AppId = _feishuAppId.Text.Trim();
         feishu.AppSecret = _feishuSecret.Text.Trim();
         feishu.AppToken = _feishuAppToken.Text.Trim();
         feishu.TableId = _feishuTableId.Text.Trim();
+
+        // 用户确认过这一页的映射了，迁移提示不用再挂在那儿。
+        feishu.LegacyMappingsReplaced = false;
     }
 
     private void UpdateEnabledState()
     {
         _feishuTime.Enabled = _feishuEnabled.Checked;
+        _feishuAfterSummary.Enabled = _feishuEnabled.Checked;
+        _feishuLookback.Enabled = _feishuEnabled.Checked;
     }
 
     private void UpdateFeishuHint()
@@ -169,6 +262,24 @@ internal sealed class FeishuSettingsView : SettingsViewBase
             : _feishuSecret.Text.Length > 0
                 ? "App Secret 来自这里的明文配置"
                 : $"等待配置（App Secret 可从环境变量 {variableName} 读取）";
+    }
+
+    /// <summary>查一下库里有多少条小结等着写，让用户点按钮之前心里有数。</summary>
+    private async Task RefreshPendingHintAsync()
+    {
+        try
+        {
+            var count = await new FeishuWriter(Store, Log)
+                .CountPendingAsync(Options, CancellationToken.None)
+                .ConfigureAwait(true);
+
+            _pendingHint.Text = $"待写入 {count} 条小结";
+        }
+        catch (Exception ex)
+        {
+            _pendingHint.Text = string.Empty;
+            Log.Warn($"查询待写入小结条数失败：{ex.Message}");
+        }
     }
 
     // ---------------------------------------------------------------- 字段映射
@@ -189,6 +300,19 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         }
     }
 
+    private void AddMapping()
+    {
+        using var dialog = new FeishuFieldMappingEditForm(new FeishuFieldMapping(), isNew: true, _knownFields);
+        if (dialog.ShowDialog(FindForm()) != DialogResult.OK)
+        {
+            return;
+        }
+
+        Options.Feishu.FieldMappings.Add(dialog.Result);
+        RefreshFieldMappingList();
+        _fieldMappingList.SelectedIndex = _fieldMappingList.Items.Count - 1;
+    }
+
     private void EditSelectedMapping()
     {
         if (_fieldMappingList.SelectedItem is not FeishuFieldMapping mapping)
@@ -197,7 +321,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
             return;
         }
 
-        using var dialog = new FeishuFieldMappingEditForm(mapping);
+        using var dialog = new FeishuFieldMappingEditForm(mapping, isNew: false, _knownFields);
         if (dialog.ShowDialog(FindForm()) != DialogResult.OK)
         {
             return;
@@ -209,11 +333,41 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         _fieldMappingList.SelectedIndex = index;
     }
 
+    private void RemoveSelectedMapping()
+    {
+        var index = _fieldMappingList.SelectedIndex;
+        if (index < 0 || index >= Options.Feishu.FieldMappings.Count)
+        {
+            MessageBox.Show("先选中一条映射。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var mapping = Options.Feishu.FieldMappings[index];
+        var confirm = MessageBox.Show(
+            $"删掉这条映射？{Environment.NewLine}{Environment.NewLine}{mapping}{Environment.NewLine}{Environment.NewLine}"
+            + "删除只是不写这一列，飞书表里已有的数据不受影响。",
+            "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+
+        if (confirm != DialogResult.OK)
+        {
+            return;
+        }
+
+        Options.Feishu.FieldMappings.RemoveAt(index);
+        RefreshFieldMappingList();
+
+        if (_fieldMappingList.Items.Count > 0)
+        {
+            _fieldMappingList.SelectedIndex = Math.Clamp(index, 0, _fieldMappingList.Items.Count - 1);
+        }
+    }
+
     private void ResetMappings()
     {
         var confirm = MessageBox.Show(
-            "把字段映射恢复成默认的 9 条？" + Environment.NewLine + Environment.NewLine
-            + "飞书列名会写回「时间 / 进程 / 窗口标题 / 窗口类名 / 字数 / 识别耗时 / 抓取方式 / 状态 / 识别文字」。",
+            "把字段映射恢复成默认的 5 条？" + Environment.NewLine + Environment.NewLine
+            + "飞书列名会写回「时间 / 触发来源 / 模型 / 记录条数 / 小结」，"
+            + "你加过的映射会被覆盖。",
             "SnapLog", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
 
         if (confirm != DialogResult.OK)
@@ -234,16 +388,16 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         var original = _testFeishu.Text;
         _testFeishu.Enabled = false;
         _testFeishu.Text = "测试中…";
-        _feishuHint.ForeColor = SystemColors.GrayText;
-        _feishuHint.Text = "正在换取令牌并核对字段…";
+        _pendingHint.ForeColor = SystemColors.GrayText;
+        _pendingHint.Text = "正在换取令牌并核对字段…";
 
         try
         {
             var publisher = new FeishuBitablePublisher(Options.Feishu, Log);
             var result = await publisher.TestAsync(CancellationToken.None);
 
-            _feishuHint.ForeColor = result.Success ? Color.SeaGreen : Color.OrangeRed;
-            _feishuHint.Text = Flatten(result.Message);
+            _pendingHint.ForeColor = result.Success ? Color.SeaGreen : Color.OrangeRed;
+            _pendingHint.Text = Flatten(result.Message);
 
             MessageBox.Show(
                 result.Message,
@@ -255,6 +409,69 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         {
             _testFeishu.Enabled = true;
             _testFeishu.Text = original;
+        }
+    }
+
+    /// <summary>
+    /// 只读一次表里的列名，填进字段映射编辑窗体的下拉。
+    /// 这一步的意义是不让用户手打列名——差一个空格就是 1254045，还很难自查。
+    /// </summary>
+    private async Task ReadTableFieldsAsync()
+    {
+        WriteToOptions();
+
+        var original = _readFields.Text;
+        _readFields.Enabled = false;
+        _readFields.Text = "读取中…";
+        _pendingHint.ForeColor = SystemColors.GrayText;
+        _pendingHint.Text = "正在读取数据表的字段名…";
+
+        try
+        {
+            var (fields, error) = await new FeishuBitablePublisher(Options.Feishu, Log)
+                .FetchFieldsAsync(CancellationToken.None);
+
+            if (fields is null)
+            {
+                _pendingHint.ForeColor = Color.OrangeRed;
+                _pendingHint.Text = Flatten(error ?? "读取字段失败");
+                MessageBox.Show(
+                    error ?? "读取字段失败", "读取表字段名", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            _knownFields = fields;
+
+            var names = string.Join("、", fields.Select(f => $"{f.Name}({f.TypeName})"));
+            _pendingHint.ForeColor = Color.SeaGreen;
+            _pendingHint.Text = $"已读取 {fields.Count} 个字段";
+
+            var mapped = Options.Feishu.FieldMappings
+                .Where(m => !string.IsNullOrWhiteSpace(m.FeishuField))
+                .Select(m => m.FeishuField)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            var missing = mapped.Where(name => fields.All(f => !string.Equals(f.Name, name, StringComparison.Ordinal))).ToList();
+
+            var message = $"表里共 {fields.Count} 个字段：{Environment.NewLine}{names}"
+                          + Environment.NewLine + Environment.NewLine
+                          + (missing.Count == 0
+                              ? "当前映射的列名都能对上。"
+                              : $"⚠ 这些映射的列名在表里没有：{string.Join("、", missing)}"
+                                + Environment.NewLine
+                                + "点「编辑…」时可以从下拉里直接选表里的列名。");
+
+            MessageBox.Show(
+                message,
+                missing.Count == 0 ? "读取表字段名成功" : "有映射对不上",
+                MessageBoxButtons.OK,
+                missing.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        }
+        finally
+        {
+            _readFields.Enabled = true;
+            _readFields.Text = original;
         }
     }
 
@@ -271,11 +488,32 @@ internal sealed class FeishuSettingsView : SettingsViewBase
             return;
         }
 
+        int pending;
+        try
+        {
+            pending = await new FeishuWriter(Store, Log).CountPendingAsync(Options, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            pending = 0;
+            Log.Warn($"查询待写入小结条数失败：{ex.Message}");
+        }
+
+        if (pending == 0)
+        {
+            MessageBox.Show(
+                "没有待写入的小结。" + Environment.NewLine + Environment.NewLine
+                + $"只写 {FeishuWriter.GetEarliestRunTime(Options.Feishu):yyyy-MM-dd} 之后生成、"
+                + "而且还没写进飞书的小结。先生成一次小结，或把「写入范围」调大。",
+                "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
         var confirm = MessageBox.Show(
-            "将把今天的记录写进飞书多维表格：" + Environment.NewLine + Environment.NewLine
+            $"将把 {pending} 条小结写进飞书多维表格：" + Environment.NewLine + Environment.NewLine
             + $"app_token：{Options.Feishu.AppToken}" + Environment.NewLine
             + $"table_id：{Options.Feishu.TableId}" + Environment.NewLine + Environment.NewLine
-            + "记录内容会上传到飞书，确认继续？",
+            + "小结正文（可能包含屏幕上识别出的内容）会上传到飞书，确认继续？",
             "写入飞书", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
 
         if (confirm != DialogResult.OK)
@@ -283,19 +521,20 @@ internal sealed class FeishuSettingsView : SettingsViewBase
             return;
         }
 
-        _feishuHint.ForeColor = SystemColors.GrayText;
-        _feishuHint.Text = "正在写入…";
+        _pendingHint.ForeColor = SystemColors.GrayText;
+        _pendingHint.Text = "正在写入…";
 
-        var writer = new FeishuWriter(Store, Log);
-        var result = await writer.WriteTodayAsync(Options, CancellationToken.None);
+        var result = await new FeishuWriter(Store, Log).WritePendingAsync(Options, CancellationToken.None);
 
-        _feishuHint.ForeColor = result.Success ? Color.SeaGreen : Color.OrangeRed;
-        _feishuHint.Text = Flatten(result.Message);
+        _pendingHint.ForeColor = result.Success ? Color.SeaGreen : Color.OrangeRed;
+        _pendingHint.Text = Flatten(result.Message);
 
         MessageBox.Show(
             result.Message,
             result.Success ? "写入完成" : "写入失败",
             MessageBoxButtons.OK,
             result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+
+        await RefreshPendingHintAsync();
     }
 }

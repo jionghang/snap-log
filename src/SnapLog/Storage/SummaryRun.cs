@@ -38,6 +38,15 @@ public sealed class SummaryRun
 
     public long ElapsedMilliseconds { get; set; }
 
+    /// <summary>
+    /// 写进飞书多维表格的时间；null = 还没写入过。
+    /// 去重就靠这个标记：写成功才打标，重复点「立即写入」不会在表里刷出重复行。
+    /// </summary>
+    public DateTime? PushedAt { get; set; }
+
+    /// <summary>已经写进飞书了吗。</summary>
+    public bool Pushed => PushedAt is not null;
+
     /// <summary>列表里显示的一行摘要。</summary>
     public string Preview
     {
@@ -84,6 +93,24 @@ public interface ISummaryHistoryStore
 
     /// <summary>按时间倒序取最近的若干条。</summary>
     Task<IReadOnlyList<SummaryRun>> GetSummaryRunsAsync(int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 取还没写进飞书的多维表格的成功小结，按时间正序（先发生的先写）。
+    /// 只取 <paramref name="from"/> 之后生成的，避免第一次开启时把历史小结一股脑导进表里。
+    /// </summary>
+    Task<IReadOnlyList<SummaryRun>> GetPendingPushRunsAsync(
+        DateTime from,
+        int limit,
+        CancellationToken cancellationToken);
+
+    /// <summary>符合待写入条件的小结条数，界面上用来先告诉用户"这一次会写几条"。</summary>
+    Task<int> CountPendingPushRunsAsync(DateTime from, CancellationToken cancellationToken);
+
+    /// <summary>把若干条小结标记成已写进飞书。</summary>
+    Task MarkSummaryRunsPushedAsync(
+        IReadOnlyList<long> ids,
+        DateTime pushedAt,
+        CancellationToken cancellationToken);
 
     Task<int> DeleteSummaryRunsBeforeAsync(DateTime cutoff, CancellationToken cancellationToken);
 }

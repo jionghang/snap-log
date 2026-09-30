@@ -160,7 +160,7 @@ public sealed class SummaryJob : IScheduledJob
     }
 }
 
-/// <summary>定时把当天的记录写进飞书多维表格。</summary>
+/// <summary>定时把还没写入过的小结写进飞书多维表格。</summary>
 public sealed class FeishuPushJob : IScheduledJob
 {
     private readonly FeishuWriter _writer;
@@ -172,7 +172,7 @@ public sealed class FeishuPushJob : IScheduledJob
 
     public string Key => "feishu-push";
 
-    public string DisplayName => "定时推送记录到飞书";
+    public string DisplayName => "定时写入小结到飞书";
 
     public bool IsEnabled(AppOptions options) => options.Feishu.Enabled;
 
@@ -181,7 +181,7 @@ public sealed class FeishuPushJob : IScheduledJob
 
     public async Task<JobRunResult> RunAsync(AppOptions options, CancellationToken cancellationToken)
     {
-        var result = await _writer.WriteTodayAsync(options, cancellationToken).ConfigureAwait(false);
+        var result = await _writer.WritePendingAsync(options, cancellationToken).ConfigureAwait(false);
         return new JobRunResult(result.Success, result.Message);
     }
 }

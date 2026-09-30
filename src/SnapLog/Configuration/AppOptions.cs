@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace SnapLog.Configuration;
 
@@ -342,17 +343,26 @@ public sealed class WorkProjectOptions
     public WorkProjectOptions Clone() => new() { Name = Name, Description = Description };
 }
 
-/// <summary>把记录写入飞书多维表格。分三层：数据（app_token + table_id）、通道（应用凭证 → tenant_access_token）、触发（定时/手动）。</summary>
+/// <summary>
+/// 把大模型生成的小结写入飞书多维表格。
+/// 分三层：数据（app_token + table_id）、通道（应用凭证 → tenant_access_token）、触发（定时/生成后/手动）。
+/// </summary>
 public sealed class FeishuOptions
 {
-    [Category("飞书"), DisplayName("启用定时推送"),
-     Description("打开后每天到设定时间把当天的记录写进飞书多维表格。"
-                 + "记录内容会上传到飞书，请确认这张表只有你（或你信任的人）能看。")]
+    [Category("飞书"), DisplayName("启用飞书写入"),
+     Description("打开后可以定时把小结写进飞书多维表格，也可以手动点「立即写入」。"
+                 + "写入内容是小结正文和它的元数据（时间、触发来源、模型、条数等），"
+                 + "这些内容会上传到飞书，请确认这张表只有你（或你信任的人）能看。")]
     public bool Enabled { get; set; }
 
-    [Category("飞书"), DisplayName("推送时间"),
+    [Category("飞书"), DisplayName("定时写入时间"),
      Description("格式 HH:mm，例如 19:00。程序在那个时间点之后第一次运行时执行，当天只跑一次。")]
     public string ScheduleTimeOfDay { get; set; } = "19:00";
+
+    [Category("飞书"), DisplayName("生成小结后立即写入"),
+     Description("每次成功生成小结后，立刻把它写进飞书。配合「定时生成总结」就等于每天自动汇总。"
+                 + "关掉则只按上面的定时写入或手动写入。")]
+    public bool PushAfterSummary { get; set; }
 
     // ---------------------------------------------------------------- 通道层
 
@@ -387,18 +397,31 @@ public sealed class FeishuOptions
     public string TableId { get; set; } = "";
 
     [Category("飞书 · 数据"), DisplayName("字段映射"),
-     Description("SnapLog 的记录字段 → 飞书表里的字段名。飞书按字段名精确匹配，"
-                 + "名称差一个空格或换行都会报 FieldNameNotFound（1254045）。"
-                 + "推送前程序会先调「列出字段」核对，对不上的会明确告诉你哪一个。")]
+     Description("小结字段 → 飞书表里的字段名，一条一行，可以随时增删。"
+                 + "没有对应列的映射把「飞书字段名」留空即可，那条会被跳过——不必每条都填。"
+                 + "飞书按字段名精确匹配，名称差一个空格或换行都会报 FieldNameNotFound（1254045）。"
+                 + "写入前程序会先调「列出字段」核对，对不上的会明确告诉你哪一个。")]
     public List<FeishuFieldMapping> FieldMappings { get; set; } = FeishuFieldMapping.CreateDefault();
 
-    [Category("飞书 · 数据"), DisplayName("识别文字最大长度"),
-     Description("OCR 文字可能很长，飞书单元格有长度上限。超出会被截断并标注。")]
+    [Category("飞书 · 数据"), DisplayName("写入范围（天）"),
+     Description("只写入这么多天内生成、而且还没写进飞书的小结。默认 1 = 只写当天的，"
+                 + "避免第一次开启时把历史小结一次性全导进表里。要补历史就把这个值调大。")]
+    public int PushLookbackDays { get; set; } = 1;
+
+    [Category("飞书 · 数据"), DisplayName("小结正文最大长度"),
+     Description("小结可能很长，飞书单元格有长度上限。超出会被截断并标注。")]
     public int MaxTextLength { get; set; } = 2000;
 
     [Category("飞书 · 数据"), DisplayName("每批写入条数"),
      Description("飞书单次批量写入有上限（500），分批提交可以在失败时少丢一点。")]
     public int BatchSize { get; set; } = 200;
+
+    /// <summary>
+    /// 载入配置时发现字段映射还是旧版的记录字段、已被自动换成小结字段的默认映射。
+    /// 只是用来提示用户重新核对列名，不写进配置文件。
+    /// </summary>
+    [JsonIgnore]
+    public bool LegacyMappingsReplaced { get; set; }
 }
 
 /// <summary>鉴权方式。当前只实现应用身份；留成枚举是为了以后要加用户身份时不用改配置结构。</summary>
@@ -408,10 +431,13 @@ public enum FeishuAuthMode
     TenantAccessToken,
 }
 
-/// <summary>一条字段映射：把 SnapLog 的记录字段写到飞书表的哪个字段。</summary>
+/// <summary>
+/// 一条字段映射：把小结的哪个字段写到飞书表的哪一列。
+/// 两条都可以留空其一：飞书字段名留空 = 这条不写（表里没有那一列时就这么处理）。
+/// </summary>
 public sealed class FeishuFieldMapping
 {
-    [Category("字段映射"), DisplayName("记录字段"),
+    [Category("字段映射"), DisplayName("小结字段"),
      Description("SnapLog 这边的字段，从下拉里选。")]
     public string RecordField { get; set; } = "";
 
@@ -421,32 +447,55 @@ public sealed class FeishuFieldMapping
 
     public override string ToString() =>
         string.IsNullOrWhiteSpace(FeishuField)
-            ? $"{RecordField} （已跳过）"
-            : $"{RecordField} → {FeishuField}";
+            ? $"{DescribeField(RecordField)}（未指定飞书列，跳过）"
+            : $"{DescribeField(RecordField)} → {FeishuField}";
 
     public FeishuFieldMapping Clone() => new() { RecordField = RecordField, FeishuField = FeishuField };
 
-    /// <summary>可映射的记录字段清单，界面上的下拉用它。</summary>
-    public static IReadOnlyList<string> AvailableRecordFields { get; } =
+    /// <summary>可映射的小结字段清单。全部可选，默认映射只是一份常见写法。</summary>
+    public static IReadOnlyList<string> AvailableFields { get; } =
     [
-        "Timestamp", "ProcessName", "WindowTitle", "WindowClass",
-        "TextLength", "OcrMilliseconds", "CaptureMethod", "Status", "Error", "OcrText",
+        nameof(Storage.SummaryRun.StartedAt),
+        nameof(Storage.SummaryRun.Trigger),
+        nameof(Storage.SummaryRun.Provider),
+        nameof(Storage.SummaryRun.RecordCount),
+        nameof(Storage.SummaryRun.ImageCount),
+        nameof(Storage.SummaryRun.ElapsedMilliseconds),
+        nameof(Storage.SummaryRun.Attempts),
+        nameof(Storage.SummaryRun.Markdown),
+        nameof(Storage.SummaryRun.Preview),
+        nameof(Storage.SummaryRun.SavedPath),
+        nameof(Storage.SummaryRun.Message),
     ];
 
+    /// <summary>字段的中文说明。下拉和列表里显示它，免得用户对着 StartedAt 猜意思。</summary>
+    public static string DescribeField(string field) => field switch
+    {
+        nameof(Storage.SummaryRun.StartedAt) => "小结生成时间",
+        nameof(Storage.SummaryRun.Trigger) => "触发来源",
+        nameof(Storage.SummaryRun.Provider) => "模型",
+        nameof(Storage.SummaryRun.RecordCount) => "记录条数",
+        nameof(Storage.SummaryRun.ImageCount) => "截图张数",
+        nameof(Storage.SummaryRun.ElapsedMilliseconds) => "耗时(毫秒)",
+        nameof(Storage.SummaryRun.Attempts) => "尝试次数",
+        nameof(Storage.SummaryRun.Markdown) => "小结正文",
+        nameof(Storage.SummaryRun.Preview) => "小结摘要(前120字)",
+        nameof(Storage.SummaryRun.SavedPath) => "本地文件路径",
+        nameof(Storage.SummaryRun.Message) => "结果说明",
+        _ => field,
+    };
+
     /// <summary>
-    /// 默认映射。飞书字段名给的是常见写法，用户按自己表里的列名改即可。
+    /// 默认映射。刻意只给几个最常用的字段：每多一条就多一个"表里可能没有这一列"的机会，
+    /// 用户按自己表里的列名改、加、删都行。
     /// </summary>
     public static List<FeishuFieldMapping> CreateDefault() =>
     [
-        new() { RecordField = nameof(Storage.ActivityRecord.Timestamp), FeishuField = "时间" },
-        new() { RecordField = nameof(Storage.ActivityRecord.ProcessName), FeishuField = "进程" },
-        new() { RecordField = nameof(Storage.ActivityRecord.WindowTitle), FeishuField = "窗口标题" },
-        new() { RecordField = nameof(Storage.ActivityRecord.WindowClass), FeishuField = "窗口类名" },
-        new() { RecordField = nameof(Storage.ActivityRecord.TextLength), FeishuField = "字数" },
-        new() { RecordField = nameof(Storage.ActivityRecord.OcrMilliseconds), FeishuField = "识别耗时" },
-        new() { RecordField = nameof(Storage.ActivityRecord.CaptureMethod), FeishuField = "抓取方式" },
-        new() { RecordField = nameof(Storage.ActivityRecord.Status), FeishuField = "状态" },
-        new() { RecordField = nameof(Storage.ActivityRecord.OcrText), FeishuField = "识别文字" },
+        new() { RecordField = nameof(Storage.SummaryRun.StartedAt), FeishuField = "时间" },
+        new() { RecordField = nameof(Storage.SummaryRun.Trigger), FeishuField = "触发来源" },
+        new() { RecordField = nameof(Storage.SummaryRun.Provider), FeishuField = "模型" },
+        new() { RecordField = nameof(Storage.SummaryRun.RecordCount), FeishuField = "记录条数" },
+        new() { RecordField = nameof(Storage.SummaryRun.Markdown), FeishuField = "小结" },
     ];
 }
 

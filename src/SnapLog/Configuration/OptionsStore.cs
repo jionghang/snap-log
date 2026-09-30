@@ -156,9 +156,45 @@ public static class OptionsStore
         options.Capture.ImageRetentionDays = Math.Clamp(options.Capture.ImageRetentionDays, 0, 3650);
         options.Storage.RecordRetentionDays = Math.Clamp(options.Storage.RecordRetentionDays, 0, 3650);
 
+        options.Feishu ??= new FeishuOptions();
+        options.Feishu.PushLookbackDays = Math.Clamp(options.Feishu.PushLookbackDays, 1, 365);
+        options.Feishu.MaxTextLength = Math.Clamp(options.Feishu.MaxTextLength, 1, 100_000);
+        options.Feishu.BatchSize = Math.Clamp(options.Feishu.BatchSize, 1, 500);
+        if (!TimeOnly.TryParse(options.Feishu.ScheduleTimeOfDay, out _))
+        {
+            options.Feishu.ScheduleTimeOfDay = "19:00";
+        }
+
         MigrateLegacyProvider(options.Summarization);
+        MigrateLegacyFeishuMappings(options.Feishu);
 
         options.Logging.RetentionDays = Math.Clamp(options.Logging.RetentionDays, 0, 3650);
+    }
+
+    /// <summary>
+    /// 写入飞书的内容从"抓取记录"改成了"大模型小结"，旧配置里的记录字段（Timestamp、OcrText…）
+    /// 在小结上取不到任何值——留着的话每次写入都会被整条跳过，而且不会有报错。
+    /// 所以这里整组换成小结字段的默认映射，并把这件事记在
+    /// <see cref="FeishuOptions.LegacyMappingsReplaced"/> 上，由界面提示用户重新核对列名。
+    /// </summary>
+    private static void MigrateLegacyFeishuMappings(FeishuOptions feishu)
+    {
+        feishu.FieldMappings ??= [];
+
+        var known = new HashSet<string>(FeishuFieldMapping.AvailableFields, StringComparer.Ordinal);
+
+        var legacy = feishu.FieldMappings.Any(m => m is not null
+            && !string.IsNullOrWhiteSpace(m.RecordField)
+            && !known.Contains(m.RecordField));
+
+        if (legacy)
+        {
+            feishu.FieldMappings = FeishuFieldMapping.CreateDefault();
+            feishu.LegacyMappingsReplaced = true;
+        }
+
+        // 手改配置可能写进 null 条目，顺手清掉，免得后面每处都要判空。
+        feishu.FieldMappings = [.. feishu.FieldMappings.Where(m => m is not null)];
     }
 
     /// <summary>
