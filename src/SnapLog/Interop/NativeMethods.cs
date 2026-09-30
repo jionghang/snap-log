@@ -188,4 +188,18 @@ internal static class NativeMethods
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool CloseHandle(IntPtr hObject);
+
+    // ---------------------------------------------------------------- 会话状态（锁屏判定）
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool WTSQuerySessionInformationW(
+        IntPtr hServer,
+        uint sessionId,
+        int wtsInfoClass,
+        out IntPtr ppBuffer,
+        out int pBytesReturned);
+
+    [DllImport("wtsapi32.dll")]
+    internal static extern void WTSFreeMemory(IntPtr memory);
 }

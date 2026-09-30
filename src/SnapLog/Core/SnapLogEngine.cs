@@ -197,6 +197,12 @@ public sealed class SnapLogEngine : IAsyncDisposable
 
     private async Task<CaptureOutcome> CaptureCoreInternalAsync(CaptureTrigger trigger, CancellationToken cancellationToken)
     {
+        // 锁屏期间不抓：这时输入桌面已经切到 Winlogon，抓到的东西没有意义。
+        if (SessionLockState.IsLocked())
+        {
+            return CaptureOutcome.Skipped("屏幕已锁定");
+        }
+
         var snapshot = TargetWindowOverride != IntPtr.Zero
             ? ForegroundWindowWatcher.Describe(TargetWindowOverride)
             : ForegroundWindowWatcher.DescribeForegroundWindow();
