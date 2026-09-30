@@ -24,7 +24,7 @@ public static class ImageArchive
         var safeProcess = string.IsNullOrWhiteSpace(processName) ? "unknown" : Sanitize(processName);
         var extension = format == ImageFormatKind.Jpeg ? ".jpg" : ".png";
 
-        // 精确到毫秒：同一秒内可能既被手动抓取又被定时抓取，不加毫秒会互相覆盖。
+        // 精确到毫秒：同一秒内可能有多次抓取（自动与手动），不加毫秒会互相覆盖。
         var fileName = $"{timestamp:yyyyMMdd-HHmmssfff}-{safeProcess}{extension}";
         var fullPath = Path.Combine(directory, fileName);
 

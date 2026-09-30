@@ -436,10 +436,30 @@ internal sealed class MainForm : Form
 
     // ---------------------------------------------------------------- 状态刷新
 
+    /// <summary>
+    /// 窗口句柄建好时重算一次状态。
+    /// 引擎是在主窗口显示之前启动的，那次"已开始记录"的状态事件因为句柄还没建好被丢掉了，
+    /// 只算构造那一次的话，状态页会一直显示"已暂停 / 开始记录"，而点下去实际执行的是暂停。
+    /// </summary>
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        RefreshStatus();
+    }
+
+    /// <summary>状态页里跟"是否在记录"有关的那几处。引擎可能在别处被切换（托盘菜单），所以每次状态变化都重算。</summary>
+    private void UpdateRunState()
+    {
+        var running = _engine.IsRunning;
+
+        _stateValue.Text = running ? "运行中" : "已暂停";
+        _stateValue.ForeColor = running ? Color.SeaGreen : Color.OrangeRed;
+        _toggleButton.Text = running ? "暂停记录" : "开始记录";
+    }
+
     private void RefreshStatus()
     {
-        _stateValue.Text = _engine.IsRunning ? "运行中" : "已暂停";
-        _stateValue.ForeColor = _engine.IsRunning ? Color.SeaGreen : Color.OrangeRed;
+        UpdateRunState();
 
         _countValue.Text = $"{_sessionRecordCount} 条（本次运行）";
 
@@ -452,8 +472,6 @@ internal sealed class MainForm : Form
 
         _dataDirValue.Text = _paths.DataDirectory;
         _databaseValue.Text = _engine.DatabasePath;
-
-        _toggleButton.Text = _engine.IsRunning ? "暂停记录" : "开始记录";
 
         _ = RefreshCountAsync();
     }
@@ -508,7 +526,13 @@ internal sealed class MainForm : Form
 
     private void OnStatusChanged(object? sender, string message)
     {
-        OnUiThread(() => SetStatus(message));
+        OnUiThread(() =>
+        {
+            SetStatus(message);
+
+            // 状态消息也可能意味着"开始/暂停"变了（引擎接口被托盘复用），跟着重算一遍。
+            UpdateRunState();
+        });
     }
 
     private void OnLogEntryWritten(LogEntry entry)

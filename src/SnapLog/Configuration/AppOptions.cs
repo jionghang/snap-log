@@ -53,13 +53,9 @@ public enum ImageFormatKind
     Jpeg,
 }
 
-/// <summary>什么时候触发一次抓取。</summary>
+/// <summary>什么时候触发一次抓取。抓取由前台窗口切换驱动，按周期对同一窗口去重。</summary>
 public sealed class TriggerOptions
 {
-    [Category("触发"), DisplayName("触发模式"),
-     Description("ForegroundWindowChange=跟随前台窗口切换；Interval=仅按固定间隔；Both=两者都启用。")]
-    public TriggerMode Mode { get; set; } = TriggerMode.Both;
-
     [Category("触发"), DisplayName("延时截图时长(毫秒)"),
      Description("窗口首次出现后等待此时长；期间切换窗口会重新计时，等待结束后仍为同一窗口才截图。默认 5000 毫秒。")]
     public int ForegroundSettleMilliseconds { get; set; } = 5000;
@@ -72,10 +68,6 @@ public sealed class TriggerOptions
      Description("限流值，避免快速连续切换窗口时频繁抓取。")]
     public int MinSecondsBetweenCaptures { get; set; } = 20;
 
-    [Category("触发"), DisplayName("定时抓取间隔(秒)"),
-     Description("定时抓取的周期，默认 300 秒（5 分钟）。")]
-    public int IntervalSeconds { get; set; } = 300;
-
     [Category("触发"), DisplayName("排除的进程名"),
      Description("不记录这些进程的窗口（不含 .exe 后缀，不区分大小写）。")]
     public string[] ExcludedProcesses { get; set; } = ["snaplog"];
@@ -83,13 +75,6 @@ public sealed class TriggerOptions
     [Category("触发"), DisplayName("排除的窗口标题"),
      Description("标题完全匹配这些字符串时跳过。空标题窗口始终会被跳过。")]
     public string[] ExcludedWindowTitles { get; set; } = ["Program Manager", "Windows Default Lock Screen"];
-}
-
-public enum TriggerMode
-{
-    ForegroundWindowChange,
-    Interval,
-    Both,
 }
 
 /// <summary>OCR 相关设置。</summary>

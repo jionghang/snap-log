@@ -127,10 +127,9 @@ internal sealed class CliRunner
 
         report.AppendLine();
         report.AppendLine("--- 抓取与触发 ---");
-        report.AppendLine($"触发模式      : {_options.Triggers.Mode}");
+        report.AppendLine($"抓取周期      : {_options.Triggers.CaptureCycleMinutes} 分钟（同一窗口每周期一次）");
         report.AppendLine($"窗口稳定等待  : {_options.Triggers.ForegroundSettleMilliseconds} ms");
         report.AppendLine($"最小抓取间隔  : {_options.Triggers.MinSecondsBetweenCaptures} s");
-        report.AppendLine($"定时间隔      : {_options.Triggers.IntervalSeconds} s");
         report.AppendLine($"排除进程      : {Join(_options.Triggers.ExcludedProcesses)}");
         report.AppendLine($"排除标题      : {Join(_options.Triggers.ExcludedWindowTitles)}");
         report.AppendLine($"当前前台窗口  : {DescribeForeground()}");
@@ -368,6 +367,15 @@ internal sealed class CliRunner
         report.AppendLine($"导出校验      : {(exportOk ? "通过" : "失败")}");
 
         var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk;
+
+        if (restored.TextLength == 0)
+        {
+            // 抓到的是没有文字的窗口（例如"前台窗口不可用"时退回最大可见窗口），
+            // OCR 与关键词筛选就没被真正验证过——这不是失败，但也不能报成"通过"。
+            report.AppendLine("自检提示      : 本次抓到的窗口没有文字，OCR 与关键词筛选未能验证；"
+                              + "用 --target 指定一个有文字的窗口重跑即可。");
+        }
+
         report.AppendLine();
         report.AppendLine(ok ? "自检结论      : 通过 ✅" : "自检结论      : 有异常 ⚠");
 
@@ -700,10 +708,7 @@ internal sealed class CliRunner
             failures);
 
         // 主窗口放最后：它会拦截 Close（只隐藏），需要直接结束消息循环。
-        ProbeForm(
-            "MainForm（主窗口）",
-            () => new MainForm(_options, _paths, _log, engine, summaryRunner, _store, _configSourcePath),
-            failures);
+        ProbeMainFormRunState(engine, summaryRunner, failures);
 
         engine.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
@@ -740,7 +745,109 @@ internal sealed class CliRunner
         return form;
     }
 
-    private static void ProbeForm(string label, Func<Form> factory, List<string> failures)
+    /// <summary>
+    /// 主窗口的状态页必须和引擎的真实状态一致，且引擎在窗口开着的时候被切换时（托盘菜单就是这么切的）要跟着变。
+    ///
+    /// 时序刻意复刻真实启动：先建窗口 → 启动引擎 → 显示窗口。
+    /// 这正是出过问题的地方：构造时引擎还没启动，启动那次状态事件因为窗口句柄还没建好被丢掉，
+    /// 结果窗口一打开就显示"已暂停 / 开始记录"，点下去实际执行的是暂停。
+    ///
+    /// 一段消息循环里验两段：显示后先验"记录中"，再把引擎停掉验"已暂停"。
+    /// 只探一次是因为 MainForm 的 Close 被重写成"只隐藏"，探针得靠 ExitThread 收尾，
+    /// 而同一个线程上 ExitThread 之后再 Application.Run 会立刻返回（第二个探针根本跑不起来）。
+    /// </summary>
+    private void ProbeMainFormRunState(SnapLogEngine engine, SummaryRunner summaryRunner, List<string> failures)
+    {
+        const string label = "MainForm（状态一致性）";
+
+        Form? form = null;
+        var summary = "(未取到尺寸)";
+        var runningVerdict = "(未执行)";
+        var pausedVerdict = "(未执行)";
+
+        var constructSw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            form = new MainForm(_options, _paths, _log, engine, summaryRunner, _store, _configSourcePath);
+            constructSw.Stop();
+
+            // 复刻托盘启动的顺序：窗口已经存在但还没显示，此时引擎启动。
+            engine.Start();
+
+            void Record(string phase, string? problem)
+            {
+                if (problem is null)
+                {
+                    return;
+                }
+
+                failures.Add($"{label}（{phase}）：{problem}");
+            }
+
+            var step = 0;
+            using var timer = new System.Windows.Forms.Timer { Interval = 700 };
+            timer.Tick += (_, _) =>
+            {
+                step++;
+
+                switch (step)
+                {
+                    // ≈1.4 秒：引擎在跑，状态页应当是"记录中"
+                    case 2:
+                        var runningProblem = CheckRunState(form, expectRunning: true);
+                        Record("记录中", runningProblem);
+                        runningVerdict = runningProblem is null ? "记录中✓" : "记录中✗";
+
+                        // 窗口开着的时候停掉引擎：托盘菜单切换走的就是这条路径。
+                        engine.StopAsync().GetAwaiter().GetResult();
+                        break;
+
+                    // ≈2.8 秒：引擎已停，状态页应当跟着变成"已暂停"
+                    case 4:
+                        var pausedProblem = CheckRunState(form, expectRunning: false);
+                        Record("已暂停", pausedProblem);
+                        pausedVerdict = pausedProblem is null ? "已暂停✓" : "已暂停✗";
+
+                        timer.Stop();
+                        summary = $"{form.Width}x{form.Height} 控件数={CountControls(form)} "
+                                  + $"构造={constructSw.ElapsedMilliseconds} ms  {runningVerdict} {pausedVerdict}";
+                        Application.ExitThread();
+                        break;
+                }
+            };
+
+            form.Shown += (_, _) => timer.Start();
+            Application.Run(form);
+
+            Console.WriteLine($"{Fit(label, 30)} 通过  {summary}");
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"{label}：{ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"{Fit(label, 30)} 失败：{ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            if (form is not null)
+            {
+                try
+                {
+                    form.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"{label} 释放失败：{ex.Message}");
+                }
+            }
+        }
+    }
+
+    /// <summary>把窗口构造出来、显示一会儿、再关掉。<paramref name="verify"/> 在关掉之前跑，返回非 null 表示这一项没通过。</summary>
+    private static void ProbeForm(
+        string label,
+        Func<Form> factory,
+        List<string> failures,
+        Func<Form, string?>? verify = null)
     {
         Form? form = null;
         var summary = "(未取到尺寸)";
@@ -755,7 +862,27 @@ internal sealed class CliRunner
             timer.Tick += (_, _) =>
             {
                 timer.Stop();
+
+                var verdict = "通过";
+                try
+                {
+                    if (verify?.Invoke(form) is { } problem)
+                    {
+                        failures.Add($"{label}：{problem}");
+                        verdict = $"失败：{problem}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"{label}：校验时抛出 {ex.GetType().Name}: {ex.Message}");
+                    verdict = $"失败：{ex.GetType().Name}";
+                }
+
                 summary = $"{form.Width}x{form.Height} 可见={form.Visible} 控件数={CountControls(form)} 构造={constructSw.ElapsedMilliseconds} ms";
+                if (verdict != "通过")
+                {
+                    summary += $"  {verdict}";
+                }
 
                 // MainForm 的 Close 被重写成"只隐藏"，得直接结束消息循环。
                 if (form is MainForm)
@@ -792,6 +919,47 @@ internal sealed class CliRunner
                 {
                     failures.Add($"{label} 释放失败：{ex.Message}");
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 状态页里"是否在记录"的两处显示必须和引擎的真实状态一致。
+    /// 引擎在主窗口显示之前就启动了，那次状态事件会因为句柄还没建好被丢掉，
+    /// 只靠构造时算一次的话，窗口打开时显示"已暂停 / 开始记录"，而点下去执行的是暂停。
+    /// </summary>
+    private static string? CheckRunState(Form form, bool expectRunning)
+    {
+        var expectedState = expectRunning ? "运行中" : "已暂停";
+        var expectedButton = expectRunning ? "暂停记录" : "开始记录";
+
+        var texts = CollectTexts(form).ToList();
+
+        if (!texts.Contains(expectedState))
+        {
+            return $"状态值不是“{expectedState}”（当前文本：{string.Join(" / ", texts.Where(t => t.Length <= 6))}）";
+        }
+
+        if (!texts.Contains(expectedButton))
+        {
+            return $"按钮文字不是“{expectedButton}”";
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> CollectTexts(Control root)
+    {
+        if (!string.IsNullOrWhiteSpace(root.Text))
+        {
+            yield return root.Text;
+        }
+
+        foreach (Control child in root.Controls)
+        {
+            foreach (var text in CollectTexts(child))
+            {
+                yield return text;
             }
         }
     }

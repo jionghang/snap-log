@@ -12,11 +12,8 @@ namespace SnapLog.Core;
 
 public enum CaptureTrigger
 {
-    /// <summary>前台窗口变化触发，带稳定等待和重复过滤。</summary>
+    /// <summary>前台窗口变化触发，带稳定等待和周期内去重。</summary>
     ForegroundChange,
-
-    /// <summary>定时触发，同一窗口也要重复抓（内容会变）。</summary>
-    Interval,
 
     /// <summary>用户手动点"立即抓取"，绕过所有节流和过滤。</summary>
     Manual,
@@ -45,7 +42,6 @@ public sealed class SnapLogEngine : IAsyncDisposable
 
     private CancellationTokenSource? _lifecycle;
     private CancellationTokenSource? _pendingForegroundCapture;
-    private Task? _intervalLoop;
     private DateTime _lastAutomaticCaptureUtc = DateTime.MinValue;
 
     /// <summary>本抓取周期内已经记录过的窗口标识（进程+类名+标题），周期一到就清空。</summary>
@@ -101,13 +97,8 @@ public sealed class SnapLogEngine : IAsyncDisposable
         // SetWinEventHook 要求安装钩子的线程有消息循环，所以只能在 UI 线程上装。
         _watcher.Start();
 
-        if (_options.Triggers.Mode is TriggerMode.Interval or TriggerMode.Both)
-        {
-            _intervalLoop = Task.Run(() => IntervalLoopAsync(_lifecycle.Token));
-        }
-
         IsRunning = true;
-        ReportStatus($"已开始记录（触发模式：{DescribeTriggerMode(_options.Triggers.Mode)}）");
+        ReportStatus("已开始记录");
     }
 
     public async Task StopAsync()
@@ -125,19 +116,6 @@ public sealed class SnapLogEngine : IAsyncDisposable
         if (_lifecycle is not null)
         {
             await _lifecycle.CancelAsync().ConfigureAwait(false);
-        }
-
-        if (_intervalLoop is not null)
-        {
-            try
-            {
-                await _intervalLoop.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-
-            _intervalLoop = null;
         }
 
         _lifecycle?.Dispose();
@@ -367,7 +345,7 @@ public sealed class SnapLogEngine : IAsyncDisposable
             return $"距上次抓取不足 {minimumGap.TotalSeconds:0} 秒";
         }
 
-        // 只有"窗口切换"触发才做周期内去重；定时抓取本来就该重复抓同一个窗口。
+        // 周期内去重：同一个窗口在一个周期里只记一次。
         if (trigger == CaptureTrigger.ForegroundChange)
         {
             ResetCycleIfNeeded();
@@ -414,49 +392,9 @@ public sealed class SnapLogEngine : IAsyncDisposable
         }
     }
 
-    private async Task IntervalLoopAsync(CancellationToken cancellationToken)
-    {
-        // 用 Task.Delay 而不是 PeriodicTimer：每轮重新读配置，改间隔后无需重启。
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var seconds = Math.Max(5, _options.Triggers.IntervalSeconds);
-
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(seconds), cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            try
-            {
-                var outcome = await CaptureNowAsync(CaptureTrigger.Interval, cancellationToken).ConfigureAwait(false);
-                if (!outcome.Captured)
-                {
-                    _log.Debug($"定时抓取跳过：{outcome.Reason}");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (Exception ex)
-            {
-                _log.Error("定时抓取出错", ex);
-            }
-        }
-    }
-
     private void OnForegroundWindowChanged(object? sender, WindowSnapshot snapshot)
     {
-        if (!IsRunning || _options.Triggers.Mode == TriggerMode.Interval)
+        if (!IsRunning)
         {
             return;
         }
@@ -522,13 +460,6 @@ public sealed class SnapLogEngine : IAsyncDisposable
 
     private static string Truncate(string value, int maxLength = 30) =>
         value.Length <= maxLength ? value : value[..maxLength] + "…";
-
-    private static string DescribeTriggerMode(TriggerMode mode) => mode switch
-    {
-        TriggerMode.ForegroundWindowChange => "跟随窗口切换",
-        TriggerMode.Interval => "仅定时",
-        _ => "窗口切换 + 定时",
-    };
 
     public async ValueTask DisposeAsync()
     {

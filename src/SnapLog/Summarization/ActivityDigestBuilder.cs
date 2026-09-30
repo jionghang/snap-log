@@ -29,7 +29,7 @@ public sealed record ActivityDigest(
 
 /// <summary>
 /// 把 CSV 记录压成提示词载荷。
-/// 两个降噪动作最关键：丢掉连续重复的同一画面（定时抓取同一窗口时大量重复），
+/// 两个降噪动作最关键：丢掉连续重复的同一画面（同一窗口反复切换会产生大量重复），
 /// 以及按字符预算从最新往回截断（只保留最近的上下文）。
 /// </summary>
 public static class ActivityDigestBuilder

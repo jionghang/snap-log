@@ -4,11 +4,9 @@ using SnapLog.Storage;
 
 namespace SnapLog.Ui;
 
-/// <summary>抓取配置页：间隔、是否跟随窗口、截图保存与保留。</summary>
+/// <summary>抓取配置页：抓取时机（延时与周期）、截图保存与保留。</summary>
 internal sealed class CaptureSettingsView : SettingsViewBase
 {
-    private NumericUpDown _intervalSeconds = null!;
-    private CheckBox _watchForeground = null!;
     private CheckBox _saveImages = null!;
     private TextBox _imageDirectory = null!;
     private NumericUpDown _imageRetentionDays = null!;
@@ -33,22 +31,11 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        // ---- 触发 ----
-        var trigger = NewSection("触发方式");
+        // ---- 抓取时机 ----
+        var trigger = NewSection("抓取时机");
 
-        var intervalRow = NewRow();
-        _intervalSeconds = new NumericUpDown { Minimum = 5, Maximum = 86_400, Increment = 5, Width = 90 };
-        intervalRow.Controls.Add(_intervalSeconds);
-        intervalRow.Controls.Add(NewHint("秒（默认 300）"));
-        AddRow(trigger, "截图间隔", intervalRow);
-
-        _watchForeground = new CheckBox
-        {
-            Text = "跟随前台窗口切换时也自动抓取",
-            AutoSize = true,
-            Margin = new Padding(3, 6, 0, 0),
-        };
-        AddRow(trigger, "监听窗口变化", _watchForeground);
+        AddRow(trigger, string.Empty, NewHint(
+            "抓取由前台窗口切换驱动：窗口切换后等待下面的时长，仍在前台才截图。"));
 
         var settleRow = NewRow();
         _settleMilliseconds = new NumericUpDown { Minimum = 0, Maximum = 30_000, Increment = 100, Width = 90 };
@@ -113,8 +100,6 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         var triggers = Options.Triggers;
         var storage = Options.Storage;
 
-        _intervalSeconds.Value = Math.Clamp(triggers.IntervalSeconds, (int)_intervalSeconds.Minimum, (int)_intervalSeconds.Maximum);
-        _watchForeground.Checked = triggers.Mode is TriggerMode.ForegroundWindowChange or TriggerMode.Both;
         _settleMilliseconds.Value = Math.Clamp(triggers.ForegroundSettleMilliseconds, (int)_settleMilliseconds.Minimum, (int)_settleMilliseconds.Maximum);
         _captureCycleMinutes.Value = Math.Clamp(triggers.CaptureCycleMinutes, (int)_captureCycleMinutes.Minimum, (int)_captureCycleMinutes.Maximum);
 
@@ -132,20 +117,8 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         var capture = Options.Capture;
         var storage = Options.Storage;
 
-        triggers.IntervalSeconds = (int)_intervalSeconds.Value;
         triggers.ForegroundSettleMilliseconds = (int)_settleMilliseconds.Value;
         triggers.CaptureCycleMinutes = (int)_captureCycleMinutes.Value;
-
-        // 触发模式是三态，复选框只能表达"要不要监听窗口切换"：
-        // 取消勾选退化成纯定时；勾选时原来若是纯定时就升成两者都开，否则保留用户原来的选择。
-        if (!_watchForeground.Checked)
-        {
-            triggers.Mode = TriggerMode.Interval;
-        }
-        else if (triggers.Mode == TriggerMode.Interval)
-        {
-            triggers.Mode = TriggerMode.Both;
-        }
 
         capture.SaveImages = _saveImages.Checked;
         capture.ImageDirectory = _imageDirectory.Text.Trim();

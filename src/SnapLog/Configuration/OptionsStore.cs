@@ -129,7 +129,6 @@ public static class OptionsStore
 
         options.Triggers.ForegroundSettleMilliseconds = Math.Clamp(options.Triggers.ForegroundSettleMilliseconds, 0, 30_000);
         options.Triggers.MinSecondsBetweenCaptures = Math.Clamp(options.Triggers.MinSecondsBetweenCaptures, 0, 86_400);
-        options.Triggers.IntervalSeconds = Math.Clamp(options.Triggers.IntervalSeconds, 5, 86_400);
         options.Triggers.CaptureCycleMinutes = Math.Clamp(options.Triggers.CaptureCycleMinutes, 1, 24 * 60);
         options.Triggers.ExcludedProcesses ??= [];
         options.Triggers.ExcludedWindowTitles ??= [];

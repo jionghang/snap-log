@@ -112,6 +112,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _engine.Start();
         _scheduler.Start();
+        UpdateTrayState();
 
         if (_options.Ui.StartMinimizedToTray)
         {
