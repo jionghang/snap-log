@@ -181,10 +181,13 @@ public static class OptionsStore
     {
         var current = summarization.SystemPromptOverride;
 
-        // 空 = 还没填过；等于旧版内置模板 = 当时自动填入的那份（要求输出 Markdown）。
-        // 两种情况都换成最新模板；用户自己写过的内容不动。
-        if (string.IsNullOrWhiteSpace(current)
-            || string.Equals(current.Trim(), Summarization.Prompts.LegacyDefaultTemplate.Trim(), StringComparison.Ordinal))
+        // 空 = 还没填过；等于某一版内置模板 = 当时自动填入的那份。
+        // 两种情况都换成最新模板；用户自己改过的一律不动。
+        var untouched = string.IsNullOrWhiteSpace(current)
+                        || Summarization.Prompts.LegacyDefaultTemplates
+                            .Any(legacy => string.Equals(current.Trim(), legacy.Trim(), StringComparison.Ordinal));
+
+        if (untouched)
         {
             summarization.SystemPromptOverride = Summarization.Prompts.DefaultTemplate;
         }

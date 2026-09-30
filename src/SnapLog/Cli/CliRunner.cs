@@ -414,8 +414,16 @@ internal sealed class CliRunner
             ExtraInstructions = "按项目分组",
         };
 
+        var withProjects = new SummarizationOptions
+        {
+            SystemPromptOverride = Prompts.DefaultTemplate,
+            Language = "zh-CN",
+            WorkProjects = [new WorkProjectOptions { Name = "规则引擎平台", Description = "规则管理与运行监控" }],
+        };
+
         var textPrompt = Prompts.BuildSystemPrompt(textOnly);
         var imagePrompt = Prompts.BuildSystemPrompt(imageOnly);
+        var projectPrompt = Prompts.BuildSystemPrompt(withProjects);
 
         // 汇报类文档（周报/月报等）的正文覆盖更早的时间，摘要里必须带标记、
         // 提示词里必须有对应规则，否则模型会把它当成当天做的事。
@@ -453,6 +461,10 @@ internal sealed class CliRunner
             ("普通窗口不被打标记", plainLine.Length > 0
                                    && !plainLine.Contains(ReportDocuments.Marker, StringComparison.Ordinal)),
             ("汇报类文档的处理规则", textPrompt.Contains(ReportDocuments.Marker, StringComparison.Ordinal)),
+            ("工作项目的写作要求被追加", projectPrompt.Contains("按项目写作的要求", StringComparison.Ordinal)
+                                         && projectPrompt.Contains("规则引擎平台", StringComparison.Ordinal)),
+            ("未归类活动单独成组", projectPrompt.Contains("单独成组", StringComparison.Ordinal)),
+            ("没有项目时不追加这段", !textPrompt.Contains("按项目写作的要求", StringComparison.Ordinal)),
         };
 
         var ok = checks.All(c => c.Ok);
