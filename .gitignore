@@ -1,0 +1,19 @@
+# 构建产物
+bin/
+obj/
+publish/
+*.user
+*.suo
+.vs/
+.idea/
+
+# 本地数据（默认写在 %LOCALAPPDATA%\SnapLog，若改到仓库内则应被忽略）
+data/
+logs/
+summaries/
+images/
+*.log
+
+# 本地私有配置：不要把 API Key 提交上来
+appsettings.Local.json
+appsettings.Development.json

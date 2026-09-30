@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- 平台版本 10.0.19041.0 是为了拿到 WinRT 投影（Windows.Media.Ocr 等）；
+         实际可运行的最低系统版本由 SupportedOSPlatformVersion 决定。
+         要改用 .NET 8：把下面两行换成 net8.0-windows10.0.19041.0 / 10.0.17763.0，
+         并安装 .NET 8 运行时或改用自包含发布（publish.cmd）。 -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>SnapLog</RootNamespace>
+    <AssemblyName>SnapLog</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 只钉住目标架构，不用 Platforms：否则项目构建和解决方案构建会输出到不同目录 -->
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- 只保留英文附属资源，减少输出体积 -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="33.0.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="OpenAI" Version="2.1.0" />
+
+    <!-- PaddleOCR 离线识别（PP-OCR 系列模型，中文准确率明显高于系统内置 OCR） -->
+    <PackageReference Include="PaddleOCRSharp" Version="6.2.0" />
+    <!--
+      必须单独再引用一次这个原生运行时包。
+      PaddleOCRSharp 的 nuspec 里把它声明成 exclude="Build,Analyzers"，
+      导致该包的 build/Paddle.Runtime.win_x64.targets（负责把 paddle_inference.dll、
+      mklml.dll、opencv_world470.dll 等约 330MB 原生依赖复制到输出目录）不会被导入。
+      后果是运行时抛 DllNotFoundException: Unable to load DLL 'PaddleOCR' (0x8007007E)。
+      直接引用一次即可让 build 资源正常流转。
+    -->
+    <PackageReference Include="Paddle.Runtime.win_x64" Version="3.3.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
