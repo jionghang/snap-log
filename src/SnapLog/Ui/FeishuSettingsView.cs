@@ -79,7 +79,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         AddRow(grid, "触发时机", scheduleRow);
 
         var scopeRow = NewRow();
-        _feishuLookback = new NumericUpDown
+        _feishuLookback = new ScrollSafeNumericUpDown
         {
             Width = 60,
             Minimum = 1,
@@ -307,6 +307,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         }
 
         Options.Feishu.FieldMappings.Add(dialog.Result);
+        MarkDirty();
         RefreshFieldMappingList();
         _fieldMappingList.SelectedIndex = _fieldMappingList.Items.Count - 1;
     }
@@ -327,6 +328,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         var index = _fieldMappingList.SelectedIndex;
         Options.Feishu.FieldMappings[index] = dialog.Result;
+        MarkDirty();
         RefreshFieldMappingList();
         _fieldMappingList.SelectedIndex = index;
     }
@@ -352,6 +354,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         }
 
         Options.Feishu.FieldMappings.RemoveAt(index);
+        MarkDirty();
         RefreshFieldMappingList();
 
         if (_fieldMappingList.Items.Count > 0)
@@ -373,6 +376,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         }
 
         Options.Feishu.FieldMappings = FeishuFieldMapping.CreateDefault();
+        MarkDirty();
         RefreshFieldMappingList();
     }
 

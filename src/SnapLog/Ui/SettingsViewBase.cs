@@ -22,6 +22,14 @@ internal abstract class SettingsViewBase : UserControl
 
     private readonly Func<bool> _onSave;
 
+    /// <summary>载入配置期间触发的控件事件不算用户改动。</summary>
+    private bool _loading;
+
+    private bool _dirty;
+
+    private Button _saveButton = null!;
+    private Button _discardButton = null!;
+
     /// <summary>完整上下文，供子类把它传给子窗口（比如总结历史）。</summary>
     protected SettingsContext Context { get; }
 
@@ -60,13 +68,15 @@ internal abstract class SettingsViewBase : UserControl
 
             Controls.Add(content);
             Controls.Add(footer);
+
+            WireDirtyTracking(content);
         }
         finally
         {
             ResumeLayout(true);
         }
 
-        LoadFromOptions();
+        ReloadFromOptions();
     }
 
     /// <summary>构建这一页的内容。</summary>
@@ -79,10 +89,73 @@ internal abstract class SettingsViewBase : UserControl
     protected abstract void WriteToOptions();
 
     /// <summary>外部改过配置后要刷新显示，调用这个。</summary>
-    public void Reload()
+    public void Reload() => ReloadFromOptions();
+
+    // ---------------------------------------------------------------- 改动跟踪
+
+    /// <summary>
+    /// 载入配置：这期间控件触发的事件不算用户改动，载完把"有改动"清掉，
+    /// 于是"保存设置/放弃修改"在没有任何修改时是灰的，改一处才亮起来。
+    /// </summary>
+    private void ReloadFromOptions()
     {
-        LoadFromOptions();
+        _loading = true;
+        try
+        {
+            LoadFromOptions();
+        }
+        finally
+        {
+            _loading = false;
+            SetDirty(false);
+        }
     }
+
+    /// <summary>标记这一页有未保存的改动。列表增删这类不走控件事件的改动要自己调。</summary>
+    protected void MarkDirty()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        SetDirty(true);
+    }
+
+    private void SetDirty(bool dirty)
+    {
+        _dirty = dirty;
+        _saveButton.Enabled = dirty;
+        _discardButton.Enabled = dirty;
+    }
+
+    /// <summary>递归订阅各输入控件的变更事件。选中列表项不算改动，所以 ListBox/DataGridView 不算在内。</summary>
+    private void WireDirtyTracking(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            switch (child)
+            {
+                case CheckBox check:
+                    check.CheckedChanged += OnControlChanged;
+                    break;
+                case TextBox text:
+                    text.TextChanged += OnControlChanged;
+                    break;
+                case NumericUpDown number:
+                    number.ValueChanged += OnControlChanged;
+                    break;
+                case ComboBox combo:
+                    combo.SelectedIndexChanged += OnControlChanged;
+                    combo.TextChanged += OnControlChanged;
+                    break;
+            }
+
+            WireDirtyTracking(child);
+        }
+    }
+
+    private void OnControlChanged(object? sender, EventArgs e) => MarkDirty();
 
     // ---------------------------------------------------------------- 页脚
 
@@ -95,14 +168,25 @@ internal abstract class SettingsViewBase : UserControl
             Padding = new Padding(4, 8, 4, 6),
         };
 
-        var save = new Button { Text = "保存设置", Width = 110, Height = 32 };
-        save.Click += (_, _) => Save();
+        _saveButton = new Button
+        {
+            Text = "保存设置",
+            Width = 110,
+            Height = 32,
+            Enabled = false,
+        };
+        _saveButton.Click += (_, _) => Save();
 
-        var discard = new Button { Text = "放弃修改", Width = 100, Height = 32 };
-        discard.Click += (_, _) => DiscardChanges();
+        _discardButton = new Button { Text = "放弃修改", Width = 100, Height = 32, Enabled = false };
+        _discardButton.Click += (_, _) => DiscardChanges();
 
-        panel.Controls.Add(save);
-        panel.Controls.Add(discard);
+        // 灰掉的原因要说清楚，否则用户会以为是坏了。
+        var tip = new ToolTip();
+        tip.SetToolTip(_saveButton, "没有任何改动");
+        tip.SetToolTip(_discardButton, "没有任何改动");
+
+        panel.Controls.Add(_saveButton);
+        panel.Controls.Add(_discardButton);
         return panel;
     }
 
@@ -113,7 +197,7 @@ internal abstract class SettingsViewBase : UserControl
         // 界面自检里 --ui-smoke 会用 _ => true 的回调，这里不真写盘。
         if (_onSave())
         {
-            LoadFromOptions();
+            ReloadFromOptions();
         }
     }
 
@@ -132,7 +216,7 @@ internal abstract class SettingsViewBase : UserControl
 
         var load = OptionsStore.Load(null);
         OptionsStore.CopyInto(Options, load.Options);
-        LoadFromOptions();
+        ReloadFromOptions();
     }
 
     // ---------------------------------------------------------------- 共享布局

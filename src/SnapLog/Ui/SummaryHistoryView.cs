@@ -23,7 +23,7 @@ internal sealed class SummaryHistoryView : UserControl
 
     private readonly DataGridView _grid = new();
     private readonly RichTextBox _detail = new();
-    private readonly ComboBox _pageSize = new();
+    private readonly ScrollSafeComboBox _pageSize = new();
     private readonly CheckBox _successOnly = new();
     private readonly Label _summary = new();
     private readonly SplitContainer _split = new();

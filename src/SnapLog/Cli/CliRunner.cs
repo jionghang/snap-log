@@ -681,8 +681,10 @@ internal sealed class CliRunner
         var summaryRunner = new SummaryRunner(_store, _paths, _log);
 
         var settingsContext = new SettingsContext(_options, _paths, _log, _store, summaryRunner, () => true);
-        ProbeForm("设置页（抓取）", () => WrapView("抓取配置", new CaptureSettingsView(settingsContext)), failures);
-        ProbeForm("设置页（OCR）", () => WrapView("OCR 配置", new OcrSettingsView(settingsContext)), failures);
+        ProbeForm("设置页（抓取）", () => WrapView("抓取配置", new CaptureSettingsView(settingsContext)), failures,
+            CheckSettingsPage);
+        ProbeForm("设置页（OCR）", () => WrapView("OCR 配置", new OcrSettingsView(settingsContext)), failures,
+            CheckSettingsPage);
         ProbeForm("设置页（大模型）", () => WrapView("大模型配置", new LlmSettingsView(settingsContext)), failures);
         ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures);
         ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
@@ -970,6 +972,106 @@ internal sealed class CliRunner
         return text == "时间"
             ? null
             : $"从下拉选中列名后输入框里是“{text}”，应当只剩列名“时间”（类型说明不该写进映射）";
+    }
+
+    /// <summary>设置页的通用检查：保存按钮的灰/亮 + 滚轮不改值。</summary>
+    private static string? CheckSettingsPage(Form form) =>
+        CheckSaveButtonState(form) ?? CheckWheelDoesNotChangeValue(form);
+
+    /// <summary>
+    /// "保存设置/放弃修改"在没有任何改动时应当是灰的，改一处之后才亮起来。
+    /// 这里在抓取页上翻一下复选框来验证这条链路。
+    /// </summary>
+    private static string? CheckSaveButtonState(Form form)
+    {
+        var save = FindControls<Button>(form).FirstOrDefault(b => b.Text == "保存设置");
+        if (save is null)
+        {
+            return "找不到“保存设置”按钮";
+        }
+
+        if (save.Enabled)
+        {
+            return "没有任何改动时“保存设置”就是可点的，应当置灰";
+        }
+
+        var discard = FindControls<Button>(form).FirstOrDefault(b => b.Text == "放弃修改");
+        if (discard is { Enabled: true })
+        {
+            return "没有任何改动时“放弃修改”应当置灰";
+        }
+
+        var checkBox = FindControls<CheckBox>(form).FirstOrDefault();
+        if (checkBox is null)
+        {
+            return "这一页没有复选框，无法制造一次改动";
+        }
+
+        checkBox.Checked = !checkBox.Checked;
+
+        if (!save.Enabled)
+        {
+            return "改动之后“保存设置”仍然置灰";
+        }
+
+        // 改回去，别把状态留给后面的检查。
+        checkBox.Checked = !checkBox.Checked;
+        return null;
+    }
+
+    /// <summary>
+    /// 设置页里的下拉框/数值框必须都用滚轮保护版本——原版在有焦点时会被滚轮直接改值，
+    /// 而"点过控件之后接着滚页面"是最容易发生的误操作。这里先查类型（可靠），
+    /// 再在有焦点的前提下模拟一次滚轮确认值没变（拿不到焦点就跳过，不当失败）。
+    /// </summary>
+    private static string? CheckWheelDoesNotChangeValue(Form form)
+    {
+        var plain = FindControls<ComboBox>(form)
+            .Where(c => c is not ScrollSafeComboBox)
+            .Cast<Control>()
+            .Concat(FindControls<NumericUpDown>(form).Where(n => n is not ScrollSafeNumericUpDown))
+            .ToList();
+
+        if (plain.Count > 0)
+        {
+            return $"有 {plain.Count} 个下拉框/数值框没走滚轮保护版本（{plain[0].GetType().Name}），滚轮会直接改值";
+        }
+
+        var guarded = FindControls<ScrollSafeComboBox>(form).Cast<Control>()
+            .Concat(FindControls<ScrollSafeNumericUpDown>(form))
+            .Where(c => c.Enabled && c.Focus() && c.Focused)
+            .ToList();
+
+        foreach (var control in guarded)
+        {
+            var before = ReadValue(control);
+            InvokeWheel(control, -120);
+            InvokeWheel(control, 120);
+
+            var after = ReadValue(control);
+            if (before != after)
+            {
+                return $"滚轮把 {control.GetType().Name} 的值从 {before} 改成了 {after}";
+            }
+        }
+
+        return null;
+    }
+
+    private static string ReadValue(Control control) => control switch
+    {
+        ComboBox combo => combo.SelectedIndex.ToString(),
+        NumericUpDown number => number.Value.ToString(),
+        _ => "(未知)",
+    };
+
+    private static void InvokeWheel(Control control, int delta)
+    {
+        var wheel = control.GetType().GetMethod(
+            "OnMouseWheel",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        wheel?.Invoke(control, [new MouseEventArgs(MouseButtons.None, 0, 1, 1, delta)]);
     }
 
     private static IEnumerable<T> FindControls<T>(Control root) where T : Control

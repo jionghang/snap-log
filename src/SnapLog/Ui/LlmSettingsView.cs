@@ -87,7 +87,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         AddRow(grid, string.Empty, NewHint("按列表顺序调用：前一个重试用尽仍失败时自动切换到下一个。双击可编辑。"));
 
         // ---- 发送内容 ----
-        _payloadMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
+        _payloadMode = new ScrollSafeComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
         _payloadMode.Items.AddRange(
         [
             new PayloadChoice(LlmPayloadMode.TextOnly, "仅发送识别文字（消耗最低）"),
@@ -103,16 +103,16 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         var imageOptionsRow = NewRow();
         imageOptionsRow.Controls.Add(new Label { Text = "同窗口图片间隔", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
-        _imageSampleSeconds = new NumericUpDown { Minimum = 0, Maximum = 86_400, Increment = 30, Width = 80 };
+        _imageSampleSeconds = new ScrollSafeNumericUpDown { Minimum = 0, Maximum = 86_400, Increment = 30, Width = 80 };
         imageOptionsRow.Controls.Add(_imageSampleSeconds);
         imageOptionsRow.Controls.Add(new Label { Text = "秒", AutoSize = true, Margin = new Padding(4, 9, 14, 0) });
 
         imageOptionsRow.Controls.Add(new Label { Text = "最多", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
-        _maxImages = new NumericUpDown { Minimum = 0, Maximum = 50, Width = 60 };
+        _maxImages = new ScrollSafeNumericUpDown { Minimum = 0, Maximum = 50, Width = 60 };
         imageOptionsRow.Controls.Add(_maxImages);
         imageOptionsRow.Controls.Add(new Label { Text = "张", AutoSize = true, Margin = new Padding(4, 9, 14, 0) });
 
-        _imageDetail = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
+        _imageDetail = new ScrollSafeComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
         _imageDetail.Items.AddRange(
         [
             new DetailChoice(LlmImageDetail.Auto, "清晰度 自动"),
@@ -134,10 +134,10 @@ internal sealed class LlmSettingsView : SettingsViewBase
         // ---- 重试 ----
         var retryRow = NewRow();
         retryRow.Controls.Add(new Label { Text = "每个模型重试", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
-        _retryCount = new NumericUpDown { Minimum = 0, Maximum = 10, Width = 56 };
+        _retryCount = new ScrollSafeNumericUpDown { Minimum = 0, Maximum = 10, Width = 56 };
         retryRow.Controls.Add(_retryCount);
         retryRow.Controls.Add(new Label { Text = "次，起始间隔", AutoSize = true, Margin = new Padding(4, 9, 4, 0) });
-        _retryDelaySeconds = new NumericUpDown { Minimum = 0, Maximum = 300, Width = 60 };
+        _retryDelaySeconds = new ScrollSafeNumericUpDown { Minimum = 0, Maximum = 300, Width = 60 };
         retryRow.Controls.Add(_retryDelaySeconds);
         retryRow.Controls.Add(new Label { Text = "秒（指数退避）", AutoSize = true, Margin = new Padding(4, 9, 0, 0) });
         AddRow(grid, "失败重试", retryRow);
@@ -313,6 +313,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         }
 
         Options.Summarization.Providers.Add(dialog.Result);
+        MarkDirty();
         RefreshProviderList();
         _providerList.SelectedIndex = _providerList.Items.Count - 1;
     }
@@ -333,6 +334,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         var index = _providerList.SelectedIndex;
         Options.Summarization.Providers[index] = dialog.Result;
+        MarkDirty();
         RefreshProviderList();
         _providerList.SelectedIndex = index;
     }
@@ -353,6 +355,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         var index = _providerList.SelectedIndex;
         Options.Summarization.Providers.RemoveAt(index);
+        MarkDirty();
         RefreshProviderList();
         _providerList.SelectedIndex = Math.Clamp(index - 1, 0, Math.Max(0, _providerList.Items.Count - 1));
     }
@@ -369,6 +372,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         }
 
         (providers[index], providers[target]) = (providers[target], providers[index]);
+        MarkDirty();
         RefreshProviderList();
         _providerList.SelectedIndex = target;
     }
@@ -402,6 +406,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         }
 
         Options.Summarization.WorkProjects.Add(dialog.Result);
+        MarkDirty();
         RefreshProjectList();
         _projectList.SelectedIndex = _projectList.Items.Count - 1;
     }
@@ -422,6 +427,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         var index = _projectList.SelectedIndex;
         Options.Summarization.WorkProjects[index] = dialog.Result;
+        MarkDirty();
         RefreshProjectList();
         _projectList.SelectedIndex = index;
     }
@@ -442,6 +448,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         var index = _projectList.SelectedIndex;
         Options.Summarization.WorkProjects.RemoveAt(index);
+        MarkDirty();
         RefreshProjectList();
         _projectList.SelectedIndex = Math.Clamp(index - 1, 0, Math.Max(0, _projectList.Items.Count - 1));
     }
@@ -458,6 +465,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         }
 
         (projects[index], projects[target]) = (projects[target], projects[index]);
+        MarkDirty();
         RefreshProjectList();
         _projectList.SelectedIndex = target;
     }

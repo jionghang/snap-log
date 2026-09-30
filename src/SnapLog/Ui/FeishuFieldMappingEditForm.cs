@@ -15,8 +15,8 @@ internal sealed class FeishuFieldMappingEditForm : Form
     private readonly FeishuFieldMapping _working;
     private readonly IReadOnlyList<FeishuBitablePublisher.FeishuTableField> _knownFields;
 
-    private readonly ComboBox _recordField = new();
-    private readonly ComboBox _feishuField = new();
+    private readonly ScrollSafeComboBox _recordField = new();
+    private readonly ScrollSafeComboBox _feishuField = new();
     private readonly Label _hint = new();
 
     public FeishuFieldMappingEditForm(

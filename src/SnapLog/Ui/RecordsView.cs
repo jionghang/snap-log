@@ -26,12 +26,12 @@ internal sealed class RecordsView : UserControl
     private readonly DateTimePicker _from = new();
     private readonly DateTimePicker _to = new();
     private readonly CheckBox _useDateRange = new();
-    private readonly ComboBox _process = new();
-    private readonly ComboBox _status = new();
+    private readonly ScrollSafeComboBox _process = new();
+    private readonly ScrollSafeComboBox _status = new();
     private readonly TextBox _keyword = new();
     private readonly DataGridView _grid = new();
     private readonly RichTextBox _detail = new();
-    private readonly ComboBox _pageSize = new();
+    private readonly ScrollSafeComboBox _pageSize = new();
     private readonly Label _pageInfo = new();
     private readonly Button _firstPage = new();
     private readonly Button _previousPage = new();

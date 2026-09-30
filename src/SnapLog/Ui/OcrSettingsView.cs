@@ -36,7 +36,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
 
         var grid = NewSection("文字识别（OCR）");
 
-        _ocrEngine = new ComboBox
+        _ocrEngine = new ScrollSafeComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Width = 420,
@@ -54,7 +54,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         };
         AddRow(grid, "OCR 引擎", _ocrEngine);
 
-        _paddleModel = new ComboBox
+        _paddleModel = new ScrollSafeComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Width = 420,
@@ -78,12 +78,12 @@ internal sealed class OcrSettingsView : SettingsViewBase
         optionsRow.Controls.Add(_paddleMkldnn);
 
         optionsRow.Controls.Add(new Label { Text = "CPU 线程", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
-        _paddleThreads = new NumericUpDown { Minimum = 1, Maximum = 32, Width = 60 };
+        _paddleThreads = new ScrollSafeNumericUpDown { Minimum = 1, Maximum = 32, Width = 60 };
         optionsRow.Controls.Add(_paddleThreads);
         AddRow(grid, "识别选项", optionsRow);
 
         var modeRow = NewRow();
-        _ocrMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
+        _ocrMode = new ScrollSafeComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
         _ocrMode.Items.AddRange(
         [
             new OcrModeChoice(OcrRunMode.Realtime, "实时识别（抓取后立即识别）"),
