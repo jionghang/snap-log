@@ -59,7 +59,7 @@ internal sealed class WorkProjectEditForm : Form
         _description.Multiline = true;
         _description.Height = 120;
         _description.ScrollBars = ScrollBars.Vertical;
-        _description.PlaceholderText = "填写该项目的工作内容、涉及的系统或关键词。描述越具体，模型归类越准确。";
+        _description.PlaceholderText = "填写该项目的工作内容、涉及的系统或关键词。描述越具体，模型分组越准确。";
 
         // 多行框先设文本、后首次聚焦时会把全文选中（WinForms 老行为），打开时把光标放到开头。
         Shown += (_, _) => _description.Select(0, 0);
@@ -67,7 +67,7 @@ internal sealed class WorkProjectEditForm : Form
 
         var hint = new Label
         {
-            Text = "该说明随提示词发送给模型，用于将活动归类到本项目。",
+            Text = "该说明随提示词发送给模型，用于把活动归到本项目下面。",
             AutoSize = true,
             MaximumSize = new Size(430, 0),
             ForeColor = SystemColors.GrayText,

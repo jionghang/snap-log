@@ -214,7 +214,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         AddRow(projects, "工作项目", projectRow);
         AddRow(projects, string.Empty, NewHint(
-            "填写工作项目（名称与说明），生成总结时随提示词发送，模型据此归类；双击可编辑。"));
+            "填写工作项目（名称与说明）后，总结的“主要工作主题”按项目分组撰写；双击可编辑。"));
 
         root.Controls.Add(grid);
         root.Controls.Add(payload);

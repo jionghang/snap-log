@@ -301,20 +301,20 @@ public sealed class SummarizationOptions
     public string SystemPromptOverride { get; set; } = "";
 
     [Category("总结"), DisplayName("工作项目列表"),
-     Description("自定义的工作任务清单。生成总结时随提示词发送，模型据此将活动按项目归类。"
-                 + "留空也可使用，此时不做项目归类。")]
+     Description("自定义的工作任务清单。生成总结时随提示词发送，模型按项目分组撰写正文。"
+                 + "留空也可使用，此时不做项目分组。")]
     public List<WorkProjectOptions> WorkProjects { get; set; } = [];
 }
 
-/// <summary>一条自己维护的工作项目，用来给活动归类。</summary>
+/// <summary>一条自己维护的工作项目，总结正文按它分组。</summary>
 public sealed class WorkProjectOptions
 {
     [Category("工作项目"), DisplayName("项目名称"),
-     Description("简短名称，会出现在总结的项目归类部分。")]
+     Description("简短名称，会作为总结正文里的小标题。")]
     public string Name { get; set; } = "";
 
     [Category("工作项目"), DisplayName("说明"),
-     Description("描述该项目的工作内容、涉及的系统或关键词。描述越具体，模型归类越准确。")]
+     Description("描述该项目的工作内容、涉及的系统或关键词。描述越具体，模型分组越准确。")]
     public string Description { get; set; } = "";
 
     public override string ToString() =>
