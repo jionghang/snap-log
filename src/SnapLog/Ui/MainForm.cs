@@ -252,15 +252,8 @@ internal sealed class MainForm : Form
         AddInfoRow(info, "最近一次抓取", _lastValue);
         AddInfoRow(info, "总共抓取", _totalValue);
 
-        // 一条分隔线把"只读信息"和"可操作的项"分开：否则那一行复选框夹在信息里，
-        // 看不出哪些能点。样式与设置页的分组分隔线一致。
-        AddInfoRow(info, string.Empty, new Panel
-        {
-            Height = 1,
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            BackColor = SystemColors.ControlDark,
-            Margin = new Padding(0, 10, 0, 10),
-        });
+        // 只读信息与可操作项之间留一段空白即可，不加分隔线。
+        AddInfoRow(info, string.Empty, new Label { Text = string.Empty, AutoSize = false, Height = 6 });
 
         // 开机自启动：改了立刻写注册表并生效（这一页没有"保存设置"，勾选本身就是动作）。
         _autoStart.Text = "开机自动启动（登录后最小化到托盘）";

@@ -287,28 +287,15 @@ internal abstract class SettingsViewBase : UserControl
             Text = title,
             AutoSize = true,
             Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 6),
+            Margin = new Padding(0, 0, 0, 8),
         };
         grid.Controls.Add(header, 0, 0);
         grid.SetColumnSpan(header, 2);
         grid.RowCount = 1;
         grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        // 标题下压一条分隔线：光靠加粗文字，几组内容容易糊成一片。
-        var separator = new Panel
-        {
-            Height = 1,
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            BackColor = SystemColors.ControlDark,
-            Margin = new Padding(0, 2, 6, 8),
-        };
-        grid.Controls.Add(separator, 0, 1);
-        grid.SetColumnSpan(separator, 2);
-        grid.RowCount = 2;
-        grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-        // 用 Tag 记下一个空行号，避免和标题、分隔线冲突。
-        grid.Tag = 2;
+        // 用 Tag 记下一个空行号，避免和标题行冲突。
+        grid.Tag = 1;
 
         DoubleBuffer.Enable(grid);
         return DeferLayout(grid);
@@ -316,7 +303,7 @@ internal abstract class SettingsViewBase : UserControl
 
     protected static void AddRow(TableLayoutPanel grid, string caption, Control control)
     {
-        var row = (int)(grid.Tag ?? 2);
+        var row = (int)(grid.Tag ?? 1);
         grid.Tag = row + 1;
         grid.RowCount = row + 1;
         grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
