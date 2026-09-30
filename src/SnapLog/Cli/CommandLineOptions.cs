@@ -14,7 +14,7 @@ public enum CliCommand
     /// <summary>打印环境与配置诊断信息。</summary>
     Diagnose,
 
-    /// <summary>端到端自检：窗口信息 → 三种抓取策略 → OCR → CSV 往返。</summary>
+    /// <summary>端到端自检：窗口信息、三种抓取策略、识别、数据库读写往返。</summary>
     SelfTest,
 
     /// <summary>列出当前可见的顶层窗口，用于诊断和挑选排除项。</summary>
@@ -241,7 +241,7 @@ public sealed record CommandLineOptions
     private static CommandLineOptions Invalid(string error) => new() { Command = CliCommand.Unknown, Error = error };
 
     public static string HelpText => """
-        SnapLog —— 记录前台窗口活动并做 OCR，把文字落进 CSV，可按需调用大模型总结。
+        SnapLog —— 记录前台窗口的屏幕活动并离线识别其中的文字，存入本机数据库，可按需调用大模型生成工作总结。
 
         用法：
           SnapLog                      启动托盘应用（默认）
@@ -257,7 +257,7 @@ public sealed record CommandLineOptions
                                        把还没写入过的总结写进飞书多维表格；
                                        --dry-run 只列待写入清单与字段映射，--test 只验证权限与字段名
           SnapLog --diagnose           打印环境、配置、OCR 语言包等诊断信息
-          SnapLog --selftest           端到端自检：抓取策略、OCR、CSV 读写往返
+          SnapLog --selftest           端到端自检：抓取策略、识别、数据库读写往返
           SnapLog --windows            列出当前可见的顶层窗口（用于确定“排除的进程名”）
           SnapLog --export-csv [路径]  把全部记录导出成 CSV（缺省写到数据目录）
           SnapLog --ui-smoke           界面自检：依次构造并短暂显示各窗口，报告是否报错
@@ -265,7 +265,7 @@ public sealed record CommandLineOptions
 
         通用参数：
           --config <path>   指定配置文件（默认按 %LOCALAPPDATA%\SnapLog\appsettings.json → 程序目录\appsettings.json 的顺序查找）
-          --data <dir>      覆盖数据目录，CSV/总结/日志都会写到这里
+          --data <dir>      覆盖数据目录，数据库、截图、总结与日志都会写到这里
           --target <关键字> --once / --selftest：按窗口标题或进程名子串指定要抓的窗口，默认用前台窗口
           --save-image      本次抓取同时把截图存到数据目录的 images 子目录
           --yes, -y         免去需要确认的提示
