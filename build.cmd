@@ -22,6 +22,17 @@ if errorlevel 1 (
     )
 )
 
+rem While the tray app is running it holds SnapLog.exe, so the copy step fails
+rem after ten retries with a confusing MSB3027. Say it plainly instead.
+rem (findstr rather than find: find is shadowed by Git for Windows' unix find
+rem  when this script is run from a Git Bash environment.)
+tasklist /fi "imagename eq SnapLog.exe" 2>nul | findstr /i /c:"SnapLog.exe" >nul
+if not errorlevel 1 (
+    echo [error] SnapLog is running. Exit it from the tray menu, then run build.cmd again.
+    popd
+    exit /b 1
+)
+
 echo === build Release ===
 dotnet build SnapLog.sln -c Release
 if errorlevel 1 (
