@@ -166,7 +166,7 @@ internal sealed class CliRunner
         var jobs = new IScheduledJob[]
         {
             new OcrBatchJob(_store, _paths, _log, () => OcrEngineFactory.Create(_options.Ocr, _log)),
-            new SummaryJob(summaryRunner),
+            new SummaryJob(summaryRunner, _store),
             new FeishuPushJob(new FeishuWriter(_store, _log)),
         };
         var scheduler = new ScheduledJobsService(jobs, _paths, _log);
@@ -367,7 +367,10 @@ internal sealed class CliRunner
         var exportOk = await VerifyExportAsync(record, cancellationToken).ConfigureAwait(false);
         report.AppendLine($"导出校验      : {(exportOk ? "通过" : "失败")}");
 
-        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk;
+        // 6) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
+        var planOk = VerifySummaryPlan(report);
+
+        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk;
 
         if (restored.TextLength == 0)
         {
@@ -383,6 +386,57 @@ internal sealed class CliRunner
         Console.WriteLine(report.ToString());
         _log.Info($"自检完成，结论：{(ok ? "通过" : "有异常")}");
         return ok ? 0 : 2;
+    }
+
+    /// <summary>
+    /// 验证定时生成的按天规划：没生成过的天要生成；生成过但之后又有新记录的天要覆盖；
+    /// 已经生成且没有新记录的天要跳过。用合成数据，不碰数据库也不调模型。
+    /// </summary>
+    private static bool VerifySummaryPlan(StringBuilder report)
+    {
+        var today = new DateOnly(2026, 9, 30);
+        var marks = new List<DayMark>
+        {
+            new(today.AddDays(-1).ToDateTime(TimeOnly.MinValue), 40, 400),  // 昨天：已生成，无新记录 → 跳过
+            new(today.AddDays(-2).ToDateTime(TimeOnly.MinValue), 35, 355),  // 前天：生成过但最大 id 涨了 → 覆盖
+            new(today.AddDays(-3).ToDateTime(TimeOnly.MinValue), 12, 300),  // 大前天：没生成过 → 新增
+            new(today.ToDateTime(TimeOnly.MinValue), 5, 401),               // 今天：还没过完 → 跳过
+        };
+
+        var history = new List<SummaryRun>
+        {
+            new() { Id = 2, Success = true, CoveredDay = today.AddDays(-1).ToString("yyyy-MM-dd"), CoveredMarks = 400 },
+            new() { Id = 1, Success = true, CoveredDay = today.AddDays(-2).ToString("yyyy-MM-dd"), CoveredMarks = 300 },
+        };
+
+        var plan = SummaryPlanner.Plan(today, marks, history);
+        var expected = new[]
+        {
+            (today.AddDays(-2), SummaryPlanReason.Updated),
+            (today.AddDays(-3), SummaryPlanReason.Missing),
+        };
+
+        var ok = plan.Count == expected.Length;
+
+        if (ok)
+        {
+            for (var i = 0; i < expected.Length; i++)
+            {
+                if (plan[i].Day != expected[i].Item1 || plan[i].Reason != expected[i].Item2)
+                {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+
+        report.AppendLine();
+        report.AppendLine("--- 定时生成的按天规划 ---");
+        report.AppendLine($"判定          : {(ok ? "通过" : "不符合预期")}");
+        report.AppendLine($"规划结果      : {SummaryPlanner.Describe(plan)}");
+        report.AppendLine($"期望          : 前天（有更新，覆盖）、大前天（新增）");
+
+        return ok;
     }
 
     /// <summary>验证按进程/关键词筛选和分页，返回是否全部符合预期。</summary>

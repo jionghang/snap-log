@@ -98,7 +98,9 @@ public sealed class SqliteActivityStore : IActivityRepository
                         record_count  INTEGER NOT NULL DEFAULT 0,
                         image_count   INTEGER NOT NULL DEFAULT 0,
                         elapsed_ms    INTEGER NOT NULL DEFAULT 0,
-                        pushed_at     TEXT    NOT NULL DEFAULT ''
+                        pushed_at     TEXT    NOT NULL DEFAULT '',
+                        covered_day   TEXT    NOT NULL DEFAULT '',
+                        covered_marks INTEGER NOT NULL DEFAULT 0
                     );
 
                     CREATE INDEX IF NOT EXISTS idx_summary_runs_started ON summary_runs(started_at DESC);
@@ -109,6 +111,8 @@ public sealed class SqliteActivityStore : IActivityRepository
             // 老版本的库没有这两列。CREATE TABLE IF NOT EXISTS 不会补列，必须显式迁移。
             EnsureColumn(connection, "activity", "window_class", "TEXT NOT NULL DEFAULT ''");
             EnsureColumn(connection, "summary_runs", "pushed_at", "TEXT NOT NULL DEFAULT ''");
+            EnsureColumn(connection, "summary_runs", "covered_day", "TEXT NOT NULL DEFAULT ''");
+            EnsureColumn(connection, "summary_runs", "covered_marks", "INTEGER NOT NULL DEFAULT 0");
 
             _insertCommand = connection.CreateCommand();
             _insertCommand.CommandText =
@@ -240,22 +244,55 @@ public sealed class SqliteActivityStore : IActivityRepository
             var to = from.AddDays(1).AddSeconds(-1);
 
             using var command = connection.CreateCommand();
+            // 取当天"最近"的 limit 条再翻回正序：一天记录很多时，超预算截断保留的应该是靠后的部分。
             command.CommandText =
                 $"SELECT {SelectColumns} FROM activity " +
                 "WHERE timestamp >= $from AND timestamp <= $to " +
-                "ORDER BY timestamp ASC, id ASC LIMIT $limit";
+                "ORDER BY timestamp DESC, id DESC LIMIT $limit";
             command.Parameters.AddWithValue("$from", from.ToString(TimeFormat, CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$to", to.ToString(TimeFormat, CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 100_000));
 
             var records = new List<ActivityRecord>();
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    records.Add(ReadRecord(reader));
+                }
+            }
+
+            records.Reverse();
+            return records;
+        }, cancellationToken);
+
+    public Task<IReadOnlyList<DayMark>> GetDayMarksAsync(
+        DateTime fromDay,
+        CancellationToken cancellationToken) =>
+        RunAsync<IReadOnlyList<DayMark>>(connection =>
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                """
+                SELECT date(timestamp) AS day, COUNT(*), MAX(id)
+                FROM activity
+                WHERE timestamp >= $from
+                GROUP BY day
+                ORDER BY day ASC
+                """;
+            command.Parameters.AddWithValue("$from", fromDay.Date.ToString(TimeFormat, CultureInfo.InvariantCulture));
+
+            var marks = new List<DayMark>();
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                records.Add(ReadRecord(reader));
+                if (DateTime.TryParse(reader.GetString(0), CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
+                {
+                    marks.Add(new DayMark(day, reader.GetInt32(1), reader.GetInt64(2)));
+                }
             }
 
-            return records;
+            return marks;
         }, cancellationToken);
 
     public Task<IReadOnlyList<string>> DeleteByIdsAsync(
@@ -506,10 +543,12 @@ public sealed class SqliteActivityStore : IActivityRepository
                 """
                 INSERT INTO summary_runs
                     (started_at, finished_at, trigger, success, provider, attempts,
-                     markdown, saved_path, message, record_count, image_count, elapsed_ms)
+                     markdown, saved_path, message, record_count, image_count, elapsed_ms,
+                     covered_day, covered_marks)
                 VALUES
                     ($startedAt, $finishedAt, $trigger, $success, $provider, $attempts,
-                     $markdown, $savedPath, $message, $recordCount, $imageCount, $elapsedMs)
+                     $markdown, $savedPath, $message, $recordCount, $imageCount, $elapsedMs,
+                     $coveredDay, $coveredMarks)
                 """;
             command.Parameters.AddWithValue("$startedAt", run.StartedAt.ToString(TimeFormat, CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$finishedAt", run.FinishedAt.ToString(TimeFormat, CultureInfo.InvariantCulture));
@@ -523,6 +562,8 @@ public sealed class SqliteActivityStore : IActivityRepository
             command.Parameters.AddWithValue("$recordCount", run.RecordCount);
             command.Parameters.AddWithValue("$imageCount", run.ImageCount);
             command.Parameters.AddWithValue("$elapsedMs", run.ElapsedMilliseconds);
+            command.Parameters.AddWithValue("$coveredDay", run.CoveredDay);
+            command.Parameters.AddWithValue("$coveredMarks", run.CoveredMarks);
             return command.ExecuteNonQuery();
         }, cancellationToken);
 
@@ -533,7 +574,8 @@ public sealed class SqliteActivityStore : IActivityRepository
             command.CommandText =
                 """
                 SELECT id, started_at, finished_at, trigger, success, provider, attempts,
-                       markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at
+                       markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at,
+                       covered_day, covered_marks
                 FROM summary_runs
                 ORDER BY started_at DESC, id DESC
                 LIMIT $limit
@@ -560,7 +602,8 @@ public sealed class SqliteActivityStore : IActivityRepository
             command.CommandText =
                 """
                 SELECT id, started_at, finished_at, trigger, success, provider, attempts,
-                       markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at
+                       markdown, saved_path, message, record_count, image_count, elapsed_ms, pushed_at,
+                       covered_day, covered_marks
                 FROM summary_runs
                 WHERE success = 1 AND pushed_at = '' AND markdown <> '' AND started_at >= $from
                 ORDER BY started_at ASC, id ASC
@@ -694,6 +737,8 @@ public sealed class SqliteActivityStore : IActivityRepository
             ImageCount = reader.GetInt32(11),
             ElapsedMilliseconds = reader.GetInt64(12),
             PushedAt = pushedAt.Length == 0 ? null : ParseTimestamp(pushedAt),
+            CoveredDay = reader.GetString(14),
+            CoveredMarks = reader.GetInt64(15),
         };
     }
 

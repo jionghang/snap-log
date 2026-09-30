@@ -228,7 +228,7 @@ public sealed class SummaryRunner
         stopwatch.Stop();
 
         // 连"因为没启用/没确认隐私而没跑"也记进去：否则定时任务静默不动，用户没法排查。
-        await RecordAsync(result, trigger, startedAt, stopwatch.ElapsedMilliseconds, cancellationToken)
+        await RecordAsync(result, trigger, day, startedAt, stopwatch.ElapsedMilliseconds, cancellationToken)
             .ConfigureAwait(false);
 
         // 记完历史才写飞书：这段时间刚好把这条总结落到库里，推送那边是按库里的待写入清单走的。
@@ -314,7 +314,7 @@ public sealed class SummaryRunner
                     .SummarizeAsync(preparation.Request, cancellationToken)
                     .ConfigureAwait(false);
 
-                var savedPath = Save(completion, preparation);
+                var savedPath = Save(completion, preparation, day);
                 _log.Info($"总结已保存：{savedPath}（由 {completion.ProviderDescription} 生成，"
                           + $"尝试 {completion.Attempts} 次）");
 
@@ -348,14 +348,29 @@ public sealed class SummaryRunner
     private async Task RecordAsync(
         SummaryRunResult result,
         string trigger,
+        DateOnly? day,
         DateTime startedAt,
         long elapsedMilliseconds,
         CancellationToken cancellationToken)
     {
         try
         {
+            // 按天生成时记下"覆盖哪一天"和当时的数据指纹：
+            // 定时任务靠它判断这一天是否已经生成过、生成之后有没有又冒出新的记录。
+            var coveredMarks = 0L;
+            if (day is { } covered)
+            {
+                var marks = await _store
+                    .GetDayMarksAsync(covered.ToDateTime(TimeOnly.MinValue), cancellationToken)
+                    .ConfigureAwait(false);
+
+                coveredMarks = marks.FirstOrDefault(m => DateOnly.FromDateTime(m.Day) == covered)?.MaxId ?? 0;
+            }
+
             var run = new SummaryRun
             {
+                CoveredDay = day is { } coveredDay ? coveredDay.ToString("yyyy-MM-dd") : string.Empty,
+                CoveredMarks = coveredMarks,
                 StartedAt = startedAt,
                 FinishedAt = DateTime.Now,
                 Trigger = trigger,
@@ -378,11 +393,17 @@ public sealed class SummaryRunner
         }
     }
 
-    private string Save(SummaryCompletion completion, SummaryPreparation preparation)
+    private string Save(SummaryCompletion completion, SummaryPreparation preparation, DateOnly? day)
     {
         Directory.CreateDirectory(_paths.SummariesDirectory);
 
-        var path = Path.Combine(_paths.SummariesDirectory, $"summary-{DateTime.Now:yyyyMMdd-HHmmss}.md");
+        // 按天生成的文件名带上日期且不带时间戳：同一天重新生成时直接覆盖同一个文件，
+        // 不会留下一堆同一天的旧版本。
+        var path = Path.Combine(
+            _paths.SummariesDirectory,
+            day is { } covered
+                ? $"summary-{covered:yyyy-MM-dd}.md"
+                : $"summary-{DateTime.Now:yyyyMMdd-HHmmss}.md");
         var header = new StringBuilder()
             .AppendLine("# SnapLog 活动总结")
             .AppendLine()

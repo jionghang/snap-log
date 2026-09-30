@@ -86,6 +86,12 @@ public interface IActivityStore : IAsyncDisposable
     Task<IReadOnlyList<ActivityRecord>> GetByDayAsync(DateTime day, int limit, CancellationToken cancellationToken);
 
     /// <summary>
+    /// 按天统计记录数与当天最大记录 id（只看 <paramref name="fromDay"/> 当天及之后）。
+    /// 定时生成用它算出"哪些天有记录""那一天的数据指纹是多少"。
+    /// </summary>
+    Task<IReadOnlyList<DayMark>> GetDayMarksAsync(DateTime fromDay, CancellationToken cancellationToken);
+
+    /// <summary>
     /// 按 id 删除记录，返回这些记录引用过的截图文件路径（相对或绝对，未去重前的原始值）。
     /// 只负责删库里的行；要不要连截图文件一起删由调用方决定——那是不可撤销的操作，得让用户点头。
     /// </summary>
@@ -147,3 +153,6 @@ public interface IActivityStore : IAsyncDisposable
         string error,
         CancellationToken cancellationToken);
 }
+
+/// <summary>某一天的记录统计：条数与当天最大记录 id（用作"数据指纹"）。</summary>
+public sealed record DayMark(DateTime Day, int Count, long MaxId);

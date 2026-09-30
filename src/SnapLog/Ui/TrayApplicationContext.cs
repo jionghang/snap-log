@@ -93,7 +93,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         // 三个"每天到点跑一次"的任务共用一套调度：批量识别、定时总结、定时推送。
         var ocrBatch = new OcrBatchJob(store, paths, log, () => OcrEngineFactory.Create(options.Ocr, log));
-        var summaryJob = new SummaryJob(summaryRunner);
+        var summaryJob = new SummaryJob(summaryRunner, store);
         var feishuWriter = new FeishuWriter(store, log);
         var publishJob = new FeishuPushJob(feishuWriter);
 

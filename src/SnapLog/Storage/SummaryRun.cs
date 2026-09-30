@@ -39,6 +39,18 @@ public sealed class SummaryRun
     public long ElapsedMilliseconds { get; set; }
 
     /// <summary>
+    /// 这次总结覆盖的是哪一天（yyyy-MM-dd）；空串表示覆盖的是"最近的记录"，不属于某一天。
+    /// 定时生成按天汇总就靠它判断"这一天是否已经生成过"。
+    /// </summary>
+    public string CoveredDay { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 生成时那一天的"数据指纹"（当天最大记录 id；0 表示未按天生成）。
+    /// 之后这一天又新增了记录，指纹就会变，定时任务据此重新生成并覆盖旧总结。
+    /// </summary>
+    public long CoveredMarks { get; set; }
+
+    /// <summary>
     /// 写进飞书多维表格的时间；null = 还没写入过。
     /// 去重就靠这个标记：写成功才打标，重复点“立即写入”不会在表里刷出重复行。
     /// </summary>

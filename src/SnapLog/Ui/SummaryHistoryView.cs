@@ -492,6 +492,7 @@ internal sealed class SummaryHistoryView : UserControl
             $"输入记录  ：{run.RecordCount} 条，附带截图 {run.ImageCount} 张",
             $"耗时      ：{run.ElapsedText}",
             $"飞书写入  ：{(run.PushedAt is { } pushedAt ? pushedAt.ToString("yyyy-MM-dd HH:mm:ss") : "尚未写入")}",
+            $"覆盖范围  ：{(run.CoveredDay.Length == 0 ? "最近的记录" : run.CoveredDay + " 全天")}",
             $"文件      ：{(run.SavedPath.Length == 0 ? "（未保存）" : run.SavedPath)}",
             $"说明      ：{run.Message}",
             string.Empty,

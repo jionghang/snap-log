@@ -134,14 +134,21 @@ public sealed class OcrBatchJob : IScheduledJob
     }
 }
 
-/// <summary>定时生成总结。结果（含失败原因）会记进总结历史。</summary>
+/// <summary>
+/// 定时生成总结：按天补生成。
+///
+/// 每次只做两件事：把还没生成过的天生成出来；已经生成过、但那天后来又有了新记录的天，
+/// 重新生成并覆盖旧的那份。规划逻辑在 <see cref="SummaryPlanner"/> 里，这里只负责执行。
+/// </summary>
 public sealed class SummaryJob : IScheduledJob
 {
     private readonly SummaryRunner _runner;
+    private readonly IActivityRepository _store;
 
-    public SummaryJob(SummaryRunner runner)
+    public SummaryJob(SummaryRunner runner, IActivityRepository store)
     {
         _runner = runner;
+        _store = store;
     }
 
     public string Key => "summary";
@@ -155,11 +162,93 @@ public sealed class SummaryJob : IScheduledJob
 
     public async Task<JobRunResult> RunAsync(AppOptions options, CancellationToken cancellationToken)
     {
-        // 定时总结汇总"前一天"：定时点通常设在当天结束或次日凌晨，
-        // 这时当天的记录还没走完，汇总昨天才是完整的一天。
-        var yesterday = DateOnly.FromDateTime(DateTime.Today.AddDays(-1));
-        var result = await _runner.RunAsync(options, "定时", yesterday, cancellationToken).ConfigureAwait(false);
-        return new JobRunResult(result.Success, result.Message);
+        // 只在"今天结束或次日凌晨"这类时间点跑，所以当天的记录还没走完：今天不参与，从昨天往前看。
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        var marks = await _store
+            .GetDayMarksAsync(today.AddDays(-SummaryPlanner.LookbackDays).ToDateTime(TimeOnly.MinValue), cancellationToken)
+            .ConfigureAwait(false);
+
+        var history = await _store.GetSummaryRunsAsync(200, cancellationToken).ConfigureAwait(false);
+
+        var plan = SummaryPlanner.Plan(today, marks, history);
+        if (plan.Count == 0)
+        {
+            return JobRunResult.Skipped("没有需要生成的天");
+        }
+
+        var lines = new List<string>();
+        var succeeded = 0;
+
+        foreach (var item in plan)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 重新生成前先删掉这一天旧的总结记录：同一天只保留最新的一份。
+            if (item.Reason == SummaryPlanReason.Updated)
+            {
+                await RemovePreviousRunAsync(item.Day, history, cancellationToken).ConfigureAwait(false);
+            }
+
+            var result = await _runner.RunAsync(options, "定时", item.Day, cancellationToken).ConfigureAwait(false);
+
+            if (result.Success)
+            {
+                succeeded++;
+                lines.Add($"{item.Day:yyyy-MM-dd} 已生成（{(item.Reason == SummaryPlanReason.Missing ? "新增" : "覆盖旧版")}）");
+            }
+            else
+            {
+                lines.Add($"{item.Day:yyyy-MM-dd} 未生成：{result.Message}");
+            }
+        }
+
+        var summary = $"计划 {plan.Count} 天（{SummaryPlanner.Describe(plan)}）；成功 {succeeded} 天。"
+                      + Environment.NewLine + string.Join(Environment.NewLine, lines);
+
+        return new JobRunResult(succeeded == plan.Count, summary);
+    }
+
+    /// <summary>删掉某一天旧的总结记录，并顺手清掉它的 Markdown 文件（内容已被新版取代）。</summary>
+    private async Task RemovePreviousRunAsync(
+        DateOnly day,
+        IReadOnlyList<SummaryRun> history,
+        CancellationToken cancellationToken)
+    {
+        var key = day.ToString("yyyy-MM-dd");
+
+        var stale = history
+            .Where(run => string.Equals(run.CoveredDay, key, StringComparison.Ordinal))
+            .ToList();
+
+        if (stale.Count == 0)
+        {
+            return;
+        }
+
+        // 新版会写到 summary-<日期>.md；旧版可能是带时间戳的文件名，那些要删掉免得留一堆孤儿。
+        var expected = $"summary-{key}.md";
+
+        foreach (var run in stale)
+        {
+            if (run.SavedPath.Length > 0
+                && !string.Equals(Path.GetFileName(run.SavedPath), expected, StringComparison.OrdinalIgnoreCase)
+                && File.Exists(run.SavedPath))
+            {
+                try
+                {
+                    File.Delete(run.SavedPath);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // 删不掉不影响生成，留个日志。
+                }
+            }
+        }
+
+        await _store
+            .DeleteSummaryRunsAsync([.. stale.Select(run => run.Id)], cancellationToken)
+            .ConfigureAwait(false);
     }
 }
 

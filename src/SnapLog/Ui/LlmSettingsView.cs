@@ -159,7 +159,8 @@ internal sealed class LlmSettingsView : SettingsViewBase
         AddRow(grid, "定时生成", scheduleRow);
 
         // 定时生成汇总的是前一天：定时点常设在当天收尾或次日凌晨，当天记录还没走完。
-        AddRow(grid, string.Empty, NewHint("定时生成汇总的是前一天的记录。"));
+        AddRow(grid, string.Empty, NewHint(
+            "定时生成按天补生成：还没生成过的天会补上；某天生成之后又新增了记录，会重新生成并覆盖旧的那份。"));
 
         // ---- 系统提示词 ----
         var promptRow = NewRow();
