@@ -27,9 +27,7 @@ internal sealed class MainForm : Form
     private readonly string? _configSourcePath;
 
     private readonly Label _stateValue = new();
-    private readonly Label _ocrValue = new();
-    private readonly Label _dataDirValue = new();
-    private readonly Label _databaseValue = new();
+
     private readonly Label _lastValue = new();
     private readonly Label _countValue = new();
     private readonly Label _totalValue = new();
@@ -38,9 +36,12 @@ internal sealed class MainForm : Form
     private readonly ToolStripStatusLabel _statusStripLabel = new();
     private readonly TabControl _tabs = new();
 
-    private readonly string _ocrDescription;
+
 
     private int _sessionRecordCount;
+
+    /// <summary>引擎是否运行过。用来区分"正在启动"和"已被暂停"。</summary>
+    private bool _sawRunning;
 
     public MainForm(
         AppOptions options,
@@ -64,8 +65,6 @@ internal sealed class MainForm : Form
         MinimumSize = new Size(820, 560);
         Size = new Size(940, 660);
         Icon = IconFactory.AppIcon;
-
-        _ocrDescription = DescribeOcrEngine();
 
         BuildLayout();
 
@@ -161,7 +160,7 @@ internal sealed class MainForm : Form
         page.Tag = factory;
         page.Controls.Add(new Label
         {
-            Text = "正在载入…",
+            Text = "正在载入",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(12),
@@ -260,12 +259,9 @@ internal sealed class MainForm : Form
         info.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         AddInfoRow(info, "运行状态", _stateValue);
-        AddInfoRow(info, "本次已记录", _countValue);
-        AddInfoRow(info, "库中记录", _totalValue);
-        AddInfoRow(info, "OCR 引擎", _ocrValue);
-        AddInfoRow(info, "最近一次", _lastValue);
-        AddInfoRow(info, "数据目录", _dataDirValue);
-        AddInfoRow(info, "数据库", _databaseValue);
+        AddInfoRow(info, "本次运行抓取", _countValue);
+        AddInfoRow(info, "最近一次抓取", _lastValue);
+        AddInfoRow(info, "总共抓取", _totalValue);
 
         var buttons = new FlowLayoutPanel
         {
@@ -282,8 +278,6 @@ internal sealed class MainForm : Form
         buttons.Controls.Add(_toggleButton);
 
         buttons.Controls.Add(MakeButton("立即抓取一次", 108, async () => await CaptureOnceAsync()));
-        buttons.Controls.Add(MakeButton("记录查看器…", 108, OpenRecordsForm));
-        buttons.Controls.Add(MakeButton("打开数据目录", 108, () => OpenPath(_paths.DataDirectory)));
 
         var logHeader = new Label
         {
@@ -358,13 +352,6 @@ internal sealed class MainForm : Form
 
     // ---------------------------------------------------------------- 子窗口
 
-    private void OpenRecordsForm()
-    {
-        using var form = new RecordsForm(_options, _store, _paths, _log);
-        form.ShowDialog(this);
-        RefreshStatus();
-    }
-
     // ---------------------------------------------------------------- 行为
 
     private async Task ToggleRecordingAsync()
@@ -425,27 +412,6 @@ internal sealed class MainForm : Form
         return true;
     }
 
-    private void OpenPath(string path)
-    {
-        try
-        {
-            if (File.Exists(path) || Directory.Exists(path))
-            {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                return;
-            }
-
-            if (Directory.Exists(_paths.DataDirectory))
-            {
-                Process.Start(new ProcessStartInfo(_paths.DataDirectory) { UseShellExecute = true });
-            }
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
-        {
-            _log.Warn($"打开路径失败：{ex.Message}");
-        }
-    }
-
     // ---------------------------------------------------------------- 状态刷新
 
     /// <summary>
@@ -463,9 +429,11 @@ internal sealed class MainForm : Form
     private void UpdateRunState()
     {
         var running = _engine.IsRunning;
+        _sawRunning |= running;
 
-        _stateValue.Text = running ? "运行中" : "已暂停";
-        _stateValue.ForeColor = running ? Color.SeaGreen : Color.OrangeRed;
+        // 还没启动起来过：显示"启动中"，别显示成"已暂停"——那会让人以为要自己点开始。
+        _stateValue.Text = running ? "运行中" : _sawRunning ? "已暂停" : "启动中";
+        _stateValue.ForeColor = running ? Color.SeaGreen : _sawRunning ? Color.OrangeRed : Color.RoyalBlue;
         _toggleButton.Text = running ? "暂停记录" : "开始记录";
     }
 
@@ -473,17 +441,12 @@ internal sealed class MainForm : Form
     {
         UpdateRunState();
 
-        _countValue.Text = $"{_sessionRecordCount} 条（本次运行）";
-
-        _ocrValue.Text = _options.Ocr.Enabled ? _ocrDescription : "已关闭（仅记录标题）";
+        _countValue.Text = $"{_sessionRecordCount} 条";
 
         var last = _engine.LastRecord;
         _lastValue.Text = last is null
             ? "暂无记录"
-            : $"{last.Timestamp:HH:mm:ss} · {last.WindowTitle} · {last.TextLength} 字";
-
-        _dataDirValue.Text = _paths.DataDirectory;
-        _databaseValue.Text = _engine.DatabasePath;
+            : $"{last.Timestamp:HH:mm:ss} · {last.WindowTitle}";
 
         _ = RefreshCountAsync();
     }
@@ -507,20 +470,6 @@ internal sealed class MainForm : Form
         foreach (var entry in _log.Snapshot().TakeLast(120))
         {
             AppendLog(entry);
-        }
-    }
-
-    /// <summary>OCR 引擎的描述在窗口生命周期内不会变，构造时算一次就够。</summary>
-    private string DescribeOcrEngine()
-    {
-        try
-        {
-            using var ocr = OcrEngineFactory.Create(_options.Ocr, _log);
-            return ocr.Description;
-        }
-        catch (Exception ex)
-        {
-            return $"OCR 引擎不可用：{ex.Message}";
         }
     }
 

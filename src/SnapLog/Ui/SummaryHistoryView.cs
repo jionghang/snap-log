@@ -24,6 +24,8 @@ internal sealed class SummaryHistoryView : UserControl
     private readonly DataGridView _grid = new();
     private readonly RichTextBox _detail = new();
     private readonly ScrollSafeComboBox _pageSize = new();
+    private readonly CheckBox _pickDay = new();
+    private readonly DateTimePicker _dayPicker = new();
     private readonly CheckBox _successOnly = new();
     private readonly Label _summary = new();
     private readonly SplitContainer _split = new();
@@ -103,6 +105,22 @@ internal sealed class SummaryHistoryView : UserControl
         preview.Click += async (_, _) => await PreviewPayloadAsync();
         toolbar.Controls.Add(preview);
 
+        // 只总结某一天：勾上就用这个日期，不勾就总结最近的记录。
+        _pickDay.Text = "指定日期";
+        _pickDay.AutoSize = true;
+        _pickDay.Margin = new Padding(0, 8, 4, 0);
+        _pickDay.CheckedChanged += (_, _) => _dayPicker.Enabled = _pickDay.Checked;
+        toolbar.Controls.Add(_pickDay);
+
+        _dayPicker.Format = DateTimePickerFormat.Custom;
+        _dayPicker.CustomFormat = "yyyy-MM-dd";
+        _dayPicker.Width = 110;
+        _dayPicker.Value = DateTime.Today.AddDays(-1);
+        _dayPicker.Enabled = false;
+        _dayPicker.Margin = new Padding(0, 3, 12, 0);
+        DoubleBuffer.Enable(_dayPicker);
+        toolbar.Controls.Add(_dayPicker);
+
         var generate = new Button { Text = "现在生成一次", Width = 110, Height = 28, Margin = new Padding(0, 3, 4, 0) };
         generate.Click += async (_, _) =>
         {
@@ -181,12 +199,18 @@ internal sealed class SummaryHistoryView : UserControl
         Controls.Add(toolbar);
     }
 
+    /// <summary>勾了"指定日期"就返回那一天，否则返回 null（表示总结最近的记录）。</summary>
+    private DateOnly? SelectedDay =>
+        _pickDay.Checked ? DateOnly.FromDateTime(_dayPicker.Value) : null;
+
     /// <summary>预览要发送的内容，不真的发请求。</summary>
     private async Task PreviewPayloadAsync()
     {
         try
         {
-            var (preparation, error) = await _context.SummaryRunner.PrepareAsync(_context.Options, CancellationToken.None);
+            var (preparation, error) = await _context.SummaryRunner
+                .PrepareAsync(_context.Options, SelectedDay, CancellationToken.None)
+                .ConfigureAwait(true);
 
             _detail.Text = preparation is null
                 ? "[无法预览]" + Environment.NewLine + Environment.NewLine + error
@@ -245,7 +269,9 @@ internal sealed class SummaryHistoryView : UserControl
 
         try
         {
-            var result = await _context.SummaryRunner.RunAsync(_context.Options, "手动", CancellationToken.None);
+            var result = await _context.SummaryRunner
+                .RunAsync(_context.Options, "手动", SelectedDay, CancellationToken.None)
+                .ConfigureAwait(true);
 
             _detail.Text = result.Success
                 ? $"{result.Markdown}" + Environment.NewLine + Environment.NewLine + "---" + Environment.NewLine + $"已保存：{result.SavedPath}"

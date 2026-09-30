@@ -32,6 +32,7 @@ internal sealed class RecordsView : UserControl
     private readonly DataGridView _grid = new();
     private readonly RichTextBox _detail = new();
     private readonly ScrollSafeComboBox _pageSize = new();
+    private Button _delete = null!;
     private readonly Label _pageInfo = new();
     private readonly Button _firstPage = new();
     private readonly Button _previousPage = new();
@@ -103,7 +104,7 @@ internal sealed class RecordsView : UserControl
         _grid.AllowUserToDeleteRows = false;
         _grid.RowHeadersVisible = false;
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        _grid.MultiSelect = false;
+        _grid.MultiSelect = true;   // 批量删除需要一次选多条
         _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "时间", FillWeight = 13 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "进程", FillWeight = 9 });
@@ -112,7 +113,11 @@ internal sealed class RecordsView : UserControl
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "耗时(ms)", FillWeight = 8 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", FillWeight = 7 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "识别文字摘要", FillWeight = 33 });
-        _grid.SelectionChanged += async (_, _) => await ShowSelectedDetailAsync();
+        _grid.SelectionChanged += async (_, _) =>
+        {
+            _delete.Enabled = _grid.SelectedRows.Count > 0;
+            await ShowSelectedDetailAsync();
+        };
 
         _detail.Dock = DockStyle.Fill;
         _detail.ReadOnly = true;
@@ -249,13 +254,14 @@ internal sealed class RecordsView : UserControl
         reset.Click += async (_, _) => await ResetFiltersAsync();
         filterRow.Controls.Add(reset);
 
-        var export = new Button { Text = "导出 CSV…", Width = 100, Height = 28, Margin = new Padding(4, 3, 4, 0) };
+        var export = new Button { Text = "导出 CSV", Width = 92, Height = 28, Margin = new Padding(4, 3, 4, 0) };
         export.Click += async (_, _) => await ExportAsync();
         filterRow.Controls.Add(export);
 
-        var openFolder = new Button { Text = "打开数据目录", Width = 110, Height = 28, Margin = new Padding(4, 3, 4, 0) };
-        openFolder.Click += (_, _) => OpenPath(_paths.DataDirectory);
-        filterRow.Controls.Add(openFolder);
+        // 删除：二次确认，并可选择连截图文件一起删。
+        _delete = new Button { Text = "删除", Width = 76, Height = 28, Margin = new Padding(4, 3, 4, 0), Enabled = false };
+        _delete.Click += async (_, _) => await DeleteSelectedAsync();
+        filterRow.Controls.Add(_delete);
 
         panel.Controls.Add(filterRow, 0, 1);
 
@@ -522,6 +528,13 @@ internal sealed class RecordsView : UserControl
             return;
         }
 
+        // 多选时不去逐条查详情：这时用户是要批量操作，不是要看某一条。
+        if (_grid.SelectedRows.Count > 1)
+        {
+            _detail.Text = $"已选中 {_grid.SelectedRows.Count} 条记录。点“删除”可批量删除。";
+            return;
+        }
+
         var tag = _grid.SelectedRows[0].Tag;
         if (tag is not long id)
         {
@@ -579,6 +592,103 @@ internal sealed class RecordsView : UserControl
     }
 
     // ---------------------------------------------------------------- 导出
+
+    /// <summary>
+    /// 批量删除选中的记录。二次确认里可以勾选"同时删除截图文件"——
+    /// 删库是常规操作，删文件不可撤销，所以默认不勾。
+    /// </summary>
+    private async Task DeleteSelectedAsync()
+    {
+        var ids = _grid.SelectedRows
+            .Cast<DataGridViewRow>()
+            .Select(row => row.Tag)
+            .OfType<long>()
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            MessageBox.Show("请先在列表里选择要删除的记录。", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        // 先数一下这些记录里有多少张截图，好在确认框里说清楚。
+        var screenshots = 0;
+        foreach (var id in ids)
+        {
+            var record = await _store.GetByIdAsync(id, CancellationToken.None).ConfigureAwait(true);
+            if (record is not null && !string.IsNullOrWhiteSpace(record.ImagePath) && ResolveImage(record.ImagePath) is { } path)
+            {
+                screenshots++;
+            }
+        }
+
+        using var dialog = new DeleteRecordsDialog(ids.Count, screenshots);
+        if (dialog.ShowDialog(FindForm()) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            var paths = await _store.DeleteByIdsAsync(ids, CancellationToken.None).ConfigureAwait(true);
+
+            var removedFiles = 0;
+            long freedBytes = 0;
+
+            if (dialog.DeleteScreenshots)
+            {
+                foreach (var stored in paths)
+                {
+                    var path = ResolveImage(stored);
+                    if (path is null)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        var info = new FileInfo(path);
+                        var size = info.Exists ? info.Length : 0;
+                        info.Delete();
+                        removedFiles++;
+                        freedBytes += size;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        _log.Warn($"删除截图失败：{path} —— {ex.Message}");
+                    }
+                }
+            }
+
+            var message = $"已删除 {ids.Count} 条记录"
+                          + (dialog.DeleteScreenshots ? $"，同时删除 {removedFiles} 张截图（释放 {DescribeBytes(freedBytes)}）" : string.Empty);
+            _statusLabel.Text = message;
+            _log.Info(message);
+
+            _detail.Text = message;
+            await RunQueryAsync(resetOffset: false).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _log.Error("删除记录失败", ex);
+            _statusLabel.Text = $"删除失败：{ex.Message}";
+            MessageBox.Show($"删除失败：{ex.Message}", "SnapLog", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
+    private static string DescribeBytes(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
+        _ => $"{bytes / (1024.0 * 1024):0.#} MB",
+    };
+
+    /// <summary>把库里存的截图路径解析成本机绝对路径；解析不出来或文件不在就返回 null。</summary>
+    private string? ResolveImage(string storedPath)
+    {
+        var path = _paths.ResolveStoredImagePath(storedPath);
+        return path.Length > 0 && File.Exists(path) ? path : null;
+    }
 
     private async Task ExportAsync()
     {

@@ -504,7 +504,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
     private async Task GenerateSummaryNowAsync()
     {
-        var result = await SummaryRunner.RunAsync(Options, "手动", CancellationToken.None);
+        var result = await SummaryRunner.RunAsync(Options, "手动", day: null, CancellationToken.None);
         if (result.Success)
         {
             return;

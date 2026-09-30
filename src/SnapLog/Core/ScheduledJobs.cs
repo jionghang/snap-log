@@ -155,7 +155,10 @@ public sealed class SummaryJob : IScheduledJob
 
     public async Task<JobRunResult> RunAsync(AppOptions options, CancellationToken cancellationToken)
     {
-        var result = await _runner.RunAsync(options, "定时", cancellationToken).ConfigureAwait(false);
+        // 定时总结汇总"前一天"：定时点通常设在当天结束或次日凌晨，
+        // 这时当天的记录还没走完，汇总昨天才是完整的一天。
+        var yesterday = DateOnly.FromDateTime(DateTime.Today.AddDays(-1));
+        var result = await _runner.RunAsync(options, "定时", yesterday, cancellationToken).ConfigureAwait(false);
         return new JobRunResult(result.Success, result.Message);
     }
 }

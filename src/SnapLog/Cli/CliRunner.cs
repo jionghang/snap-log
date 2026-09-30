@@ -53,7 +53,7 @@ internal sealed class CliRunner
             CliCommand.ListWindows => runner.ListWindows(),
             CliCommand.SelfTest => await runner.SelfTestAsync(cli.TargetTitle, cancellationToken).ConfigureAwait(false),
             CliCommand.Once => await runner.CaptureOnceAsync(cli.TargetTitle, cancellationToken).ConfigureAwait(false),
-            CliCommand.Summarize => await runner.SummarizeAsync(cli.AssumeYes, cli.PreviewOnly, cancellationToken).ConfigureAwait(false),
+            CliCommand.Summarize => await runner.SummarizeAsync(cli.AssumeYes, cli.PreviewOnly, cli.Day, cancellationToken).ConfigureAwait(false),
             CliCommand.ExportCsv => await runner.ExportCsvAsync(cli.ExportPath, cancellationToken).ConfigureAwait(false),
             CliCommand.UiSmoke => runner.UiSmoke(),
             CliCommand.Cleanup => await runner.CleanupAsync(cancellationToken).ConfigureAwait(false),
@@ -538,7 +538,7 @@ internal sealed class CliRunner
         return 0;
     }
 
-    private async Task<int> SummarizeAsync(bool assumeYes, bool previewOnly, CancellationToken cancellationToken)
+    private async Task<int> SummarizeAsync(bool assumeYes, bool previewOnly, DateOnly? cliDay, CancellationToken cancellationToken)
     {
         if (!_options.Summarization.Enabled)
         {
@@ -550,7 +550,7 @@ internal sealed class CliRunner
         {
             var payload = SummaryPreparation.DescribeMode(_options.Summarization.PayloadMode);
 
-            Console.WriteLine($"[确认] 生成总结会把最近的活动记录（{payload}）发送到以下模型（按顺序使用）：");
+            Console.WriteLine($"[确认] 生成总结会把{(cliDay is { } d ? $"{d:yyyy-MM-dd} 的记录" : "最近的活动记录")}（{payload}）发送到以下模型（按顺序使用）：");
             foreach (var provider in _options.Summarization.Providers.Where(p => p.Enabled))
             {
                 Console.WriteLine($"         {provider.Name} · {provider.Model} @ {provider.Endpoint}");
@@ -577,7 +577,7 @@ internal sealed class CliRunner
 
         if (previewOnly)
         {
-            var (preparation, previewError) = await runner.PrepareAsync(_options, cancellationToken).ConfigureAwait(false);
+            var (preparation, previewError) = await runner.PrepareAsync(_options, cliDay, cancellationToken).ConfigureAwait(false);
             if (preparation is null)
             {
                 Console.WriteLine($"[结果] 无法预览：{previewError}");
@@ -589,7 +589,7 @@ internal sealed class CliRunner
             return 0;
         }
 
-        var result = await runner.RunAsync(_options, "命令行", cancellationToken).ConfigureAwait(false);
+        var result = await runner.RunAsync(_options, "命令行", cliDay, cancellationToken).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -690,7 +690,10 @@ internal sealed class CliRunner
         ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures,
             CheckLayoutSane);
         ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
-        ProbeForm("RecordsForm（记录查看器）", () => new RecordsForm(_options, _store, _paths, _log), failures);
+        ProbeForm("RecordsForm（记录查看器）", () => new RecordsForm(_options, _store, _paths, _log), failures,
+            CheckDeleteButtonState);
+        ProbeForm("删除确认框（有截图）", () => new DeleteRecordsDialog(3, 3), failures);
+        ProbeForm("删除确认框（无截图）", () => new DeleteRecordsDialog(2, 0), failures);
         ProbeForm("SummaryHistoryForm（总结历史）", () => new SummaryHistoryForm(settingsContext), failures);
 
         // 字段映射窗体：带上"已知飞书字段"两种情形各构造一次（命中/不命中列名走的是不同提示分支）。
@@ -983,6 +986,42 @@ internal sealed class CliRunner
         return text == "时间"
             ? null
             : $"从下拉选中列名后输入框里是“{text}”，应当只剩列名“时间”（类型说明不该写进映射）";
+    }
+
+    /// <summary>
+    /// "删除"的可用状态必须跟着选中行数走：没有选中就不能点（否则可能误删），
+    /// 选中了就该能点。两个方向都验一遍。
+    /// </summary>
+    private static string? CheckDeleteButtonState(Form form)
+    {
+        var grid = FindControls<DataGridView>(form).FirstOrDefault();
+        var delete = FindControls<Button>(form).FirstOrDefault(b => b.Text == "删除");
+
+        if (grid is null || delete is null)
+        {
+            return "找不到记录表格或“删除”按钮";
+        }
+
+        if (grid.SelectedRows.Count > 0 && !delete.Enabled)
+        {
+            return $"选中 {grid.SelectedRows.Count} 行时“删除”却是灰的";
+        }
+
+        grid.ClearSelection();
+        var disabledAfterClear = !delete.Enabled;
+
+        if (grid.Rows.Count > 0)
+        {
+            grid.Rows[0].Selected = true;
+            grid.CurrentCell = grid.Rows[0].Cells[0];
+        }
+
+        if (!disabledAfterClear)
+        {
+            return "清空选中后“删除”仍是可点的";
+        }
+
+        return delete.Enabled || grid.Rows.Count == 0 ? null : "重新选中后“删除”没有恢复可点";
     }
 
     /// <summary>设置页的通用检查：布局是否正常 + 保存按钮的灰/亮 + 滚轮不改值。</summary>

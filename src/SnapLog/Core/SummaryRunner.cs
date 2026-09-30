@@ -99,19 +99,29 @@ public sealed class SummaryRunner
         _log = log;
     }
 
+    /// <summary>
+    /// 准备要发送的内容。<paramref name="day"/> 指定时只取那一天的记录，为空则取最近的记录。
+    /// </summary>
     public async Task<(SummaryPreparation? Preparation, string? Error)> PrepareAsync(
         AppOptions options,
+        DateOnly? day,
         CancellationToken cancellationToken)
     {
         var settings = options.Summarization;
 
-        var records = await _store
-            .GetRecentAsync(settings.MaxRecords, cancellationToken)
-            .ConfigureAwait(false);
+        var records = day is { } targetDay
+            ? await _store
+                .GetByDayAsync(targetDay.ToDateTime(TimeOnly.MinValue), settings.MaxRecords, cancellationToken)
+                .ConfigureAwait(false)
+            : await _store
+                .GetRecentAsync(settings.MaxRecords, cancellationToken)
+                .ConfigureAwait(false);
 
         if (records.Count == 0)
         {
-            return (null, "暂无可用于总结的记录。请先运行一段时间，或点“立即抓取一次”。");
+            return (null, day is { } emptyDay
+                ? $"{emptyDay:yyyy-MM-dd} 没有记录可以总结。"
+                : "暂无可用于总结的记录。请先运行一段时间，或点“立即抓取一次”。");
         }
 
         // 预览不要求密钥就绪：用户正是要先看清"会发什么"才决定配不配密钥，
@@ -202,16 +212,18 @@ public sealed class SummaryRunner
     /// 这样定时任务半夜失败了第二天也查得到原因。
     /// </summary>
     /// <param name="trigger">触发来源，会显示在总结历史里：手动 / 定时 / 命令行。</param>
+    /// <param name="day">只总结这一天的记录；为空表示总结最近的记录。</param>
     public async Task<SummaryRunResult> RunAsync(
         AppOptions options,
         string trigger,
+        DateOnly? day,
         CancellationToken cancellationToken)
     {
         var settings = options.Summarization;
         var startedAt = DateTime.Now;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        var result = await RunCoreAsync(options, cancellationToken).ConfigureAwait(false);
+        var result = await RunCoreAsync(options, day, cancellationToken).ConfigureAwait(false);
 
         stopwatch.Stop();
 
@@ -262,7 +274,10 @@ public sealed class SummaryRunner
         }
     }
 
-    private async Task<SummaryRunResult> RunCoreAsync(AppOptions options, CancellationToken cancellationToken)
+    private async Task<SummaryRunResult> RunCoreAsync(
+        AppOptions options,
+        DateOnly? day,
+        CancellationToken cancellationToken)
     {
         var settings = options.Summarization;
 
@@ -277,7 +292,7 @@ public sealed class SummaryRunner
                 "尚未确认“活动记录将发送至外部接口”的提示，已取消。在设置中生成一次并确认即可。");
         }
 
-        var (preparation, prepareError) = await PrepareAsync(options, cancellationToken).ConfigureAwait(false);
+        var (preparation, prepareError) = await PrepareAsync(options, day, cancellationToken).ConfigureAwait(false);
         if (preparation is null)
         {
             return new SummaryRunResult(false, null, null, prepareError ?? "准备总结内容失败。");

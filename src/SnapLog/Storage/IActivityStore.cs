@@ -79,6 +79,18 @@ public interface IActivityStore : IAsyncDisposable
     /// </summary>
     Task<IReadOnlyList<ActivityRecord>> GetRecentAsync(int count, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// 取某一天（本地时间当天 00:00:00 到 23:59:59）的完整记录，按时间升序返回。
+    /// 总结支持"只汇总某一天"时用它；<paramref name="limit"/> 兜住单次送入模型的条数上限。
+    /// </summary>
+    Task<IReadOnlyList<ActivityRecord>> GetByDayAsync(DateTime day, int limit, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 按 id 删除记录，返回这些记录引用过的截图文件路径（相对或绝对，未去重前的原始值）。
+    /// 只负责删库里的行；要不要连截图文件一起删由调用方决定——那是不可撤销的操作，得让用户点头。
+    /// </summary>
+    Task<IReadOnlyList<string>> DeleteByIdsAsync(IReadOnlyList<long> ids, CancellationToken cancellationToken);
+
     /// <summary>当前库里出现过的进程名，供筛选下拉框使用。</summary>
     Task<IReadOnlyList<string>> GetProcessNamesAsync(CancellationToken cancellationToken);
 

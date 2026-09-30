@@ -65,6 +65,9 @@ public sealed record CommandLineOptions
     /// <summary>--preview：只打印将要发送给模型的内容，不真的发请求。</summary>
     public bool PreviewOnly { get; init; }
 
+    /// <summary>--date 指定只总结这一天的记录；为空表示总结最近的记录。</summary>
+    public DateOnly? Day { get; init; }
+
     /// <summary>--dry-run：只算清单不实际执行（推送用）。</summary>
     public bool DryRun { get; init; }
 
@@ -88,6 +91,7 @@ public sealed record CommandLineOptions
         string? targetTitle = null;
         string? exportPath = null;
         var previewOnly = false;
+        DateOnly? day = null;
         var dryRun = false;
         int? count = null;
         var testOnly = false;
@@ -120,6 +124,14 @@ public sealed record CommandLineOptions
                     break;
                 case "--preview":
                     previewOnly = true;
+                    break;
+                case "--date":
+                    if (++i >= args.Length || !DateOnly.TryParse(args[i], out var parsedDay))
+                    {
+                        return Invalid("--date 后面需要 yyyy-MM-dd 格式的日期");
+                    }
+
+                    day = parsedDay;
                     break;
                 case "--dry-run":
                     dryRun = true;
@@ -202,6 +214,7 @@ public sealed record CommandLineOptions
             TargetTitle = targetTitle,
             ExportPath = exportPath,
             PreviewOnly = previewOnly,
+            Day = day,
             DryRun = dryRun,
             Count = count,
             TestOnly = testOnly,
@@ -218,9 +231,10 @@ public sealed record CommandLineOptions
           SnapLog                      启动托盘应用（默认）
           SnapLog --once [--target 关键字]
                                        立即抓取当前前台窗口一次并写库后退出；--target 可指定窗口
-          SnapLog --summarize [--yes] [--preview]
+          SnapLog --summarize [--yes] [--preview] [--date yyyy-MM-dd]
                                        对已有记录生成总结；--yes 跳过外发确认，
-                                       --preview 只打印要发送的内容而不真的发请求
+                                       --preview 只打印要发送的内容而不真的发请求，
+                                       --date 只总结指定日期的记录
           SnapLog --cleanup            按配置的保留天数清理过期记录与截图
           SnapLog --ocr-pending        立刻批量识别待识别（Pending）的记录
           SnapLog --publish [--dry-run|--test]

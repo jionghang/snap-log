@@ -230,6 +230,89 @@ public sealed class SqliteActivityStore : IActivityRepository
             return records;
         }, cancellationToken);
 
+    public Task<IReadOnlyList<ActivityRecord>> GetByDayAsync(
+        DateTime day,
+        int limit,
+        CancellationToken cancellationToken) =>
+        RunAsync<IReadOnlyList<ActivityRecord>>(connection =>
+        {
+            var from = day.Date;
+            var to = from.AddDays(1).AddSeconds(-1);
+
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                $"SELECT {SelectColumns} FROM activity " +
+                "WHERE timestamp >= $from AND timestamp <= $to " +
+                "ORDER BY timestamp ASC, id ASC LIMIT $limit";
+            command.Parameters.AddWithValue("$from", from.ToString(TimeFormat, CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$to", to.ToString(TimeFormat, CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 100_000));
+
+            var records = new List<ActivityRecord>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                records.Add(ReadRecord(reader));
+            }
+
+            return records;
+        }, cancellationToken);
+
+    public Task<IReadOnlyList<string>> DeleteByIdsAsync(
+        IReadOnlyList<long> ids,
+        CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return Task.FromResult<IReadOnlyList<string>>([]);
+        }
+
+        return RunAsync<IReadOnlyList<string>>(connection =>
+        {
+            // 先把这些记录引用的截图路径读出来，再删行——删完就查不到了。
+            var placeholders = new string[ids.Count];
+            for (var i = 0; i < ids.Count; i++)
+            {
+                placeholders[i] = $"$id{i}";
+            }
+
+            var inClause = string.Join(", ", placeholders);
+
+            var paths = new List<string>();
+            using (var select = connection.CreateCommand())
+            {
+                select.CommandText = $"SELECT image_path FROM activity WHERE id IN ({inClause})";
+                for (var i = 0; i < ids.Count; i++)
+                {
+                    select.Parameters.AddWithValue(placeholders[i], ids[i]);
+                }
+
+                using var reader = select.ExecuteReader();
+                while (reader.Read())
+                {
+                    var path = reader.GetString(0);
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        paths.Add(path);
+                    }
+                }
+            }
+
+            using (var delete = connection.CreateCommand())
+            {
+                delete.CommandText = $"DELETE FROM activity WHERE id IN ({inClause})";
+                for (var i = 0; i < ids.Count; i++)
+                {
+                    delete.Parameters.AddWithValue(placeholders[i], ids[i]);
+                }
+
+                delete.ExecuteNonQuery();
+            }
+
+            return paths;
+        }, cancellationToken);
+    }
+
     public Task<IReadOnlyList<string>> GetProcessNamesAsync(CancellationToken cancellationToken) =>
         RunAsync<IReadOnlyList<string>>(connection =>
         {
