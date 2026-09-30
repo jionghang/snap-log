@@ -69,6 +69,10 @@ internal sealed class SystemPromptEditForm : Form
 
         _editor.TextChanged += (_, _) => UpdateHint();
         UpdateHint();
+
+        // TextBox 在"先设文本、后第一次获得焦点"时会把全文选中（WinForms 的老行为），
+        // 打开就把光标放到开头，免得整段蓝底看着像被误选。
+        Shown += (_, _) => _editor.Select(0, 0);
     }
 
     private void UpdateHint()

@@ -252,18 +252,28 @@ internal sealed class MainForm : Form
         AddInfoRow(info, "最近一次抓取", _lastValue);
         AddInfoRow(info, "总共抓取", _totalValue);
 
+        // 一条分隔线把"只读信息"和"可操作的项"分开：否则那一行复选框夹在信息里，
+        // 看不出哪些能点。样式与设置页的分组分隔线一致。
+        AddInfoRow(info, string.Empty, new Panel
+        {
+            Height = 1,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            BackColor = SystemColors.ControlDark,
+            Margin = new Padding(0, 10, 0, 10),
+        });
+
         // 开机自启动：改了立刻写注册表并生效（这一页没有"保存设置"，勾选本身就是动作）。
         _autoStart.Text = "开机自动启动（登录后最小化到托盘）";
         _autoStart.AutoSize = true;
         _autoStart.Margin = new Padding(3, 6, 0, 0);
         _autoStart.CheckedChanged += (_, _) => ToggleAutoStart();
-        AddInfoRow(info, "开机自启动", _autoStart);
+        AddInfoRow(info, "启动行为", _autoStart);
 
         var buttons = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            Padding = new Padding(0, 4, 0, 8),
+            Padding = new Padding(4, 0, 0, 12),
             WrapContents = true,
         };
 
@@ -306,7 +316,7 @@ internal sealed class MainForm : Form
 
         var label = new Label
         {
-            Text = caption + "：",
+            Text = caption.Length == 0 ? string.Empty : caption + "：",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 3, 4, 3),

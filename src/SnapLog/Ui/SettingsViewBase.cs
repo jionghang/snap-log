@@ -267,7 +267,8 @@ internal abstract class SettingsViewBase : UserControl
             Margin = new Padding(0, 0, 0, 12),
             Padding = new Padding(0, 0, 0, 6),
         };
-        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 122));
+        // 够放下最长的行标题（"PaddleOCR 模型："），避免标题折成两行。
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 148));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         var header = new Label
@@ -282,8 +283,21 @@ internal abstract class SettingsViewBase : UserControl
         grid.RowCount = 1;
         grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        // 用 Tag 记下一个空行号，避免和标题行冲突。
-        grid.Tag = 1;
+        // 标题下压一条分隔线：光靠加粗文字，几组内容容易糊成一片。
+        var separator = new Panel
+        {
+            Height = 1,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            BackColor = SystemColors.ControlDark,
+            Margin = new Padding(0, 2, 6, 8),
+        };
+        grid.Controls.Add(separator, 0, 1);
+        grid.SetColumnSpan(separator, 2);
+        grid.RowCount = 2;
+        grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        // 用 Tag 记下一个空行号，避免和标题、分隔线冲突。
+        grid.Tag = 2;
 
         DoubleBuffer.Enable(grid);
         return DeferLayout(grid);
@@ -291,7 +305,7 @@ internal abstract class SettingsViewBase : UserControl
 
     protected static void AddRow(TableLayoutPanel grid, string caption, Control control)
     {
-        var row = (int)(grid.Tag ?? 1);
+        var row = (int)(grid.Tag ?? 2);
         grid.Tag = row + 1;
         grid.RowCount = row + 1;
         grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));

@@ -120,6 +120,16 @@ public sealed class SqliteActivityStore : IActivityRepository
             EnsureColumn(connection, "summary_runs", "covered_marks", "INTEGER NOT NULL DEFAULT 0");
             EnsureColumn(connection, "summary_runs", "covered_text_rev", "TEXT NOT NULL DEFAULT ''");
 
+            // 早期版本把"已生成并保存到 …"这段说明错当成模型名写进了 provider 列，
+            // 界面上那列会显示成一句文件路径。这种值没法还原成模型名，清成空更诚实（界面显示"—"）。
+            using (var cleanup = connection.CreateCommand())
+            {
+                cleanup.CommandText =
+                    "UPDATE summary_runs SET provider = '' " +
+                    "WHERE provider LIKE '已生成并保存到%' OR provider LIKE '生成失败%'";
+                cleanup.ExecuteNonQuery();
+            }
+
             _insertCommand = connection.CreateCommand();
             _insertCommand.CommandText =
                 """

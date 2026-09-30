@@ -106,13 +106,14 @@ internal sealed class RecordsView : UserControl
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _grid.MultiSelect = true;   // 批量删除需要一次选多条
         _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "时间", FillWeight = 13 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "进程", FillWeight = 9 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "窗口标题", FillWeight = 24 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "字数", FillWeight = 6 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "耗时(ms)", FillWeight = 8 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", FillWeight = 7 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "识别文字摘要", FillWeight = 33 });
+        // 时间列要放得下 yyyy-MM-dd HH:mm:ss，"字数/耗时"的标题也不能被裁。
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "时间", FillWeight = 18 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "进程", FillWeight = 8 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "窗口标题", FillWeight = 22 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "字数", FillWeight = 5 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "耗时(ms)", FillWeight = 7 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", FillWeight = 6 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "识别文字摘要", FillWeight = 34 });
         _grid.SelectionChanged += async (_, _) =>
         {
             _delete.Enabled = _grid.SelectedRows.Count > 0;
@@ -221,19 +222,36 @@ internal sealed class RecordsView : UserControl
         panel.Controls.Add(timeRow, 0, 0);
 
         // 第二行：进程 / 状态 / 关键词 / 按钮
-        var filterRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = true };
+        // 左右两组：左边是筛选条件，右边是操作按钮。窗口变窄时两组各自换行，
+        // 不会出现"删除"被挤到第三行孤零零一个的情况。
+        var filterRow = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+        };
+        filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        filterRow.Controls.Add(new Label { Text = "进程", AutoSize = true, Margin = new Padding(0, 8, 4, 0) });
+        var conditions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = true };
+        // 操作按钮不换行：它在 AutoSize 列里，WrapContents 会让它折成一条竖排。
+        var operations = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Dock = DockStyle.Fill };
+
+        filterRow.Controls.Add(conditions, 0, 0);
+        filterRow.Controls.Add(operations, 1, 0);
+
+        conditions.Controls.Add(new Label { Text = "进程", AutoSize = true, Margin = new Padding(0, 8, 4, 0) });
         _process.DropDownStyle = ComboBoxStyle.DropDownList;
         _process.Width = 130;
-        filterRow.Controls.Add(_process);
+        conditions.Controls.Add(_process);
 
-        filterRow.Controls.Add(new Label { Text = "状态", AutoSize = true, Margin = new Padding(12, 8, 4, 0) });
+        conditions.Controls.Add(new Label { Text = "状态", AutoSize = true, Margin = new Padding(12, 8, 4, 0) });
         _status.DropDownStyle = ComboBoxStyle.DropDownList;
         _status.Width = 100;
-        filterRow.Controls.Add(_status);
+        conditions.Controls.Add(_status);
 
-        filterRow.Controls.Add(new Label { Text = "关键词", AutoSize = true, Margin = new Padding(12, 8, 4, 0) });
+        conditions.Controls.Add(new Label { Text = "关键词", AutoSize = true, Margin = new Padding(12, 8, 4, 0) });
         _keyword.Width = 200;
         _keyword.PlaceholderText = "匹配窗口标题与识别文字";
         _keyword.KeyDown += async (_, e) =>
@@ -244,32 +262,32 @@ internal sealed class RecordsView : UserControl
                 await RunQueryAsync(resetOffset: true);
             }
         };
-        filterRow.Controls.Add(_keyword);
+        conditions.Controls.Add(_keyword);
 
         var search = new Button { Text = "查询", Width = 76, Height = 28, Margin = new Padding(12, 3, 4, 0) };
         search.Click += async (_, _) => await RunQueryAsync(resetOffset: true);
-        filterRow.Controls.Add(search);
+        operations.Controls.Add(search);
 
         var reset = new Button { Text = "重置", Width = 76, Height = 28, Margin = new Padding(4, 3, 4, 0) };
         reset.Click += async (_, _) => await ResetFiltersAsync();
-        filterRow.Controls.Add(reset);
+        operations.Controls.Add(reset);
 
         var export = new Button { Text = "导出 CSV", Width = 92, Height = 28, Margin = new Padding(4, 3, 4, 0) };
         export.Click += async (_, _) => await ExportAsync();
-        filterRow.Controls.Add(export);
+        operations.Controls.Add(export);
 
         // 删除：二次确认，并可选择连截图文件一起删。
         _delete = new Button { Text = "删除", Width = 76, Height = 28, Margin = new Padding(4, 3, 4, 0), Enabled = false };
         _delete.Click += async (_, _) => await DeleteSelectedAsync();
-        filterRow.Controls.Add(_delete);
+        operations.Controls.Add(_delete);
 
         panel.Controls.Add(filterRow, 0, 1);
 
         _status.Items.Clear();
         _status.Items.Add("全部");
-        foreach (var name in Enum.GetNames<RecordStatus>())
+        foreach (var kind in Enum.GetValues<RecordStatus>())
         {
-            _status.Items.Add(name);
+            _status.Items.Add(new StatusChoice(kind, DescribeStatus(kind)));
         }
 
         _status.SelectedIndex = 0;
@@ -334,7 +352,8 @@ internal sealed class RecordsView : UserControl
 
     private ActivityQuery BuildFilterQuery()
     {
-        RecordStatus? status = _status.SelectedIndex <= 0 ? null : Enum.Parse<RecordStatus>(_status.Text);
+        // 下拉里显示的是中文，值仍是枚举（见 StatusChoice）。
+        RecordStatus? status = _status.SelectedItem is StatusChoice choice ? choice.Kind : null;
         var process = _process.SelectedIndex <= 0 ? null : _process.Text;
 
         DateTime? from = null;
@@ -408,7 +427,7 @@ internal sealed class RecordsView : UserControl
                     item.WindowTitle,
                     item.TextLength,
                     item.OcrMilliseconds,
-                    item.Status,
+                    DescribeStatus(item.Status),
                     item.Preview);
                 _grid.Rows[index].Tag = item.Id;
             }
@@ -521,6 +540,16 @@ internal sealed class RecordsView : UserControl
         _to.Enabled = enabled;
     }
 
+    /// <summary>状态的中文说法：界面上不出现 Ok/Pending 这类枚举名。</summary>
+    private static string DescribeStatus(RecordStatus status) => status switch
+    {
+        RecordStatus.Ok => "已识别",
+        RecordStatus.NoText => "无文字",
+        RecordStatus.Error => "失败",
+        RecordStatus.Pending => "待识别",
+        _ => status.ToString(),
+    };
+
     private async Task ShowSelectedDetailAsync()
     {
         if (_grid.SelectedRows.Count == 0)
@@ -578,7 +607,7 @@ internal sealed class RecordsView : UserControl
                 进程      ：{(record.ProcessName.Length == 0 ? "(未知)" : record.ProcessName)}
                 窗口标题  ：{record.WindowTitle}
                 窗口类名  ：{(record.WindowClass.Length == 0 ? "(未采集)" : record.WindowClass)}
-                状态      ：{record.Status}
+                状态      ：{DescribeStatus(record.Status)}
                 字数      ：{record.TextLength}
                 OCR 耗时  ：{record.OcrMilliseconds} ms
                 抓取方式  ：{record.CaptureMethod}
@@ -823,4 +852,10 @@ internal sealed class RecordsView : UserControl
             _log.Warn($"打开路径失败：{ex.Message}");
         }
     }
+}
+
+/// <summary>状态筛选的选项：值用枚举查询，显示用中文。</summary>
+internal sealed record StatusChoice(RecordStatus Kind, string Label)
+{
+    public override string ToString() => Label;
 }

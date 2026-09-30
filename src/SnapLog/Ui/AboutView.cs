@@ -80,19 +80,15 @@ internal sealed class AboutView : SettingsViewBase
         var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         AddRow("版本", version?.ToString() ?? "未知");
         AddRow("运行时", $".NET {Environment.Version}");
-        AddRow("系统", Environment.OSVersion.VersionString);
+        AddRow("系统", DescribeSystem());
         AddRow("构建时间", DescribeBuildTime());
         AddRow("许可证", "MIT");
 
         var links = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Margin = new Padding(0, 14, 0, 0) };
 
-        links.Controls.Add(NewButton("打开项目主页", () => OpenUrl(RepositoryUrl)));
-        links.Controls.Add(new Label
-        {
-            Text = "　",
-            AutoSize = true,
-            Margin = new Padding(0, 0, 8, 0),
-        });
+        var home = NewButton("打开项目主页", () => OpenUrl(RepositoryUrl));
+        home.Margin = new Padding(0, 0, 24, 0);   // 与后面的目录按钮留出分组间距
+        links.Controls.Add(home);
 
         links.Controls.Add(NewButton("打开数据目录", () => OpenPath(Paths.DataDirectory)));
         links.Controls.Add(NewButton("打开日志目录", () => OpenPath(Paths.LogsDirectory)));
@@ -119,6 +115,14 @@ internal sealed class AboutView : SettingsViewBase
         root.Controls.Add(links);
         root.Controls.Add(note);
         return root;
+    }
+
+    /// <summary>系统版本的友好写法：原始值是 "Microsoft Windows NT 10.0.19043.0"。</summary>
+    private static string DescribeSystem()
+    {
+        var version = Environment.OSVersion.Version;
+        var arch = Environment.Is64BitOperatingSystem ? "64 位" : "32 位";
+        return $"Windows {version.Major}.{version.Minor}.{version.Build}.{version.Revision}（{arch}）";
     }
 
     /// <summary>

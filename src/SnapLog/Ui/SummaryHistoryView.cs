@@ -71,6 +71,8 @@ internal sealed class SummaryHistoryView : UserControl
 
     private void BuildLayout()
     {
+        // 单行工具条，用一段固定间距把"看"和"做"分开。
+        // （不用"左右两列 + 百分比"：WrapContents 的流式面板放进 AutoSize 列里会折成竖条。）
         var toolbar = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
@@ -79,13 +81,17 @@ internal sealed class SummaryHistoryView : UserControl
             Padding = new Padding(10, 8, 10, 4),
         };
 
+        var viewing = toolbar;
+        var acting = toolbar;
+
+
         _successOnly.Text = "只看成功";
         _successOnly.AutoSize = true;
         _successOnly.Margin = new Padding(0, 7, 12, 0);
         _successOnly.CheckedChanged += async (_, _) => await ReloadAsync();
-        toolbar.Controls.Add(_successOnly);
+        viewing.Controls.Add(_successOnly);
 
-        toolbar.Controls.Add(new Label { Text = "显示最近", AutoSize = true, Margin = new Padding(0, 8, 4, 0) });
+        viewing.Controls.Add(new Label { Text = "显示最近", AutoSize = true, Margin = new Padding(0, 8, 4, 0) });
         _pageSize.DropDownStyle = ComboBoxStyle.DropDownList;
         _pageSize.Width = 70;
         foreach (var size in PageSizes)
@@ -95,24 +101,19 @@ internal sealed class SummaryHistoryView : UserControl
 
         _pageSize.SelectedItem = 50;
         _pageSize.SelectedIndexChanged += async (_, _) => await ReloadAsync();
-        toolbar.Controls.Add(_pageSize);
+        viewing.Controls.Add(_pageSize);
 
-        toolbar.Controls.Add(new Label { Text = "条", AutoSize = true, Margin = new Padding(4, 8, 12, 0) });
+        viewing.Controls.Add(new Label { Text = "条", AutoSize = true, Margin = new Padding(4, 8, 12, 0) });
 
         var refresh = new Button { Text = "刷新", Width = 76, Height = 28, Margin = new Padding(0, 3, 4, 0) };
         refresh.Click += async (_, _) => await ReloadAsync();
-        toolbar.Controls.Add(refresh);
+        viewing.Controls.Add(refresh);
 
-        var generate = new Button { Text = "现在生成一次", Width = 110, Height = 28, Margin = new Padding(0, 3, 4, 0) };
-        generate.Click += async (_, _) =>
-        {
-            await _generateNow();
-            await ReloadAsync();
-        };
-        toolbar.Controls.Add(generate);
+        AddGroupGap(toolbar);
 
-        // 这一组只影响上面那个"生成一次"：勾上就只总结指定那一天的记录，不勾则总结最近的记录。
-        toolbar.Controls.Add(new Label
+        // 生成范围放在"现在生成一次"之前：先说范围，再说动作。
+        // 勾上就只总结指定那一天的记录，不勾则总结最近的记录。
+        acting.Controls.Add(new Label
         {
             Text = "生成范围",
             AutoSize = true,
@@ -124,7 +125,7 @@ internal sealed class SummaryHistoryView : UserControl
         _pickDay.AutoSize = true;
         _pickDay.Margin = new Padding(0, 8, 4, 0);
         _pickDay.CheckedChanged += (_, _) => _dayPicker.Enabled = _pickDay.Checked;
-        toolbar.Controls.Add(_pickDay);
+        acting.Controls.Add(_pickDay);
 
         _dayPicker.Format = DateTimePickerFormat.Custom;
         _dayPicker.CustomFormat = "yyyy-MM-dd";
@@ -133,7 +134,15 @@ internal sealed class SummaryHistoryView : UserControl
         _dayPicker.Enabled = false;
         _dayPicker.Margin = new Padding(0, 3, 4, 0);
         DoubleBuffer.Enable(_dayPicker);
-        toolbar.Controls.Add(_dayPicker);
+        acting.Controls.Add(_dayPicker);
+
+        var generate = new Button { Text = "现在生成一次", Width = 110, Height = 28, Margin = new Padding(0, 3, 4, 0) };
+        generate.Click += async (_, _) =>
+        {
+            await _generateNow();
+            await ReloadAsync();
+        };
+        acting.Controls.Add(generate);
 
         _delete.Text = "删除";
         _delete.Width = 76;
@@ -141,12 +150,12 @@ internal sealed class SummaryHistoryView : UserControl
         _delete.Enabled = false;
         _delete.Margin = new Padding(12, 3, 4, 0);
         _delete.Click += async (_, _) => await DeleteSelectedAsync();
-        toolbar.Controls.Add(_delete);
+        acting.Controls.Add(_delete);
 
         _summary.AutoSize = true;
         _summary.Margin = new Padding(12, 8, 0, 0);
         _summary.ForeColor = SystemColors.GrayText;
-        toolbar.Controls.Add(_summary);
+        acting.Controls.Add(_summary);
 
         DoubleBuffer.Enable(_grid);
         _grid.Dock = DockStyle.Fill;
@@ -220,6 +229,17 @@ internal sealed class SummaryHistoryView : UserControl
         Controls.Add(_split);
         Controls.Add(toolbar);
     }
+
+    /// <summary>工具条里的分组间隔：一段空白占位，换行时跟着走。</summary>
+    private static void AddGroupGap(FlowLayoutPanel toolbar) =>
+        toolbar.Controls.Add(new Label
+        {
+            Text = string.Empty,
+            AutoSize = false,
+            Width = 22,
+            Height = 1,
+            Margin = new Padding(0, 0, 0, 0),
+        });
 
     /// <summary>勾了"指定日期"就返回那一天，否则返回 null（表示总结最近的记录）。</summary>
     private DateOnly? SelectedDay =>

@@ -5,7 +5,7 @@ using SnapLog.Summarization;
 
 namespace SnapLog.Ui;
 
-/// <summary>大模型配置页：启用、模型列表、发送内容、定时、提示词、工作项目。</summary>
+/// <summary>大模型配置页：模型与重试 / 发送内容 / 定时与提示词 / 工作项目，四组。</summary>
 internal sealed class LlmSettingsView : SettingsViewBase
 {
     private CheckBox _llmEnabled = null!;
@@ -40,7 +40,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        var grid = NewSection("大模型总结");
+        var grid = NewSection("模型与重试");
 
         var enableRow = NewRow();
         _llmEnabled = new CheckBox
@@ -85,7 +85,9 @@ internal sealed class LlmSettingsView : SettingsViewBase
         AddRow(grid, "模型列表", listRow);
         AddRow(grid, string.Empty, NewHint("按列表顺序调用：前一个重试用尽仍失败时自动切换到下一个。双击可编辑。"));
 
-        // ---- 发送内容 ----
+        // ---- 发送内容与图片（单独成组：设置项多，挤在一组里没有层次） ----
+        var payload = NewSection("发送内容");
+
         _payloadMode = new ScrollSafeComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
         _payloadMode.Items.AddRange(
         [
@@ -98,7 +100,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
             UpdateEnabledState();
             UpdatePayloadHint();
         };
-        AddRow(grid, "发送内容", _payloadMode);
+        AddRow(payload, "发送内容", _payloadMode);
 
         var imageOptionsRow = NewRow();
         imageOptionsRow.Controls.Add(new Label { Text = "同窗口图片间隔", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
@@ -119,7 +121,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
             new DetailChoice(LlmImageDetail.High, "清晰度 高（消耗更高）"),
         ]);
         imageOptionsRow.Controls.Add(_imageDetail);
-        AddRow(grid, "图片选项", imageOptionsRow);
+        AddRow(payload, "图片选项", imageOptionsRow);
 
         _payloadHint = new Label
         {
@@ -128,7 +130,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(3, 4, 0, 6),
         };
-        AddRow(grid, string.Empty, _payloadHint);
+        AddRow(payload, string.Empty, _payloadHint);
 
         // ---- 重试 ----
         var retryRow = NewRow();
@@ -141,7 +143,9 @@ internal sealed class LlmSettingsView : SettingsViewBase
         retryRow.Controls.Add(new Label { Text = "秒（指数退避）", AutoSize = true, Margin = new Padding(4, 9, 0, 0) });
         AddRow(grid, "失败重试", retryRow);
 
-        // ---- 定时生成 ----
+        // ---- 定时生成与系统提示词 ----
+        var schedule = NewSection("定时与提示词");
+
         var scheduleRow = NewRow();
         _summarySchedule = new CheckBox
         {
@@ -156,10 +160,10 @@ internal sealed class LlmSettingsView : SettingsViewBase
         _summaryScheduleTime = new TextBox { Width = 70, PlaceholderText = "HH:mm" };
         scheduleRow.Controls.Add(_summaryScheduleTime);
         scheduleRow.Controls.Add(new Label { Text = "(HH:mm)", AutoSize = true, Margin = new Padding(4, 9, 0, 0) });
-        AddRow(grid, "定时生成", scheduleRow);
+        AddRow(schedule, "定时生成", scheduleRow);
 
         // 定时生成汇总的是前一天：定时点常设在当天收尾或次日凌晨，当天记录还没走完。
-        AddRow(grid, string.Empty, NewHint(
+        AddRow(schedule, string.Empty, NewHint(
             "定时生成按天补生成：还没生成过的天会补上；某天生成之后又新增了记录，会重新生成并覆盖旧的那份。"));
 
         // ---- 系统提示词 ----
@@ -176,9 +180,10 @@ internal sealed class LlmSettingsView : SettingsViewBase
             Margin = new Padding(0, 9, 0, 0),
         };
         promptRow.Controls.Add(_promptState);
-        AddRow(grid, "系统提示词", promptRow);
+        AddRow(schedule, "系统提示词", promptRow);
 
         // ---- 工作项目 ----
+        var projects = NewSection("工作项目");
         var projectRow = new TableLayoutPanel
         {
             ColumnCount = 2,
@@ -189,7 +194,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         projectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         projectRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        _projectList = new ListBox { Height = 104, IntegralHeight = false, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top };
+        _projectList = new ListBox { Height = 132, IntegralHeight = false, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top };
         _projectList.DoubleClick += (_, _) => EditSelectedProject();
         projectRow.Controls.Add(_projectList, 0, 0);
 
@@ -207,11 +212,14 @@ internal sealed class LlmSettingsView : SettingsViewBase
         projectButtons.Controls.Add(NewSmallButton("下移", () => MoveProject(1)));
         projectRow.Controls.Add(projectButtons, 1, 0);
 
-        AddRow(grid, "工作项目", projectRow);
-        AddRow(grid, string.Empty, NewHint(
+        AddRow(projects, "工作项目", projectRow);
+        AddRow(projects, string.Empty, NewHint(
             "填写自己的工作项目（项目名与说明）。生成总结时会随提示词发送，模型据此将活动按项目归类。双击可编辑。"));
 
         root.Controls.Add(grid);
+        root.Controls.Add(payload);
+        root.Controls.Add(schedule);
+        root.Controls.Add(projects);
         return root;
     }
 

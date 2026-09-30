@@ -56,6 +56,7 @@ internal sealed class CliRunner
             CliCommand.Summarize => await runner.SummarizeAsync(cli.AssumeYes, cli.PreviewOnly, cli.Day, cancellationToken).ConfigureAwait(false),
             CliCommand.ExportCsv => await runner.ExportCsvAsync(cli.ExportPath, cancellationToken).ConfigureAwait(false),
             CliCommand.UiSmoke => runner.UiSmoke(),
+            CliCommand.UiShots => runner.UiShots(cli.ShotsDirectory),
             CliCommand.Cleanup => await runner.CleanupAsync(cancellationToken).ConfigureAwait(false),
             CliCommand.OcrPending => await runner.OcrPendingAsync(cancellationToken).ConfigureAwait(false),
             CliCommand.Publish => await runner.PublishAsync(cli.DryRun, cli.TestOnly, cancellationToken).ConfigureAwait(false),
@@ -775,6 +776,191 @@ internal sealed class CliRunner
     /// WindowsFormsSynchronizationContext，之后 OnLoad 里的 await 续体要靠消息循环来泵，
     /// 只调 Application.DoEvents 是泵不动的（实测会直接挂死）。
     /// </summary>
+    /// <summary>
+    /// 把各窗口截图存成 PNG，供人工复查布局与文案。
+    /// 主窗口会逐个标签页拍一遍（懒加载页要先建出来，所以每页要等布局稳定）。
+    /// </summary>
+    private int UiShots(string? directory)
+    {
+        var output = string.IsNullOrWhiteSpace(directory)
+            ? Path.Combine(_paths.DataDirectory, "shots")
+            : Path.GetFullPath(directory);
+
+        Console.WriteLine("=== 界面截图 ===");
+        Console.WriteLine($"输出目录：{output}");
+
+        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+
+        using var ocr = OcrEngineFactory.Create(_options.Ocr, _log);
+        var engine = new SnapLogEngine(_options, _paths, _log, ocr, _store);
+        var summaryRunner = new SummaryRunner(_store, _paths, _log);
+        var settingsContext = new SettingsContext(_options, _paths, _log, _store, summaryRunner, () => true);
+
+        var shots = new List<(string Label, string Path, string Size)>();
+
+        // 独立窗口先拍：MainForm 的收尾走 ExitThread，之后同一线程再 Application.Run 会立刻返回。
+        Shoot(shots, output, "90-records", "记录查看器",
+            () => new RecordsForm(_options, _store, _paths, _log));
+        Shoot(shots, output, "91-summary-history", "总结历史",
+            () => new SummaryHistoryForm(settingsContext));
+        Shoot(shots, output, "92-prompt", "系统提示词",
+            () => new SystemPromptEditForm(_options.Summarization));
+        Shoot(shots, output, "93-mapping", "字段映射",
+            () => new FeishuFieldMappingEditForm(
+                new FeishuFieldMapping { RecordField = "Markdown", FeishuField = "工作内容" },
+                isNew: false,
+                [
+                    new FeishuBitablePublisher.FeishuTableField("时间", 5),
+                    new FeishuBitablePublisher.FeishuTableField("工作内容", 1),
+                ]));
+        Shoot(shots, output, "94-provider", "模型配置",
+            () => new LlmProviderEditForm(new LlmProviderOptions(), _options.Summarization.Providers));
+        Shoot(shots, output, "95-delete", "删除确认",
+            () => new DeleteConfirmDialog("记录", 3, "截图文件", 3, string.Empty));
+
+        // 主窗口放最后：它内部有 8 个标签页，逐个截完再结束消息循环。
+        ShootMainTabs(engine, summaryRunner, output, shots);
+
+        engine.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+        Console.WriteLine();
+        Console.WriteLine($"共 {shots.Count} 张：");
+        foreach (var (label, path, size) in shots)
+        {
+            Console.WriteLine($"  {Fit(label, 22)} {size,-12} {path}");
+        }
+
+        return 0;
+    }
+
+    private static void Shoot(
+        List<(string Label, string Path, string Size)> shots,
+        string directory,
+        string name,
+        string label,
+        Func<Form> factory,
+        Action<Form>? afterShown = null,
+        int delayMs = 900)
+    {
+        Form? form = null;
+
+        try
+        {
+            form = factory();
+
+            using var timer = new System.Windows.Forms.Timer { Interval = delayMs };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+
+                try
+                {
+                    afterShown?.Invoke(form);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  {label}：准备截图时出错 {ex.GetType().Name}: {ex.Message}");
+                }
+
+                var image = WindowShots.CaptureWindow(form, out var error);
+                if (image is null)
+                {
+                    Console.WriteLine($"  {Fit(label, 22)} 截图失败：{error}");
+                }
+                else
+                {
+                    using (image)
+                    {
+                        var path = WindowShots.Save(image, directory, name);
+                        shots.Add((label, path, $"{image.Width}x{image.Height}"));
+                    }
+                }
+
+                if (form is MainForm)
+                {
+                    Application.ExitThread();
+                }
+                else
+                {
+                    form.Close();
+                }
+            };
+
+            form.Shown += (_, _) => timer.Start();
+            Application.Run(form);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  {Fit(label, 22)} 失败：{ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            form?.Dispose();
+        }
+    }
+
+    /// <summary>主窗口：逐个标签页截图（每页都会触发懒加载建页与布局）。</summary>
+    private void ShootMainTabs(
+        SnapLogEngine engine,
+        SummaryRunner summaryRunner,
+        string directory,
+        List<(string Label, string Path, string Size)> shots)
+    {
+        var index = 0;
+
+        Shoot(
+            shots,
+            directory,
+            "00-tabs",
+            "主窗口（逐页）",
+            () =>
+            {
+                engine.Start();
+                return new MainForm(_options, _paths, _log, engine, summaryRunner, _store, _configSourcePath);
+            },
+            form =>
+            {
+                // 一个标签页一张：选中 → 等布局 → 拍 → 下一页。
+                if (form is not MainForm main)
+                {
+                    return;
+                }
+
+                var tabs = FindControls<TabControl>(main).FirstOrDefault();
+                if (tabs is null)
+                {
+                    return;
+                }
+
+                foreach (TabPage page in tabs.TabPages)
+                {
+                    tabs.SelectedTab = page;
+                    Application.DoEvents();
+                    Thread.Sleep(450);
+                    Application.DoEvents();
+
+                    var image = WindowShots.CaptureWindow(main, out var error);
+                    if (image is null)
+                    {
+                        Console.WriteLine($"  {Fit("标签页：" + page.Text, 22)} 截图失败：{error}");
+                        continue;
+                    }
+
+                    using (image)
+                    {
+                        var name = $"{index + 1:00}-tab-{index + 1}";
+                        var path = WindowShots.Save(image, directory, name);
+                        shots.Add(($"标签页：{page.Text}", path, $"{image.Width}x{image.Height}"));
+                    }
+
+                    index++;
+                }
+            },
+            delayMs: 1200);
+    }
+
     private int UiSmoke()
     {
         Console.WriteLine("=== 界面自检 ===");

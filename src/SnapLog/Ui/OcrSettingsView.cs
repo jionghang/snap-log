@@ -34,7 +34,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        var grid = NewSection("文字识别（OCR）");
+        var grid = NewSection("文字识别");
 
         _ocrEngine = new ScrollSafeComboBox
         {
@@ -66,21 +66,24 @@ internal sealed class OcrSettingsView : SettingsViewBase
             new PaddleModelChoice(PaddleModelKind.V5Mobile, "PP-OCRv5 mobile（更慢，精度低于 v6）"),
         ]);
         _paddleModel.SelectedIndexChanged += (_, _) => UpdateEngineHint();
-        AddRow(grid, "PaddleOCR 模型", _paddleModel);
+        AddRow(grid, "识别模型", _paddleModel);
 
         var optionsRow = NewRow();
         _paddleMkldnn = new CheckBox
         {
-            Text = "启用 MKLDNN 加速（速度提高约 3 至 4 倍，内存占用由约 145MB 增至约 640MB）",
+            // 复选框不会自动折行，长文本会被裁；解释放在下面的提示里。
+            Text = "启用 MKLDNN 加速",
             AutoSize = true,
             Margin = new Padding(3, 6, 12, 0),
         };
         optionsRow.Controls.Add(_paddleMkldnn);
 
-        optionsRow.Controls.Add(new Label { Text = "CPU 线程", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
+        optionsRow.Controls.Add(new Label { Text = "CPU 线程", AutoSize = true, Margin = new Padding(20, 9, 4, 0) });
         _paddleThreads = new ScrollSafeNumericUpDown { Minimum = 1, Maximum = 32, Width = 60 };
         optionsRow.Controls.Add(_paddleThreads);
         AddRow(grid, "识别选项", optionsRow);
+        AddRow(grid, string.Empty, NewHint(
+            "开启 MKLDNN 后速度提高约 3 至 4 倍，内存占用由约 145MB 增至约 640MB；两者识别准确率一致。"));
 
         var modeRow = NewRow();
         _ocrMode = new ScrollSafeComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
@@ -99,6 +102,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         modeRow.Controls.Add(new Label { Text = "时间", AutoSize = true, Margin = new Padding(12, 9, 4, 0) });
         _ocrBatchTime = new TextBox { Width = 70, PlaceholderText = "HH:mm" };
         modeRow.Controls.Add(_ocrBatchTime);
+        modeRow.Controls.Add(new Label { Text = "(HH:mm)", AutoSize = true, Margin = new Padding(4, 9, 0, 0) });
         AddRow(grid, "识别方式", modeRow);
 
         var testRow = NewRow();

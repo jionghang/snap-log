@@ -79,7 +79,8 @@ public sealed record SummaryRunResult(
     string? SavedPath,
     string Message,
     SummaryPreparation? Preparation = null,
-    int Attempts = 1);
+    int Attempts = 1,
+    string Provider = "");
 
 /// <summary>
 /// 总结流程编排：读记录 → 按配置挑截图 → 组装请求 → 调模型（多模型回退 + 重试）→ 存 Markdown。
@@ -322,7 +323,8 @@ public sealed class SummaryRunner
                     ? $"已生成并保存到 {savedPath}（{completion.ProviderDescription}，第 {completion.Attempts} 次尝试成功）"
                     : $"已生成并保存到 {savedPath}";
 
-                return new SummaryRunResult(true, completion.Text, savedPath, message, preparation, completion.Attempts);
+                return new SummaryRunResult(
+                    true, completion.Text, savedPath, message, preparation, completion.Attempts, completion.ProviderDescription);
             }
             catch (OperationCanceledException)
             {
@@ -380,7 +382,7 @@ public sealed class SummaryRunner
                 FinishedAt = DateTime.Now,
                 Trigger = trigger,
                 Success = result.Success,
-                Provider = result.Success ? result.Message : string.Empty,
+                Provider = result.Provider,
                 Attempts = result.Attempts,
                 Markdown = result.Markdown ?? string.Empty,
                 SavedPath = result.SavedPath ?? string.Empty,

@@ -37,6 +37,9 @@ public enum CliCommand
     /// 布局代码的问题（尺寸越界、控件树循环等）只在运行时才暴露，编译通过说明不了什么。
     /// </summary>
     UiSmoke,
+
+    /// <summary>把各窗口截图存成 PNG，人工复查界面用。</summary>
+    UiShots,
     /// <summary>压测：连续抓同一窗口 N 次，用来复现偶发的 GDI+ 错误。</summary>
     CaptureStress,
 
@@ -65,6 +68,9 @@ public sealed record CommandLineOptions
     /// <summary>--preview：只打印将要发送给模型的内容，不真的发请求。</summary>
     public bool PreviewOnly { get; init; }
 
+    /// <summary>--ui-shots 的输出目录；为空则写到数据目录下的 shots。</summary>
+    public string? ShotsDirectory { get; init; }
+
     /// <summary>--date 指定只总结这一天的记录；为空表示总结最近的记录。</summary>
     public DateOnly? Day { get; init; }
 
@@ -92,6 +98,7 @@ public sealed record CommandLineOptions
         string? exportPath = null;
         var previewOnly = false;
         DateOnly? day = null;
+        string? shotsDirectory = null;
         var dryRun = false;
         int? count = null;
         var testOnly = false;
@@ -118,6 +125,14 @@ public sealed record CommandLineOptions
                     break;
                 case "--ui-smoke":
                     command = CliCommand.UiSmoke;
+                    break;
+                case "--ui-shots":
+                    command = CliCommand.UiShots;
+                    if (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+                    {
+                        shotsDirectory = args[++i];
+                    }
+
                     break;
                 case "--cleanup":
                     command = CliCommand.Cleanup;
@@ -213,6 +228,7 @@ public sealed record CommandLineOptions
             DataDirectory = dataDirectory,
             TargetTitle = targetTitle,
             ExportPath = exportPath,
+            ShotsDirectory = shotsDirectory,
             PreviewOnly = previewOnly,
             Day = day,
             DryRun = dryRun,
@@ -245,6 +261,7 @@ public sealed record CommandLineOptions
           SnapLog --windows            列出当前可见的顶层窗口（用于确定“排除的进程名”）
           SnapLog --export-csv [路径]  把全部记录导出成 CSV（缺省写到数据目录）
           SnapLog --ui-smoke           界面自检：依次构造并短暂显示各窗口，报告是否报错
+          SnapLog --ui-shots [目录]    把各窗口与主窗口每个标签页截图存成 PNG（缺省写到数据目录\shots）
 
         通用参数：
           --config <path>   指定配置文件（默认按 %LOCALAPPDATA%\SnapLog\appsettings.json → 程序目录\appsettings.json 的顺序查找）

@@ -61,6 +61,11 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         _saveImages.CheckedChanged += (_, _) => UpdateEnabledState();
         AddRow(retention, "保存截图", _saveImages);
 
+        // 这条说明是关于"保存截图"这个开关本身的，放在它下面而不是整组末尾，
+        // 否则从位置上看像是属于"记录保留"。
+        AddRow(retention, string.Empty, NewHint(
+            "定时识别模式必须保存截图，该模式下本开关锁定为开启。"));
+
         var directoryRow = NewRow();
         _imageDirectory = new TextBox { Width = 300, PlaceholderText = "留空则保存到数据目录的 images 子目录" };
         directoryRow.Controls.Add(_imageDirectory);
@@ -85,9 +90,6 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         recordRetentionRow.Controls.Add(_recordRetentionDays);
         recordRetentionRow.Controls.Add(NewHint("天。超期删除数据库记录，0 表示永久保留"));
         AddRow(retention, "记录保留", recordRetentionRow);
-
-        AddRow(retention, string.Empty, NewHint(
-            "定时识别模式必须保存截图，该模式下本开关锁定为开启。"));
 
         root.Controls.Add(trigger);
         root.Controls.Add(retention);

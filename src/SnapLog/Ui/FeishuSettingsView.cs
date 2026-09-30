@@ -46,7 +46,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        var grid = NewSection("写入飞书多维表格");
+        var grid = NewSection("写入内容");
 
         var enableRow = NewRow();
         _feishuEnabled = new CheckBox
@@ -97,15 +97,16 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         AddRow(grid, "写入范围", scopeRow);
 
         // ---- 应用凭证 ----
+        var connection = NewSection("连接参数");
         var appRow = NewRow();
         _feishuAppId = new TextBox { Width = 240, PlaceholderText = "App ID（cli_…）" };
         appRow.Controls.Add(_feishuAppId);
         appRow.Controls.Add(new Label { Text = "App Secret", AutoSize = true, Margin = new Padding(12, 9, 4, 0) });
         _feishuSecret = new TextBox { Width = 200, UseSystemPasswordChar = true };
         appRow.Controls.Add(_feishuSecret);
-        AddRow(grid, "应用凭证", appRow);
+        AddRow(connection, "应用凭证", appRow);
 
-        AddRow(grid, string.Empty, NewHint(
+        AddRow(connection, string.Empty, NewHint(
             "App Secret 留空时读取环境变量 SNAPLOG_FEISHU_APP_SECRET（推荐）。应用需同时具备多维表格读写权限"
             + "（bitable:app）与本文档的可编辑协作权限，缺失时分别返回 99991672 与 91403。"));
 
@@ -126,7 +127,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         };
         _readFields.Click += async (_, _) => await ReadTableFieldsAsync();
         tableRow.Controls.Add(_readFields);
-        AddRow(grid, "数据表", tableRow);
+        AddRow(connection, "数据表", tableRow);
 
         // ---- 字段映射 ----
         var mappingRow = new TableLayoutPanel
@@ -156,8 +157,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         mappingButtons.Controls.Add(NewSmallButton("恢复默认", ResetMappings));
         mappingRow.Controls.Add(mappingButtons, 1, 0);
 
-        AddRow(grid, "字段映射", mappingRow);
-        AddRow(grid, string.Empty, NewHint(
+        AddRow(connection, "字段映射", mappingRow);
+        AddRow(connection, string.Empty, NewHint(
             "总结字段与飞书列名的对应关系，条数不限：无对应列的映射将“飞书字段名”留空即可跳过，不必逐条填写。"
             + "飞书按名称精确匹配（含空格与换行），名称不一致会报 1254045；点“测试连接”可预先核对。"));
 
@@ -180,9 +181,12 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         _feishuHint = new Label { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(12, 9, 0, 0) };
         actionsRow.Controls.Add(_feishuHint);
-        AddRow(grid, "操作", actionsRow);
+        var actions = NewSection("操作");
+        AddRow(actions, "操作", actionsRow);
 
         root.Controls.Add(grid);
+        root.Controls.Add(connection);
+        root.Controls.Add(actions);
         return root;
     }
 
