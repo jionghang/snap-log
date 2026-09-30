@@ -35,18 +35,18 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         var trigger = NewSection("抓取时机");
 
         AddRow(trigger, string.Empty, NewHint(
-            "抓取由前台窗口切换驱动：窗口切换后等待下面的时长，仍在前台才截图。"));
+            "抓取由前台窗口切换驱动；切换后等待下面的时长，仍在前台才截图。"));
 
         var settleRow = NewRow();
         _settleMilliseconds = new ScrollSafeNumericUpDown { Minimum = 0, Maximum = 30_000, Increment = 100, Width = 90 };
         settleRow.Controls.Add(_settleMilliseconds);
-        settleRow.Controls.Add(NewHint("毫秒（默认 5000）。窗口首次出现后等待此时长，仍在前台才截图"));
+        settleRow.Controls.Add(NewHint("毫秒（默认 5000）；窗口出现后等待此时长，仍在前台才截图。"));
         AddRow(trigger, "延时截图时长", settleRow);
 
         var cycleRow = NewRow();
         _captureCycleMinutes = new ScrollSafeNumericUpDown { Minimum = 1, Maximum = 24 * 60, Width = 90 };
         cycleRow.Controls.Add(_captureCycleMinutes);
-        cycleRow.Controls.Add(NewHint("分钟（默认 10）。同一窗口在每个周期内仅记录一次"));
+        cycleRow.Controls.Add(NewHint("分钟（默认 10）；同一窗口在每个周期内仅记录一次。"));
         AddRow(trigger, "抓取周期", cycleRow);
 
         // ---- 截图与记录 ----
@@ -64,7 +64,7 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         // 这条说明是关于"保存截图"这个开关本身的，放在它下面而不是整组末尾，
         // 否则从位置上看像是属于"记录保留"。
         AddRow(retention, string.Empty, NewHint(
-            "定时识别模式必须保存截图，该模式下本开关锁定为开启。"));
+            "定时识别模式必须保存截图，此时本开关强制开启。"));
 
         var directoryRow = NewRow();
         _imageDirectory = new TextBox { Width = 300, PlaceholderText = "留空则保存到数据目录的 images 子目录" };
@@ -82,13 +82,13 @@ internal sealed class CaptureSettingsView : SettingsViewBase
         var imageRetentionRow = NewRow();
         _imageRetentionDays = new ScrollSafeNumericUpDown { Minimum = 0, Maximum = 3650, Width = 90 };
         imageRetentionRow.Controls.Add(_imageRetentionDays);
-        imageRetentionRow.Controls.Add(NewHint("天。超期删除截图文件，0 表示永久保留"));
+        imageRetentionRow.Controls.Add(NewHint("天；超期删除截图文件，0 表示永久保留。"));
         AddRow(retention, "截图保留", imageRetentionRow);
 
         var recordRetentionRow = NewRow();
         _recordRetentionDays = new ScrollSafeNumericUpDown { Minimum = 0, Maximum = 3650, Width = 90 };
         recordRetentionRow.Controls.Add(_recordRetentionDays);
-        recordRetentionRow.Controls.Add(NewHint("天。超期删除数据库记录，0 表示永久保留"));
+        recordRetentionRow.Controls.Add(NewHint("天；超期删除数据库记录，0 表示永久保留。"));
         AddRow(retention, "记录保留", recordRetentionRow);
 
         root.Controls.Add(trigger);

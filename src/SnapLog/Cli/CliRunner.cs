@@ -909,10 +909,29 @@ internal sealed class CliRunner
         string name,
         string label)
     {
-        var image = WindowShots.CaptureWindow(form, out var error);
+        // 抓一次不行就等一下再抓：窗口刚显示时偶发"不可见"，重试一次就稳了。
+        Bitmap? image = null;
+        string? error = null;
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            image = WindowShots.CaptureWindow(form, out error);
+            if (image is not null)
+            {
+                break;
+            }
+
+            Application.DoEvents();
+            Thread.Sleep(400);
+            Application.DoEvents();
+        }
+
         if (image is null)
         {
-            Console.WriteLine($"  {Fit(label, 26)} 截图失败：{error}");
+            // 把窗口状态一并打出来：只报"窗口不可见"没法判断是没显示还是被最小化。
+            Console.WriteLine(
+                $"  {Fit(label, 26)} 截图失败：{error}"
+                + $"（可见={form.Visible} 句柄={form.IsHandleCreated} 状态={form.WindowState}）");
             return;
         }
 

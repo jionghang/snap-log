@@ -83,7 +83,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         optionsRow.Controls.Add(_paddleThreads);
         AddRow(grid, "识别选项", optionsRow);
         AddRow(grid, string.Empty, NewHint(
-            "开启 MKLDNN 后速度提高约 3 至 4 倍，内存占用由约 145MB 增至约 640MB；两者识别准确率一致。"));
+            "开启后速度提高约 3 至 4 倍，内存占用由约 145MB 增至约 640MB；识别准确率一致。"));
 
         var modeRow = NewRow();
         _ocrMode = new ScrollSafeComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
@@ -112,7 +112,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         testRow.Controls.Add(new Label
         {
             MaximumSize = new Size(420, 0),
-            Text = "抓取当前窗口执行一次完整识别，用于验证引擎与模型是否可用",
+            Text = "抓取当前窗口执行一次完整识别，用于验证引擎与模型可用",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 9, 0, 0),

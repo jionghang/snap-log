@@ -69,9 +69,8 @@ internal sealed class AboutView : SettingsViewBase
 
         var description = new Label
         {
-            Text = "SnapLog 在本机记录前台窗口的活动内容：截取窗口画面并离线识别其中的文字，"
-                   + "结果存入本地数据库；可按需或定时调用大语言模型生成工作总结，"
-                   + "并可将总结写入飞书多维表格备查。识别与存储均在本地完成，不依赖网络。",
+            Text = "SnapLog 在本机记录前台窗口的活动内容：截取画面并离线识别其中的文字，结果存入本地数据库；"
+                   + "可按需或定时调用大语言模型生成工作总结，并可写入飞书多维表格备查。识别与存储均在本地完成。",
             AutoSize = true,
             MaximumSize = new Size(560, 0),
             Margin = new Padding(0, 0, 0, 10),
@@ -97,9 +96,8 @@ internal sealed class AboutView : SettingsViewBase
 
         var note = new Label
         {
-            Text = "数据归属：截图、识别文字、数据库与日志均保存在本机，程序默认不联网。"
-                   + "仅在用户主动执行“生成总结”“写入飞书”，或已启用相应的定时与自动写入功能时，"
-                   + "相关内容才会发送至所配置的外部服务。"
+            Text = "数据归属：截图、识别文字、数据库与日志均保存在本机，程序默认不联网；"
+                   + "仅在主动执行“生成总结”“写入飞书”，或已启用相应定时与自动写入时，内容才会发送至所配置的外部服务。"
                    + Environment.NewLine + Environment.NewLine
                    + $"许可与源码：MIT License。项目地址与问题反馈：{RepositoryUrl}",
             AutoSize = true,

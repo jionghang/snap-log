@@ -83,7 +83,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         listRow.Controls.Add(listButtons, 1, 0);
 
         AddRow(grid, "模型列表", listRow);
-        AddRow(grid, string.Empty, NewHint("按列表顺序调用：前一个重试用尽仍失败时自动切换到下一个。双击可编辑。"));
+        AddRow(grid, string.Empty, NewHint("按列表顺序调用；前一个重试用尽仍失败时自动切到下一个，双击可编辑。"));
 
         // ---- 发送内容与图片（单独成组：设置项多，挤在一组里没有层次） ----
         var payload = NewSection("发送内容");
@@ -164,7 +164,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         // 定时生成汇总的是前一天：定时点常设在当天收尾或次日凌晨，当天记录还没走完。
         AddRow(schedule, string.Empty, NewHint(
-            "定时生成按天补生成：还没生成过的天会补上；某天生成之后又新增了记录，会重新生成并覆盖旧的那份。"));
+            "按天补生成：未生成的天补上；某天之后又新增记录，会重新生成并覆盖。"));
 
         // ---- 系统提示词 ----
         var promptRow = NewRow();
@@ -214,7 +214,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
 
         AddRow(projects, "工作项目", projectRow);
         AddRow(projects, string.Empty, NewHint(
-            "填写自己的工作项目（项目名与说明）。生成总结时会随提示词发送，模型据此将活动按项目归类。双击可编辑。"));
+            "填写工作项目（名称与说明），生成总结时随提示词发送，模型据此归类；双击可编辑。"));
 
         root.Controls.Add(grid);
         root.Controls.Add(payload);

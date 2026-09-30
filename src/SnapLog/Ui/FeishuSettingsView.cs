@@ -59,9 +59,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         enableRow.Controls.Add(_feishuEnabled);
         AddRow(grid, "写入内容", enableRow);
 
-        AddRow(grid, string.Empty, NewHint(
-            "每条总结写为一行，包含正文与元数据（时间、触发来源、模型、条数等）。"
-            + "已写入的总结会打标记，重复执行不会产生重复行。"));
+        AddRow(grid, string.Empty, NewHint("每条总结写为一行，含正文与元数据（时间、触发来源、模型、条数等）；已写入的会打标记，重复执行不会产生重复行。"));
 
         var scheduleRow = NewRow();
         scheduleRow.Controls.Add(new Label { Text = "每天", AutoSize = true, Margin = new Padding(0, 9, 4, 0) });
@@ -107,8 +105,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         AddRow(connection, "应用凭证", appRow);
 
         AddRow(connection, string.Empty, NewHint(
-            "App Secret 留空时读取环境变量 SNAPLOG_FEISHU_APP_SECRET（推荐）。应用需同时具备多维表格读写权限"
-            + "（bitable:app）与本文档的可编辑协作权限，缺失时分别返回 99991672 与 91403。"));
+            "App Secret 留空时读取环境变量 SNAPLOG_FEISHU_APP_SECRET（推荐）。应用需同时具备 bitable:app 权限"
+            + "与本文档的可编辑协作权限，缺失时分别返回 99991672、91403。"));
 
         // ---- 数据表 ----
         var tableRow = NewRow();
@@ -159,8 +157,8 @@ internal sealed class FeishuSettingsView : SettingsViewBase
 
         AddRow(connection, "字段映射", mappingRow);
         AddRow(connection, string.Empty, NewHint(
-            "总结字段与飞书列名的对应关系，条数不限：无对应列的映射将“飞书字段名”留空即可跳过，不必逐条填写。"
-            + "飞书按名称精确匹配（含空格与换行），名称不一致会报 1254045；点“测试连接”可预先核对。"));
+            "总结字段与飞书列名的对应关系，条数不限；无对应列的映射留空“飞书字段名”即可跳过。"
+            + "飞书按名称精确匹配，不一致会报 1254045；可点“测试连接”预先核对。"));
 
         _legacyHint = NewHint(string.Empty);
         _legacyHint.Visible = false;

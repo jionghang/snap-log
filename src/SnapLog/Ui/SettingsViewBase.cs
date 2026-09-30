@@ -68,10 +68,21 @@ internal abstract class SettingsViewBase : UserControl
             ResumeDeferredLayout(content);
 
             var footer = BuildFooter();
-            footer.Dock = DockStyle.Bottom;
+
+            // 页脚直接接在内容之后（拼进根容器），不钉在窗口底部：
+            // 钉底会让短页面在内容和按钮之间空出一大块，看起来像布局坏了。
+            if (content is TableLayoutPanel root)
+            {
+                footer.Margin = new Padding(4, 2, 4, 8);
+                root.Controls.Add(footer);
+            }
+            else
+            {
+                footer.Dock = DockStyle.Bottom;
+                Controls.Add(footer);
+            }
 
             Controls.Add(content);
-            Controls.Add(footer);
 
             WireDirtyTracking(content);
         }
