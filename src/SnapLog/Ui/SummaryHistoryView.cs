@@ -75,7 +75,7 @@ internal sealed class SummaryHistoryView : UserControl
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            WrapContents = false,
+            WrapContents = true,
             Padding = new Padding(10, 8, 10, 4),
         };
 
@@ -182,7 +182,7 @@ internal sealed class SummaryHistoryView : UserControl
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            WrapContents = false,
+            WrapContents = true,
             Padding = new Padding(0, 4, 0, 4),
         };
 

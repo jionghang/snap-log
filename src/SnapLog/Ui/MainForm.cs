@@ -264,7 +264,7 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             Padding = new Padding(0, 4, 0, 8),
-            WrapContents = false,
+            WrapContents = true,
         };
 
         _toggleButton.Text = "暂停记录";

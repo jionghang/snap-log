@@ -64,6 +64,7 @@ internal sealed class DeleteConfirmDialog : Form
         {
             Text = fileCount > 0 ? $"不勾选时只删{subject}，{fileLabel}留在磁盘上。" : noFileHint,
             AutoSize = true,
+            MaximumSize = new Size(420, 0),
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 0, 0, 0),
         });

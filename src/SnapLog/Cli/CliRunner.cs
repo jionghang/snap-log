@@ -739,16 +739,16 @@ internal sealed class CliRunner
 
         var settingsContext = new SettingsContext(_options, _paths, _log, _store, summaryRunner, () => true);
         ProbeForm("设置页（抓取）", () => WrapView("抓取配置", new CaptureSettingsView(settingsContext)), failures,
-            CheckSettingsPage);
+            form => CheckSettingsPage(form) ?? CheckNarrowLayout(form));
         ProbeForm("设置页（OCR）", () => WrapView("OCR 配置", new OcrSettingsView(settingsContext)), failures,
-            CheckSettingsPage);
+            form => CheckSettingsPage(form) ?? CheckNarrowLayout(form));
         ProbeForm("设置页（大模型）", () => WrapView("大模型配置", new LlmSettingsView(settingsContext)), failures,
-            CheckLayoutSane);
+            form => CheckLayoutSane(form) ?? CheckNarrowLayout(form));
         ProbeForm("设置页（推送）", () => WrapView("推送配置", new FeishuSettingsView(settingsContext)), failures,
-            CheckLayoutSane);
+            form => CheckLayoutSane(form) ?? CheckNarrowLayout(form));
         ProbeForm("设置页（关于）", () => WrapView("关于", new AboutView(settingsContext)), failures);
         ProbeForm("RecordsForm（记录查看器）", () => new RecordsForm(_options, _store, _paths, _log), failures,
-            CheckDeleteButtonState);
+            form => CheckDeleteButtonState(form) ?? CheckNarrowLayout(form));
         ProbeForm(
             "删除确认框（记录·有截图）",
             () => new DeleteConfirmDialog("记录", 3, "截图文件", 3, "(none)"),
@@ -760,7 +760,7 @@ internal sealed class CliRunner
         ProbeForm("系统提示词（编辑）", () => new SystemPromptEditForm(new SummarizationOptions()), failures,
             CheckPromptTemplateInsert);
         ProbeForm("SummaryHistoryForm（总结历史）", () => new SummaryHistoryForm(settingsContext), failures,
-            CheckDeleteButtonState);
+            form => CheckDeleteButtonState(form) ?? CheckNarrowLayout(form));
 
         // 字段映射窗体：带上"已知飞书字段"两种情形各构造一次（命中/不命中列名走的是不同提示分支）。
         var probeFields = new List<FeishuBitablePublisher.FeishuTableField>
@@ -1164,6 +1164,57 @@ internal sealed class CliRunner
         }
 
         return delete.Enabled || grid.Rows.Count == 0 ? null : "重新选中后“删除”没有恢复可点";
+    }
+
+    /// <summary>窄窗口下用的宽度。用户把窗口缩小时，按钮与文字不该被裁掉。</summary>
+    private const int NarrowWidth = 640;
+
+    /// <summary>
+    /// 把窗口压窄，再检查有没有控件超出自己的容器。
+    /// 只看"不滚动"的容器：设置页那种 AutoScroll 面板允许横向滚动，溢出属于预期；
+    /// 而工具条（Dock=Top，不滚动）一旦溢出，按钮就直接看不见了。
+    /// </summary>
+    private static string? CheckNarrowLayout(Form form)
+    {
+        var origin = form.ClientSize.Width;
+        form.ClientSize = new Size(NarrowWidth, form.ClientSize.Height);
+
+        try
+        {
+            form.PerformLayout();
+            Application.DoEvents();
+
+            var overflow = new List<string>();
+
+            foreach (var control in FindControls<Control>(form))
+            {
+                if (!control.Visible || control.Parent is not { } parent)
+                {
+                    continue;
+                }
+
+                if (parent is ScrollableControl { AutoScroll: true })
+                {
+                    continue;
+                }
+
+                if (control.Right <= parent.ClientSize.Width + 2)
+                {
+                    continue;
+                }
+
+                var text = control.Text.Length > 14 ? control.Text[..14] + "…" : control.Text;
+                overflow.Add($"{control.GetType().Name}“{text}”超出 {(control.Right - parent.ClientSize.Width)}px");
+            }
+
+            return overflow.Count == 0
+                ? null
+                : $"窄窗口下 {overflow.Count} 个控件跑出容器：{string.Join("；", overflow.Take(4))}";
+        }
+        finally
+        {
+            form.ClientSize = new Size(origin, form.ClientSize.Height);
+        }
     }
 
     /// <summary>设置页的通用检查：布局是否正常 + 保存按钮的灰/亮 + 滚轮不改值。</summary>

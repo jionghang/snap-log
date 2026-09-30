@@ -36,6 +36,7 @@ internal sealed class SystemPromptEditForm : Form
 
         _hint.Dock = DockStyle.Top;
         _hint.AutoSize = true;
+        _hint.MaximumSize = new Size(820, 0);
         _hint.Padding = new Padding(10, 8, 10, 6);
         _hint.ForeColor = SystemColors.GrayText;
 

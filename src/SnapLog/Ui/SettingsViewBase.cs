@@ -313,6 +313,8 @@ internal abstract class SettingsViewBase : UserControl
     {
         Text = text,
         AutoSize = true,
+        // 限宽让它换行：不限宽的长说明会一路顶出窗口，窄窗口下就看不全了。
+        MaximumSize = new Size(500, 0),
         ForeColor = SystemColors.GrayText,
         Margin = new Padding(4, 8, 0, 0),
     };
@@ -330,7 +332,8 @@ internal abstract class SettingsViewBase : UserControl
         {
             AutoSize = true,
             Dock = DockStyle.Fill,
-            WrapContents = false,
+            // 窄窗口下让行内控件换到下一行，而不是被裁掉。
+            WrapContents = true,
         });
     }
 

@@ -130,7 +130,7 @@ internal sealed class RecordsView : UserControl
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            WrapContents = false,
+            WrapContents = true,
             Padding = new Padding(0, 4, 0, 4),
         };
         detailHeader.Controls.Add(new Label
@@ -193,7 +193,7 @@ internal sealed class RecordsView : UserControl
         };
 
         // 第一行：时间范围 + 是否启用
-        var timeRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = false };
+        var timeRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = true };
 
         _useDateRange.Text = "按时间筛选";
         _useDateRange.AutoSize = true;
@@ -221,7 +221,7 @@ internal sealed class RecordsView : UserControl
         panel.Controls.Add(timeRow, 0, 0);
 
         // 第二行：进程 / 状态 / 关键词 / 按钮
-        var filterRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = false };
+        var filterRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = true };
 
         filterRow.Controls.Add(new Label { Text = "进程", AutoSize = true, Margin = new Padding(0, 8, 4, 0) });
         _process.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -285,7 +285,7 @@ internal sealed class RecordsView : UserControl
             Dock = DockStyle.Bottom,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            WrapContents = false,
+            WrapContents = true,
             Padding = new Padding(10, 4, 10, 4),
         };
 

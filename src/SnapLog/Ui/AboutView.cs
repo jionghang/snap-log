@@ -35,6 +35,7 @@ internal sealed class AboutView : SettingsViewBase
 
         var subtitle = new Label
         {
+            MaximumSize = new Size(560, 0),
             Text = "本机屏幕活动记录与工作总结工具",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
@@ -82,7 +83,7 @@ internal sealed class AboutView : SettingsViewBase
         AddRow("系统", Environment.OSVersion.VersionString);
         AddRow("许可证", "MIT");
 
-        var links = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 14, 0, 0) };
+        var links = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Margin = new Padding(0, 14, 0, 0) };
 
         links.Controls.Add(NewButton("打开项目主页", () => OpenUrl(RepositoryUrl)));
         links.Controls.Add(new Label

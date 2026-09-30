@@ -61,10 +61,10 @@ internal sealed class LlmSettingsView : SettingsViewBase
             Dock = DockStyle.Fill,
             Margin = new Padding(0, 2, 0, 2),
         };
-        listRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 440));
+        listRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         listRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        _providerList = new ListBox { Height = 104, Width = 440, IntegralHeight = false };
+        _providerList = new ListBox { Height = 104, IntegralHeight = false, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top };
         _providerList.DoubleClick += (_, _) => EditSelectedProvider();
         listRow.Controls.Add(_providerList, 0, 0);
 
@@ -124,7 +124,7 @@ internal sealed class LlmSettingsView : SettingsViewBase
         _payloadHint = new Label
         {
             AutoSize = true,
-            MaximumSize = new Size(560, 0),
+            MaximumSize = new Size(500, 0),
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(3, 4, 0, 6),
         };
@@ -168,7 +168,13 @@ internal sealed class LlmSettingsView : SettingsViewBase
         _editPrompt.Click += (_, _) => EditSystemPrompt();
         promptRow.Controls.Add(_editPrompt);
 
-        _promptState = new Label { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 9, 0, 0) };
+        _promptState = new Label
+        {
+            AutoSize = true,
+            MaximumSize = new Size(460, 0),
+            ForeColor = SystemColors.GrayText,
+            Margin = new Padding(0, 9, 0, 0),
+        };
         promptRow.Controls.Add(_promptState);
         AddRow(grid, "系统提示词", promptRow);
 
@@ -180,10 +186,10 @@ internal sealed class LlmSettingsView : SettingsViewBase
             Dock = DockStyle.Fill,
             Margin = new Padding(0, 2, 0, 2),
         };
-        projectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 440));
+        projectRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         projectRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        _projectList = new ListBox { Height = 104, Width = 440, IntegralHeight = false };
+        _projectList = new ListBox { Height = 104, IntegralHeight = false, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top };
         _projectList.DoubleClick += (_, _) => EditSelectedProject();
         projectRow.Controls.Add(_projectList, 0, 0);
 

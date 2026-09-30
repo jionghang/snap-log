@@ -89,6 +89,7 @@ internal sealed class FeishuSettingsView : SettingsViewBase
         scopeRow.Controls.Add(_feishuLookback);
         scopeRow.Controls.Add(new Label
         {
+            MaximumSize = new Size(420, 0),
             Text = "天内生成的总结（调大可补入更早的总结）",
             AutoSize = true,
             Margin = new Padding(6, 9, 0, 0),
@@ -135,10 +136,10 @@ internal sealed class FeishuSettingsView : SettingsViewBase
             Dock = DockStyle.Fill,
             Margin = new Padding(0, 2, 0, 2),
         };
-        mappingRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 440));
+        mappingRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         mappingRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-        _fieldMappingList = new ListBox { Height = 132, Width = 440, IntegralHeight = false };
+        _fieldMappingList = new ListBox { Height = 132, IntegralHeight = false, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top };
         _fieldMappingList.DoubleClick += (_, _) => EditSelectedMapping();
         mappingRow.Controls.Add(_fieldMappingList, 0, 0);
 

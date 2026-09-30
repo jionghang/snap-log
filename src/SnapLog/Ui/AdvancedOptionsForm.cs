@@ -31,6 +31,7 @@ internal sealed class AdvancedOptionsForm : Form
         {
             Dock = DockStyle.Top,
             AutoSize = true,
+            MaximumSize = new Size(680, 0),
             Padding = new Padding(10, 8, 10, 6),
             ForeColor = SystemColors.GrayText,
             Text = "修改后点“保存设置”写入磁盘并生效。本页直接修改内存中的配置对象，与设置页各项为同一份数据。",

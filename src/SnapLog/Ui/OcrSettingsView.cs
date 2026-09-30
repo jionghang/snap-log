@@ -107,6 +107,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         testRow.Controls.Add(_testOcr);
         testRow.Controls.Add(new Label
         {
+            MaximumSize = new Size(420, 0),
             Text = "抓取当前窗口执行一次完整识别，用于验证引擎与模型是否可用",
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
@@ -117,7 +118,7 @@ internal sealed class OcrSettingsView : SettingsViewBase
         _engineHint = new Label
         {
             AutoSize = true,
-            MaximumSize = new Size(560, 0),
+            MaximumSize = new Size(500, 0),
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(3, 4, 0, 6),
         };
