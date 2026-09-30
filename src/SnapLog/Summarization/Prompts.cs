@@ -102,11 +102,15 @@ internal static class Prompts
             "本次输入与要求：",
             $"1. {source}",
             $"2. 用 {DescribeLanguage(options.Language)} 输出。",
+            $"3. 标了“（{ReportDocuments.Marker}）”的记录是日报、周报、月报、年度总结、述职这类周期性汇报，"
+            + "正文讲的是某个周期的整体情况，可能包含更早时间做过的事。这类记录只把“在写或在看这份报告”记为一项工作；"
+            + "报告里列的事项，要有本次材料的其他记录佐证，才算这段时间的工作。"
+            + "只覆盖当天的日报不受这条限制，可以按当天内容采信。",
         };
 
         if (!string.IsNullOrWhiteSpace(options.ExtraInstructions))
         {
-            lines.Add($"3. 补充要求（优先级最高）：{options.ExtraInstructions.Trim()}");
+            lines.Add($"4. 补充要求（优先级最高）：{options.ExtraInstructions.Trim()}");
         }
 
         return string.Join(Environment.NewLine, lines);

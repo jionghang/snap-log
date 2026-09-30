@@ -80,7 +80,7 @@ internal sealed class SystemPromptEditForm : Form
         var projects = _options.WorkProjects.Count(p => !string.IsNullOrWhiteSpace(p.Name));
 
         _hint.Text = "下面这段就是实际发给模型的提示词。"
-                     + "发送内容说明、输出语言、附加要求与工作项目清单在发送时自动追加，不受此处内容影响。"
+                     + "发送内容说明、输出语言、汇报类文档的处理规则、附加要求与工作项目清单在发送时自动追加，不受此处内容影响。"
                      + (projects > 0 ? $"（当前会附上 {projects} 条工作项目）" : string.Empty);
     }
 

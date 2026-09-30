@@ -100,6 +100,12 @@ public static class ActivityDigestBuilder
     {
         var origin = string.IsNullOrWhiteSpace(record.ProcessName) ? "未知进程" : record.ProcessName;
         var title = string.IsNullOrWhiteSpace(record.WindowTitle) ? "(无标题)" : record.WindowTitle;
-        return $"[{record.Timestamp:yyyy-MM-dd HH:mm:ss}] {origin} | {title}\n{body}\n";
+
+        // 汇报类文档的正文覆盖更早的时间，打上标记交给提示词里的规则处理。
+        var marker = ReportDocuments.IsPeriodicReport(record.WindowTitle)
+            ? $"（{ReportDocuments.Marker}）"
+            : string.Empty;
+
+        return $"[{record.Timestamp:yyyy-MM-dd HH:mm:ss}] {origin} | {title}{marker}\n{body}\n";
     }
 }
