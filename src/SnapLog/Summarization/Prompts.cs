@@ -124,19 +124,20 @@ internal static class Prompts
             return string.Empty;
         }
 
-        var lines = projects.Select(project =>
+        var lines = projects.Select((project, index) =>
             string.IsNullOrWhiteSpace(project.Description)
-                ? $"- {project.Name.Trim()}"
-                : $"- {project.Name.Trim()}：{project.Description.Trim()}");
+                ? $"{index + 1}. {project.Name.Trim()}"
+                : $"{index + 1}. {project.Name.Trim()}：{project.Description.Trim()}");
 
         return $"""
                 用户定义的工作项目（用于归类）：
                 {string.Join(Environment.NewLine, lines)}
 
                 归类要求：
-                1. 在输出里增加一节 `## 按项目归类`，把这段时间的活动归到上面的项目下，每个项目一行，写出大致投入程度或时间量。
-                2. 匹配不上的活动统一归到 `其他`，不要硬塞进不相干的项目。
+                1. 在输出里增加一节“按项目归类”，标题单独占一行，把这段时间的活动归到上面的项目下，每个项目一行，写明大致投入程度或时间量。
+                2. 匹配不上的活动统一归到“其他”，不要硬塞进不相干的项目。
                 3. 项目名称必须原样照抄上面的写法，不要改写或翻译。
+                4. 这一节同样用纯文本，不加任何 Markdown 标记。
                 """;
     }
 
