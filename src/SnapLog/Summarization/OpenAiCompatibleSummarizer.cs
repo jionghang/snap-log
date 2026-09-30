@@ -217,7 +217,10 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
         var requestOptions = new ChatCompletionOptions
         {
             Temperature = 0.3f,
-            MaxOutputTokenCount = 1500,
+            // 提示词里要求"写完整、写充实"，上限就得留够。
+            // 推理型模型（网关把内容放在 reasoning 里）会先花大量 token 盘材料，
+            // 上限给小了会出现"全程在推理、正文一个字没有"的截断，只能给足空间。
+            MaxOutputTokenCount = 16000,
         };
 
         var response = await provider.Client
@@ -231,10 +234,41 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            throw new InvalidOperationException("模型返回了空内容。");
+            // 空内容是"网关/模型行为"，光看这句话没法判断原因，把判定依据一起写进日志：
+            // 结束原因、返回了哪几类内容、以及原始响应体（截断）。
+            var kinds = completion.Content.Count == 0
+                ? "无内容块"
+                : string.Join("、", completion.Content.Select(part => part.Kind.ToString()));
+            var raw = DescribeRawResponse(response);
+            _log.Warn($"{provider.Describe()} 返回空正文：结束原因={completion.FinishReason}，内容块={kinds}，原始响应={raw}");
+
+            throw new InvalidOperationException(
+                completion.FinishReason == ChatFinishReason.Length
+                    ? "模型输出被长度上限截断，正文为空。"
+                    : $"模型返回了空内容（结束原因：{completion.FinishReason}）。");
         }
 
         return text.Trim();
+    }
+
+    /// <summary>原始响应体，用于诊断网关返回了什么。取不到就返回说明文字，不影响主流程。</summary>
+    private static string DescribeRawResponse(ClientResult<ChatCompletion> response)
+    {
+        try
+        {
+            var body = response.GetRawResponse().Content.ToString();
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                return "(原始响应为空)";
+            }
+
+            body = body.Replace('\r', ' ').Replace('\n', ' ');
+            return body.Length <= 600 ? body : body[..600] + "…（已截断）";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or ObjectDisposedException)
+        {
+            return $"(原始响应不可读：{ex.GetType().Name})";
+        }
     }
 
     private static ChatImageDetailLevel ToDetailLevel(LlmImageDetail detail) => detail switch
