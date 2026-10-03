@@ -10,16 +10,15 @@ setlocal
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%"
 
-where dotnet >nul 2>nul
-if errorlevel 1 (
-    if exist "%USERPROFILE%\.dotnet\dotnet.exe" (
-        set "DOTNET_ROOT=%USERPROFILE%\.dotnet"
-        set "PATH=%USERPROFILE%\.dotnet;%PATH%"
-    ) else (
-        echo [error] dotnet not found. Install the .NET 10 SDK: https://dotnet.microsoft.com/download
-        popd
-        exit /b 1
-    )
+rem Two dotnet installs are common here: C:\Program Files\dotnet may have only the
+rem runtime (no SDK), while the SDK lives in %USERPROFILE%\.dotnet. PATH usually puts
+rem the former first, and then `dotnet build` fails with "No .NET SDKs were found".
+rem Prefer the user-profile install when it actually has an SDK.
+set "DOTNET_CMD=dotnet"
+if exist "%USERPROFILE%\.dotnet\sdk" (
+    set "DOTNET_ROOT=%USERPROFILE%\.dotnet"
+    set "PATH=%USERPROFILE%\.dotnet;%PATH%"
+    set "DOTNET_CMD=%USERPROFILE%\.dotnet\dotnet.exe"
 )
 
 rem A running tray app may hold the exe we are about to overwrite: the copy step
@@ -30,8 +29,10 @@ rem (findstr rather than find: find is shadowed by Git for Windows' unix find
 rem  when this script is run from a Git Bash environment.)
 
 echo === build Release ===
-dotnet build SnapLog.sln -c Release
-if errorlevel 1 (
+"%DOTNET_CMD%" build SnapLog.sln -c Release
+rem -2147450725 (SDK not found) is negative, and "if errorlevel 1" only means ">= 1",
+rem so a failed build used to be reported as success. Compare against 0 instead.
+if not "%errorlevel%"=="0" (
     tasklist /fi "imagename eq SnapLog.exe" 2>nul | findstr /i /c:"SnapLog.exe" >nul
     if not errorlevel 1 (
         echo [error] build failed while SnapLog is running. If the error above is MSB3027

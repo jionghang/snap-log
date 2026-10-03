@@ -160,6 +160,14 @@ internal static class Program
         string? configSourcePath,
         IActivityRepository store)
     {
+        // 托盘常驻模式只允许一个实例：两个一起跑会把同一条记录写两遍，
+        // 托盘图标也变成两个。命令行的一次性命令不走这里，仍可与托盘那份并存。
+        using var instanceLock = SingleInstanceLock.TryAcquire();
+        if (instanceLock is null)
+        {
+            return ReportAlreadyRunning(log, paths);
+        }
+
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -182,6 +190,32 @@ internal static class Program
         Application.Run(context);
 
         log.Info("SnapLog 退出");
+        return 0;
+    }
+
+    /// <summary>
+    /// 已经有一个托盘实例在跑：说清楚怎么找到它，然后退出这次启动。
+    /// 双击启动没有控制台，只能弹窗；从终端/脚本启动则写一行到标准错误，
+    /// 免得脚本挂在一个没人点的模态框上。
+    /// </summary>
+    private static int ReportAlreadyRunning(FileLogger log, AppPaths paths)
+    {
+        const string advice = "SnapLog 已经在运行（在托盘里）。\n\n"
+                              + "同时运行两个实例会把同一条记录写两遍，所以这次没有启动。\n"
+                              + "要打开界面，请点托盘图标；要重新启动，先在托盘菜单里退出那个实例。";
+
+        log.Warn("检测到已有实例在运行，本次启动未继续");
+
+        if (ConsoleBridge.HasConsole())
+        {
+            Console.Error.WriteLine("[提示] " + advice.Replace("\n\n", " ").Replace('\n', ' '));
+        }
+        else
+        {
+            MessageBox.Show($"{advice}\n\n日志目录：\n{paths.LogsDirectory}", "SnapLog 已在运行",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         return 0;
     }
 

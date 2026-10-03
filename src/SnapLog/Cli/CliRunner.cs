@@ -1085,6 +1085,7 @@ internal sealed class CliRunner
 
         using var ocr = OcrEngineFactory.Create(_options.Ocr, _log);
         CheckAutoStartWiring();
+        ProbeSingleInstance(failures);
 
         var engine = new SnapLogEngine(_options, _paths, _log, ocr, _store);
         var summaryRunner = new SummaryRunner(_store, _paths, _log);
@@ -1153,6 +1154,82 @@ internal sealed class CliRunner
         }
 
         return 2;
+    }
+
+    /// <summary>
+    /// 单实例保护：托盘模式已经有一个在跑时，第二个实例必须被拦住并说明原因。
+    /// 拦不住的话同一条记录会被写两遍，托盘图标也会出现两个。
+    ///
+    /// 用真的子进程跑 --run 来验：本进程先占住锁，子进程就应当打印提示后退出。
+    /// </summary>
+    private void ProbeSingleInstance(List<string> failures)
+    {
+        const string label = "单实例保护";
+        var executable = Environment.ProcessPath;
+
+        if (string.IsNullOrEmpty(executable))
+        {
+            Console.WriteLine($"{Fit(label, 30)} 跳过（取不到自身进程路径）");
+            return;
+        }
+
+        using var held = SingleInstanceLock.TryAcquire();
+        if (held is null)
+        {
+            // 真有实例在跑（用户开着托盘）：跳过而不是报失败，否则自检会无故变红。
+            Console.WriteLine($"{Fit(label, 30)} 跳过（锁已被占用，说明确实有实例在跑）");
+            return;
+        }
+
+        var startInfo = new ProcessStartInfo(executable, "--run")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        var error = new StringBuilder();
+        using var child = new Process { StartInfo = startInfo };
+        child.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                error.AppendLine(e.Data);
+            }
+        };
+
+        if (!child.Start())
+        {
+            failures.Add($"{label}：子进程没能启动");
+            Console.WriteLine($"{Fit(label, 30)} 失败：子进程没能启动");
+            return;
+        }
+
+        child.BeginErrorReadLine();
+        if (!child.WaitForExit(20_000))
+        {
+            // 没拦住就会留下一份真正在抓取的托盘实例，必须收掉。
+            child.Kill(entireProcessTree: true);
+            failures.Add($"{label}：第二个实例没有被拦住（20 秒内没有退出）");
+            Console.WriteLine($"{Fit(label, 30)} 失败：第二个实例没有被拦住");
+            return;
+        }
+
+        child.WaitForExit();
+
+        var blocked = error.ToString().Contains("已经在运行", StringComparison.Ordinal);
+        if (blocked)
+        {
+            Console.WriteLine($"{Fit(label, 30)} 通过  第二个实例被拦住（退出码 {child.ExitCode}）");
+            return;
+        }
+
+        var detail = error.ToString().Trim();
+        failures.Add($"{label}：第二个实例没有被拦住（退出码 {child.ExitCode}"
+                     + (detail.Length > 0 ? $"，输出：{detail[..Math.Min(120, detail.Length)]}" : "，没有输出")
+                     + "）");
+        Console.WriteLine($"{Fit(label, 30)} 失败：第二个实例没有被拦住");
     }
 
     private static Form WrapView(string title, Control view)

@@ -43,6 +43,14 @@ internal static class ConsoleBridge
         && handle != InvalidHandle
         && !NativeConsole.GetConsoleMode(handle, out _);
 
+    /// <summary>
+    /// 有没有可以显示文字的地方：自己的控制台、从控制台启动、或输出已重定向。
+    /// 都没有（双击启动的 GUI）就只能弹窗——往 Console 写等于写进空气。
+    /// </summary>
+    public static bool HasConsole() =>
+        NativeConsole.GetConsoleWindow() != IntPtr.Zero
+        || IsRedirected(NativeConsole.GetStdHandle(STD_OUTPUT_HANDLE));
+
     private static void UseEncoding()
     {
         try

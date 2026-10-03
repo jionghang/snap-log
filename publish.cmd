@@ -9,21 +9,20 @@ setlocal
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%"
 
-where dotnet >nul 2>nul
-if errorlevel 1 (
-    if exist "%USERPROFILE%\.dotnet\dotnet.exe" (
-        set "DOTNET_ROOT=%USERPROFILE%\.dotnet"
-        set "PATH=%USERPROFILE%\.dotnet;%PATH%"
-    ) else (
-        echo [error] dotnet not found. Install the .NET 10 SDK: https://dotnet.microsoft.com/download
-        popd
-        exit /b 1
-    )
+rem Two dotnet installs are common here: C:\Program Files\dotnet may have only the
+rem runtime (no SDK), while the SDK lives in %USERPROFILE%\.dotnet. PATH usually puts
+rem the former first, and then `dotnet build` fails with "No .NET SDKs were found".
+rem Prefer the user-profile install when it actually has an SDK.
+set "DOTNET_CMD=dotnet"
+if exist "%USERPROFILE%\.dotnet\sdk" (
+    set "DOTNET_ROOT=%USERPROFILE%\.dotnet"
+    set "PATH=%USERPROFILE%\.dotnet;%PATH%"
+    set "DOTNET_CMD=%USERPROFILE%\.dotnet\dotnet.exe"
 )
 
 echo === publish self-contained build to publish\ ===
-dotnet publish src\SnapLog\SnapLog.csproj -c Release -r win-x64 --self-contained true -o publish
-if errorlevel 1 (
+"%DOTNET_CMD%" publish src\SnapLog\SnapLog.csproj -c Release -r win-x64 --self-contained true -o publish
+if not "%errorlevel%"=="0" (
     echo [error] publish failed.
     popd
     exit /b 1
