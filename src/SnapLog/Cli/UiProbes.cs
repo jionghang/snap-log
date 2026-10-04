@@ -293,6 +293,7 @@ internal static class UiProbes
 
         ProbeTips(services, failures);
         ProbeDialogs(failures);
+        ProbeEscCloses(services, failures);
 
         ProbeRunState(services, failures);
         ProbeExitPath(services, failures);
@@ -503,6 +504,51 @@ internal static class UiProbes
             else
             {
                 Console.WriteLine($"{Fit(label, 14)} 通过   {(expectConfirmed ? "Enter 确认" : "按键不确认")}");
+            }
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"{label}：{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 次要窗口的 Esc 关闭约定：记录详情、总结正文、托盘菜单。
+    /// 托盘菜单显式关掉"失焦自动收起"——否则它可能因为失焦而关，测不出 Esc 到底有没有用。
+    /// </summary>
+    private static void ProbeEscCloses(AppServices services, List<string> failures)
+    {
+        VerifyEsc(failures, "记录详情 Esc", new RecordDetailWindow(services));
+        VerifyEsc(failures, "总结正文 Esc", new SummaryDetailWindow());
+        VerifyEsc(failures, "托盘菜单 Esc", new TrayMenuWindow(services) { CloseOnDeactivate = false });
+    }
+
+    private static void VerifyEsc(List<string> failures, string label, Window window)
+    {
+        try
+        {
+            window.Show();
+            Pump(150);
+
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
+            Pump(150);
+
+            var closed = !window.IsVisible;
+
+            if (window.IsVisible)
+            {
+                window.Close();
+            }
+
+            Pump(40);
+
+            if (closed)
+            {
+                Console.WriteLine($"{Fit(label, 14)} 通过   Esc 关闭");
+            }
+            else
+            {
+                failures.Add($"{label}：按 Esc 后窗口没关");
             }
         }
         catch (Exception ex)
