@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Platform;
 
@@ -98,6 +99,16 @@ internal sealed class TrayMenuWindow : Window
         {
             if (CloseOnDeactivate)
             {
+                Close();
+            }
+        };
+
+        // 系统菜单的通用约定：Esc 收起。
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
                 Close();
             }
         };

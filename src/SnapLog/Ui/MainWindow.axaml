@@ -4,6 +4,7 @@
         Width="1060" Height="720"
         MinWidth="900" MinHeight="600"
         Title="SnapLog · 屏幕活动记录"
+        WindowStartupLocation="CenterScreen"
         Background="{StaticResource Canvas}">
 
   <Grid ColumnDefinitions="184,*" RowDefinitions="*,34">

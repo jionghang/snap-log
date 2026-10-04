@@ -42,6 +42,9 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     private readonly StackPanel _mappings;
     private readonly TextBlock _advancedStatus;
 
+    /// <summary>连通性测试进行中：挡住重复点击，避免重复发请求。</summary>
+    private bool _testingLlm;
+
     private readonly TextBlock _status;
 
     /// <summary>上次保存时的配置快照。跟当前值不一样就说明有未保存的改动（比逐个控件挂事件稳）。</summary>
@@ -131,7 +134,6 @@ internal sealed class SettingsPage : UserControl, IRefreshable
         RenderProviders();
 
         // 总开关关掉时把模型区一起置灰：不然子开关还亮着，看不出到底关干净没有。
-        _providers.IsEnabled = summarization.Enabled;
 
         var llmReady = Ui.IsLlmReady(_services.Options);
         _llmStatus.Text = llmReady ? "已配置，可生成总结" : "配置不完整：接口地址、模型名称、API Key 均为必填";
@@ -426,11 +428,25 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     /// </summary>
     private async Task TestLlmAsync()
     {
-        if (OwnerWindow() is not { } owner)
+        // 手快连点两次会发两轮请求；测试期间第二下直接忽略。
+        if (_testingLlm || OwnerWindow() is not { } owner)
         {
             return;
         }
 
+        _testingLlm = true;
+        try
+        {
+            await RunLlmTestAsync(owner);
+        }
+        finally
+        {
+            _testingLlm = false;
+        }
+    }
+
+    private async Task RunLlmTestAsync(Window owner)
+    {
         if (_services.SaveOptions())
         {
             _savedSnapshot = Snapshot();

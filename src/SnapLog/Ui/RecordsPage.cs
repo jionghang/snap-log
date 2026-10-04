@@ -36,6 +36,16 @@ internal sealed class RecordsPage : UserControl, IRefreshable
 
         _keyword = Ui.Input(string.Empty, _ => DebouncedReload(), "搜窗口标题或识别到的文字", 300);
 
+        // 搜索框的通用约定：Esc 清空关键词。
+        _keyword.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Escape && !string.IsNullOrEmpty(_keyword.Text))
+            {
+                _keyword.Text = string.Empty;
+                e.Handled = true;
+            }
+        };
+
         _range = Ui.Choice(
             [
                 (RangeFilter.Today, "今天"),

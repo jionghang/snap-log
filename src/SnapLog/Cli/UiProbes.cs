@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -291,6 +292,7 @@ internal static class UiProbes
         Probe("首次运行", () => new FirstRunWindow(), failures);
 
         ProbeTips(services, failures);
+        ProbeDialogs(failures);
 
         ProbeRunState(services, failures);
         ProbeExitPath(services, failures);
@@ -451,6 +453,62 @@ internal static class UiProbes
         }
 
         return tips;
+    }
+
+    /// <summary>
+    /// 对话框键盘约定：Esc 必须能取消，Enter 必须落在安全按钮上。
+    /// 这两条用眼睛看不出来，按错了却是"手一快把记录删了"，所以让自检盯着。
+    /// </summary>
+    private static void ProbeDialogs(List<string> failures)
+    {
+        VerifyDialog(failures, "危险框 Esc",
+            new MessageWindow("删除？", "自检用，不会真的删。", "删除", "取消", danger: true), Key.Escape, expectConfirmed: false);
+        VerifyDialog(failures, "危险框 Enter",
+            new MessageWindow("删除？", "自检用，不会真的删。", "删除", "取消", danger: true), Key.Enter, expectConfirmed: false);
+        VerifyDialog(failures, "普通框 Enter",
+            new MessageWindow("保存？", "自检用。", "保存", "取消"), Key.Enter, expectConfirmed: true);
+        VerifyDialog(failures, "提示框 Enter",
+            new MessageWindow("已复制", "自检用。", "知道了", null), Key.Enter, expectConfirmed: true);
+    }
+
+    private static void VerifyDialog(
+        List<string> failures, string label, MessageWindow dialog, Key key, bool expectConfirmed)
+    {
+        try
+        {
+            dialog.Show();
+            Pump(120);
+
+            dialog.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key });
+            Pump(120);
+
+            var closed = !dialog.IsVisible;
+            var confirmed = dialog.ConfirmedForProbe;
+
+            if (dialog.IsVisible)
+            {
+                dialog.Close();
+            }
+
+            Pump(40);
+
+            if (!closed)
+            {
+                failures.Add($"{label}：按键后对话框没有关闭");
+            }
+            else if (confirmed != expectConfirmed)
+            {
+                failures.Add($"{label}：期望{(expectConfirmed ? "确认" : "不确认")}，实际{(confirmed ? "确认" : "不确认")}");
+            }
+            else
+            {
+                Console.WriteLine($"{Fit(label, 14)} 通过   {(expectConfirmed ? "Enter 确认" : "按键不确认")}");
+            }
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"{label}：{ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     /// <summary>

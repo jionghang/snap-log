@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -35,6 +36,16 @@ internal sealed class RecordDetailWindow : Window
         MinHeight = 420;
         Icon = IconFactory.WindowIcon;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+        // 次要窗口的通用约定：Esc 关闭。
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                Close();
+            }
+        };
 
         Content = new Border
         {

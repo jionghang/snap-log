@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -170,6 +171,16 @@ internal sealed class SummaryDetailWindow : Window
         MinHeight = 420;
         Icon = IconFactory.WindowIcon;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+        // 次要窗口的通用约定：Esc 关闭。
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                Close();
+            }
+        };
 
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
         grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("正文可以选中复制。")));

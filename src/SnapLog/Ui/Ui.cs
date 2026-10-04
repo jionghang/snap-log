@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
@@ -70,6 +71,9 @@ internal static class Ui
             MaxWidth = 320,
             TextWrapping = TextWrapping.Wrap,
         });
+
+        // 读屏软件只会念出"?"，把提示内容同时登记成可访问名。
+        AutomationProperties.SetName(badge, text);
 
         return badge;
     }

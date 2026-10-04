@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using SnapLog.Configuration;
@@ -161,20 +162,33 @@ internal sealed class FirstRunWindow : Window
         content.Children.Add(Ui.Hint("尚未配置大模型和飞书。记录功能不受影响，只是到点不会生成总结。"));
         content.Children.Add(Ui.Hint("平时只在本机记录；到点会把当天内容发送到你的模型接口并推送到飞书（默认仅发送文字）。"));
 
-        var buttons = Ui.ButtonRow(
-            Ui.Primary("去设置", () =>
-            {
-                Close();
-                openSettings?.Invoke();
-                return Task.CompletedTask;
-            }),
-            Ui.Secondary("稍后设置", () =>
-            {
-                Close();
-                return Task.CompletedTask;
-            }));
+        var goSettings = Ui.Primary("去设置", () =>
+        {
+            Close();
+            openSettings?.Invoke();
+            return Task.CompletedTask;
+        });
+
+        var later = Ui.Secondary("稍后设置", () =>
+        {
+            Close();
+            return Task.CompletedTask;
+        });
+
+        var buttons = Ui.ButtonRow(goSettings, later);
         buttons.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right;
         content.Children.Add(buttons);
+
+        // 键盘：Enter 走默认按钮（去设置），Esc 等于"稍后设置"。
+        Opened += (_, _) => goSettings.Focus();
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                Close();
+            }
+        };
 
         Content = new Border { Padding = new Thickness(22, 20, 22, 18), Child = content };
     }

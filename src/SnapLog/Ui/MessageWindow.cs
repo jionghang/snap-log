@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 
@@ -37,14 +38,36 @@ internal sealed class MessageWindow : Window
         var buttons = Ui.ButtonRow();
         buttons.HorizontalAlignment = HorizontalAlignment.Right;
 
+        Button? cancel = null;
         if (cancelText is not null)
         {
-            var cancel = new Button { Content = cancelText };
+            cancel = new Button { Content = cancelText };
             cancel.Click += (_, _) => Close();
             buttons.Children.Add(cancel);
         }
 
         buttons.Children.Add(confirm);
+
+        // 键盘约定：Esc = 取消；Enter = 默认按钮。
+        // 破坏性操作里默认键落在"取消"上——手快按回车不能把记录删掉。
+        var enterConfirms = !danger || cancel is null;
+        Opened += (_, _) => (enterConfirms ? confirm : cancel)?.Focus();
+
+        KeyDown += (_, e) =>
+        {
+            switch (e.Key)
+            {
+                case Key.Escape:
+                    e.Handled = true;
+                    Close();
+                    break;
+                case Key.Enter:
+                    e.Handled = true;
+                    _confirmed = enterConfirms;
+                    Close();
+                    break;
+            }
+        };
 
         var body = new TextBlock
         {
@@ -65,6 +88,9 @@ internal sealed class MessageWindow : Window
             },
         };
     }
+
+    /// <summary>自检用：这次对话框是不是以"确认"收场的（Esc 关掉应为 false）。</summary>
+    internal bool ConfirmedForProbe => _confirmed;
 
     /// <summary>返回 true 表示用户确认（只有一个按钮的提示框恒为 true）。</summary>
     public async Task<bool> ShowDialogAsync(Window owner)
