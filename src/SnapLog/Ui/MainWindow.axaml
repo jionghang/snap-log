@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SnapLog.Ui.MainWindow"
+        Width="1060" Height="720"
+        MinWidth="900" MinHeight="600"
+        Title="SnapLog · 屏幕活动记录"
+        Background="{StaticResource Canvas}">
+
+  <Grid ColumnDefinitions="184,*" RowDefinitions="*,34">
+
+    <!-- ============================================================ 左侧导航 -->
+    <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+            Background="#FBFCFD"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="14,18,14,14">
+
+        <StackPanel DockPanel.Dock="Top" Spacing="4">
+          <StackPanel Orientation="Horizontal" Spacing="9" Margin="4,0,0,16">
+            <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource Accent}">
+              <TextBlock Text="S" Foreground="White" FontSize="14" FontWeight="Bold"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Text="SnapLog" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </StackPanel>
+
+          <ToggleButton x:Name="NavHome" Classes="nav" Content="概览" />
+          <ToggleButton x:Name="NavRecords" Classes="nav" Content="抓取记录" />
+          <ToggleButton x:Name="NavSummaries" Classes="nav" Content="总结记录" />
+          <ToggleButton x:Name="NavSettings" Classes="nav" Content="设置" />
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Spacing="8">
+          <Button x:Name="DataDirButton" Classes="link" Content="打开数据目录" HorizontalAlignment="Left" />
+          <TextBlock x:Name="VersionText" Classes="caption" Margin="2,4,0,0" />
+        </StackPanel>
+
+        <Panel />
+      </DockPanel>
+    </Border>
+
+    <!-- ============================================================ 内容区 -->
+    <ContentControl Grid.Row="0" Grid.Column="1" x:Name="PageHost" />
+
+    <!-- ============================================================ 状态栏 -->
+    <Border Grid.Row="1" Grid.Column="1"
+            Background="#FBFCFD"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0"
+            Padding="18,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock x:Name="StatusText" Classes="caption" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+        <Border Grid.Column="1" x:Name="StatePill" Classes="pill" VerticalAlignment="Center">
+          <TextBlock x:Name="StatePillText" Text="启动中" />
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -291,8 +291,8 @@ public sealed class SummarizationOptions
     public bool ScheduleEnabled { get; set; }
 
     [Category("总结"), DisplayName("定时生成时间"),
-     Description("格式 HH:mm，例如 18:30。程序在那个时间点之后第一次运行时执行，当天只跑一次。")]
-    public string ScheduleTimeOfDay { get; set; } = "18:30";
+     Description("格式 HH:mm，默认 22:00。总结的是已经过完的那一天，所以这个时间点只决定什么时候去写前一天的总结，不影响当天记录的完整性。")]
+    public string ScheduleTimeOfDay { get; set; } = "22:00";
 
     [Category("总结"), DisplayName("系统提示词"),
      Description("填写后以此作为 system 提示词，完全替换内置模板。"
@@ -343,6 +343,14 @@ public sealed class FeishuOptions
      Description("每次成功生成总结后立即写入飞书；配合“定时生成总结”即为每天自动汇总。关闭后仅按定时写入或手动写入执行。")]
     public bool PushAfterSummary { get; set; }
 
+    /// <summary>
+    /// 是否跟随"每天自动执行"这条流水线一起跑。界面不单独暴露它——
+    /// 用户只在概览页看到一个开关，那一个开关同时管识别、总结、推送三件事。
+    /// 默认 true：老配置里开着飞书写入的，升级后不会突然不推了。
+    /// </summary>
+    [Browsable(false)]
+    public bool ScheduleEnabled { get; set; } = true;
+
     // ---------------------------------------------------------------- 通道层
 
     [Category("飞书 · 应用凭证"), DisplayName("App ID"),
@@ -381,9 +389,10 @@ public sealed class FeishuOptions
     public List<FeishuFieldMapping> FieldMappings { get; set; } = FeishuFieldMapping.CreateDefault();
 
     [Category("飞书 · 数据"), DisplayName("写入范围（天）"),
-     Description("仅写入该天数内生成且尚未写入飞书的总结。默认 1 表示只写当天，"
+     Description("仅写入该天数内生成且尚未写入飞书的总结。默认 2 天："
+                 + "留一天余量，免得当天推送失败后第二天就再也轮不到它（那条日报会静默丢失）。"
                  + "避免首次开启时一次性导入全部历史总结；需补录历史时将该值调大。")]
-    public int PushLookbackDays { get; set; } = 1;
+    public int PushLookbackDays { get; set; } = 2;
 
     [Category("飞书 · 数据"), DisplayName("总结正文最大长度"),
      Description("总结正文可能较长，而飞书单元格有长度上限。超出部分将被截断并标注。")]

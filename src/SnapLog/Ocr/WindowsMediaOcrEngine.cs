@@ -4,6 +4,7 @@ using SnapLog.Imaging;
 using Windows.Graphics.Imaging;
 using Windows.Globalization;
 using Windows.Media.Ocr;
+using System.Drawing;
 
 namespace SnapLog.Ocr;
 

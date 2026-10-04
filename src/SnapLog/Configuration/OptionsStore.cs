@@ -101,6 +101,7 @@ public static class OptionsStore
         target.Summarization = source.Summarization;
         target.Logging = source.Logging;
         target.Ui = source.Ui;
+        target.Feishu = source.Feishu;
     }
 
     private static IEnumerable<string> EnumerateCandidates(string? explicitPath)

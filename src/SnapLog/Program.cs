@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Threading;
 using SnapLog.Cli;
 using SnapLog.Configuration;
 using SnapLog.Core;
@@ -153,6 +155,9 @@ internal static class Program
         }
     }
 
+    /// <summary>
+    /// 托盘常驻模式：Avalonia 跑界面，WinForms 只负责托盘图标。
+    /// </summary>
     private static int RunTrayApplication(
         AppOptions options,
         AppPaths paths,
@@ -160,43 +165,87 @@ internal static class Program
         string? configSourcePath,
         IActivityRepository store)
     {
-        // 托盘常驻模式只允许一个实例：两个一起跑会把同一条记录写两遍，
-        // 托盘图标也变成两个。命令行的一次性命令不走这里，仍可与托盘那份并存。
+        // 只允许一个实例：两个一起跑会把同一条记录写两遍，托盘图标也变成两个。
+        // 命令行的一次性命令不走这里，仍可与托盘那份并存。
         using var instanceLock = SingleInstanceLock.TryAcquire();
         if (instanceLock is null)
         {
             return ReportAlreadyRunning(log, paths);
         }
 
-        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-        Application.EnableVisualStyles();
-        Application.SetCompatibleTextRenderingDefault(false);
+        // 启动时清理一次过期的截图与记录。以前这一步只有命令行的 --cleanup 会做，
+        // 托盘模式下等于永远不清理（界面和文档却写着会自动清理）。
+        try
+        {
+            var cleanup = new RetentionService(store, paths, log)
+                .RunAsync(options, CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
 
-        // 两级处理：
-        //   ThreadException（UI 线程上的异常，多数来自一次抓取/一次按钮点击）：
-        //     记日志 + 托盘提示，**不崩**。一次抓取失败不配弹崩溃框。
-        //   UnhandledException（别的线程上没被接住的异常，进程真的要退出了）：
-        //     记日志 + 弹窗 + 退出。
-        Application.ThreadException += (_, eventArgs) => ReportRecoverable(log, paths, eventArgs.Exception);
+            log.Info($"启动清理：{cleanup.Describe()}");
+        }
+        catch (Exception ex)
+        {
+            log.Warn($"启动清理失败（不影响记录）：{ex.Message}");
+        }
+
+        var engine = new SnapLogEngine(options, paths, log, OcrEngineFactory.Create(options.Ocr, log), store);
+        var summaryRunner = new SummaryRunner(store, paths, log);
+
+        // 三个"每天到点跑一次"的任务共用一套调度：批量识别、定时总结、定时推送。
+        // 配置路径要一并传进去：调度器每轮重新读配置，读的必须是这次启动用的那份
+        // （否则用 --config 启动时，定时任务会去看用户目录里另一份配置）。
+        var scheduler = new ScheduledJobsService(
+            [
+                new OcrBatchJob(store, paths, log, () => OcrEngineFactory.Create(options.Ocr, log)),
+                new SummaryJob(summaryRunner, store),
+                new FeishuPushJob(new FeishuWriter(store, log)),
+            ],
+            paths,
+            log,
+            configSourcePath,
+            () => engine.IsRunning);
+
+        var services = new AppServices(options, paths, log, store, engine, summaryRunner, scheduler, configSourcePath);
+        App.Services = services;
+
+        // UI 线程上可恢复的异常：记日志 + 托盘气泡，程序继续跑。
+        // 一次抓取失败、一次按钮点错都不该把托盘里的记录任务带走。
+        Dispatcher.UIThread.UnhandledException += (_, eventArgs) =>
+        {
+            ReportRecoverable(log, eventArgs.Exception);
+            eventArgs.Handled = true;
+        };
         AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
             ReportFatal(log, paths, eventArgs.ExceptionObject as Exception);
 
-        var ocr = OcrEngineFactory.Create(options.Ocr, log);
-        var engine = new SnapLogEngine(options, paths, log, ocr, store);
-        var summaryRunner = new SummaryRunner(store, paths, log);
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime([]);
+        }
+        finally
+        {
+            services.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            App.Services = null;
+            log.Info("SnapLog 退出");
+        }
 
-        using var context = new TrayApplicationContext(
-            options, paths, log, engine, summaryRunner, store, configSourcePath);
-        Application.Run(context);
-
-        log.Info("SnapLog 退出");
         return 0;
     }
+
+    public static AppBuilder BuildAvaloniaApp() =>
+        AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .WithInterFont()
+            .LogToTrace();
 
     /// <summary>
     /// 已经有一个托盘实例在跑：说清楚怎么找到它，然后退出这次启动。
     /// 双击启动没有控制台，只能弹窗；从终端/脚本启动则写一行到标准错误，
     /// 免得脚本挂在一个没人点的模态框上。
+    ///
+    /// 这里用 WinForms 的 MessageBox：它发生在 Avalonia 应用启动之前，
+    /// 这时候还没有任何窗口可以当弹窗的宿主。
     /// </summary>
     private static int ReportAlreadyRunning(FileLogger log, AppPaths paths)
     {
@@ -212,20 +261,24 @@ internal static class Program
         }
         else
         {
-            MessageBox.Show($"{advice}\n\n日志目录：\n{paths.LogsDirectory}", "SnapLog 已在运行",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            System.Windows.Forms.MessageBox.Show(
+                $"{advice}\n\n日志目录：\n{paths.LogsDirectory}",
+                "SnapLog 已在运行",
+                System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Information);
         }
 
         return 0;
     }
 
     /// <summary>UI 线程上可恢复的异常：记日志 + 托盘气泡，程序继续跑。</summary>
-    private static void ReportRecoverable(FileLogger log, AppPaths paths, Exception exception)
+    private static void ReportRecoverable(FileLogger log, Exception exception)
     {
         log.Error("界面操作失败（已跳过，程序继续运行）", exception);
 
-        // 用气球而不是模态框：后台工具不该因为一个可恢复的错误打断用户。
-        TrayBalloon.TryShow($"{exception.GetType().Name}: {exception.Message}", ToolTipIcon.Warning);
+        // 用气泡而不是模态框：后台工具不该因为一个可恢复的错误打断用户。
+        TrayBalloon.TryShow($"{exception.GetType().Name}: {exception.Message}",
+            System.Windows.Forms.ToolTipIcon.Warning);
     }
 
     private static void ReportFatal(FileLogger log, AppPaths paths, Exception? exception)
@@ -236,10 +289,10 @@ internal static class Program
         }
 
         log.Error("未捕获的异常", exception);
-        MessageBox.Show(
+        System.Windows.Forms.MessageBox.Show(
             $"SnapLog 遇到未处理的错误：\n\n{exception.GetType().Name}: {exception.Message}\n\n详情见日志目录：\n{paths.LogsDirectory}",
             "SnapLog",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Error);
+            System.Windows.Forms.MessageBoxButtons.OK,
+            System.Windows.Forms.MessageBoxIcon.Error);
     }
 }

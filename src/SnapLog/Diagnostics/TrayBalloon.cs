@@ -1,3 +1,4 @@
+using System.Windows.Forms;
 using SnapLog.Diagnostics;
 
 namespace SnapLog.Ui;

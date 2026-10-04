@@ -484,7 +484,7 @@ public sealed class SqliteActivityStore : IActivityRepository
         RunAsync(connection =>
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "DELETE FROM activity WHERE timestamp < $cutoff";
+            command.CommandText = "DELETE FROM activity WHERE status <> 'Pending' AND timestamp < $cutoff";
             command.Parameters.AddWithValue("$cutoff", cutoff.ToString(TimeFormat, CultureInfo.InvariantCulture));
             return command.ExecuteNonQuery();
         }, cancellationToken);

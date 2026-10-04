@@ -18,564 +18,912 @@
     --green: #1a7f4b;
     --red: #c0392b;
     --amber: #a05c07;
-    --radius: 6px;
     --mono: Consolas, "Courier New", monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
+  html, body { min-height: 100%; }
   body {
     font: 13px/1.55 "Segoe UI", "Microsoft YaHei UI", sans-serif;
     color: var(--ink);
     background: var(--desk);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 56px 24px 24px;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 54px 24px 40px;
   }
 
-  /* ---------------- 顶部视图切换（原型辅助，不属于产品） ---------------- */
-  .viewbar {
-    position: fixed; top: 0; left: 0; right: 0; height: 40px;
-    background: rgba(30,34,40,.92);
-    display: flex; align-items: center; gap: 6px;
-    padding: 0 16px; z-index: 90;
+  /* ---------- 原型辅助条（不属于产品界面） ---------- */
+  .proto-bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 38px;
+    background: rgba(30,34,40,.93);
+    display: flex; align-items: center; gap: 6px; padding: 0 14px; z-index: 90;
   }
-  .viewbar .vb-title { color: #cfd5dd; font-size: 12px; margin-right: 14px; letter-spacing: .04em; }
-  .viewbar button {
-    background: transparent; color: #cfd5dd; border: 1px solid transparent;
-    font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 4px; cursor: pointer;
+  .proto-bar .t { color: #cfd5dd; font-size: 12px; margin-right: 10px; letter-spacing: .03em; }
+  .proto-bar button {
+    background: transparent; color: #cfd5dd; border: 1px solid rgba(255,255,255,.18);
+    font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
   }
-  .viewbar button:hover { background: rgba(255,255,255,.08); }
-  .viewbar button.on { background: rgba(255,255,255,.14); color: #fff; }
+  .proto-bar button:hover { background: rgba(255,255,255,.1); color: #fff; }
 
-  /* ---------------- 窗体 ---------------- */
+  /* ---------- 窗体 ---------- */
   .frame {
     background: var(--paper);
-    border: 1px solid #b8bfc9;
-    border-radius: 8px;
+    border: 1px solid #b8bfc9; border-radius: 8px;
     box-shadow: 0 18px 50px rgba(23,28,35,.25), 0 2px 8px rgba(23,28,35,.12);
-    overflow: hidden;
-    width: 940px;
-    max-width: calc(100vw - 48px);
-    display: flex; flex-direction: column;
+    overflow: hidden; display: flex; flex-direction: column;
+    width: 1020px; max-width: calc(100vw - 48px);
   }
-  .frame.wide { width: 1120px; }
+  #appWin { height: 780px; }
   .titlebar {
-    height: 34px; background: var(--chrome);
-    border-bottom: 1px solid var(--line-soft);
-    display: flex; align-items: center; padding: 0 4px 0 12px; gap: 8px;
-    user-select: none; flex: 0 0 auto;
+    height: 34px; background: var(--chrome); border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; padding: 0 4px 0 12px; gap: 8px; flex: 0 0 auto; user-select: none;
   }
   .titlebar .appicon { width: 16px; height: 16px; flex: 0 0 auto; }
-  .titlebar .tb-text { font-size: 12.5px; color: var(--ink); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .titlebar .tb-text { font-size: 12.5px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tb-btns { display: flex; }
-  .tb-btns span {
-    width: 42px; height: 34px; display: grid; place-items: center;
-    color: var(--ink-2); font-size: 12px; cursor: default;
-  }
+  .tb-btns span { width: 42px; height: 34px; display: grid; place-items: center; color: var(--ink-2); cursor: default; }
   .tb-btns span:hover { background: #e5e7eb; }
   .tb-btns span.close:hover { background: #e81123; color: #fff; }
-
   .client { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 
-  /* ---------------- 通用控件 ---------------- */
+  /* ---------- 通用控件 ---------- */
   button.btn {
     font: inherit; color: var(--ink); background: #fafbfc;
     border: 1px solid var(--line); border-radius: 4px;
     padding: 5px 14px; cursor: pointer; white-space: nowrap;
   }
-  button.btn:hover { background: #f0f3f7; border-color: #b9c2cd; }
-  button.btn:active { background: #e8edf3; }
+  button.btn:hover:not(:disabled) { background: #f0f3f7; border-color: #b9c2cd; }
+  button.btn.sm { padding: 3px 10px; font-size: 12px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
   button.btn.default { border-color: var(--accent); }
   input[type="text"], input[type="number"], input[type="password"], select, textarea {
-    font: inherit; color: var(--ink);
-    border: 1px solid var(--line); border-radius: 4px;
-    padding: 4px 8px; background: #fff; outline: none;
+    font: inherit; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 4px; padding: 4px 8px; background: #fff; outline: none;
   }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+  input[type="checkbox"] { accent-color: var(--accent); }
   .chk { display: inline-flex; align-items: center; gap: 6px; user-select: none; }
   .mono { font-family: var(--mono); font-size: 12px; }
-  .hint { color: var(--ink-3); }
+  .hint { color: var(--ink-3); font-size: 12px; }
+  .hint.danger { color: var(--red); }
 
-  /* ---------------- 主窗口：Tab ---------------- */
-  .tabstrip {
-    background: var(--chrome);
-    border-bottom: 1px solid var(--line-soft);
-    display: flex; padding: 0 12px; gap: 2px; flex: 0 0 auto;
-  }
+  /* ---------- Tab ---------- */
+  .tabstrip { background: var(--chrome); border-bottom: 1px solid var(--line-soft); display: flex; padding: 0 10px; flex: 0 0 auto; }
   .tabstrip button {
-    font: inherit; font-size: 12.5px; color: var(--ink-2);
-    background: transparent; border: none; border-bottom: 2px solid transparent;
-    padding: 8px 14px; cursor: pointer;
+    font: inherit; font-size: 12.5px; color: var(--ink-2); background: transparent;
+    border: none; border-bottom: 2px solid transparent; padding: 8px 11px; cursor: pointer;
   }
   .tabstrip button:hover { color: var(--ink); }
   .tabstrip button.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
-  .tabpage { padding: 14px 16px; overflow: auto; min-height: 0; flex: 1; display: none; }
-  .tabpage.on { display: flex; flex-direction: column; }
+  .tabpage { padding: 12px 16px 16px; overflow: auto; min-height: 0; flex: 1; display: none; }
+  .tabpage.on { display: block; }
+  .tabpage.on.flex { display: flex; flex-direction: column; }
 
-  /* 状态页 */
-  .info-grid { display: grid; grid-template-columns: 96px 1fr; row-gap: 2px; column-gap: 10px; margin-bottom: 12px; }
+  /* ---------- 状态页 ---------- */
+  .info-grid { display: grid; grid-template-columns: 110px 1fr; row-gap: 2px; column-gap: 8px; margin-bottom: 10px; }
   .info-grid dt { color: var(--ink-3); padding: 3px 0; }
-  .info-grid dd { padding: 3px 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .info-grid dd { padding: 3px 0; overflow: hidden; text-overflow: ellipsis; }
   .state-run { color: var(--green); font-weight: 600; }
   .state-pause { color: var(--red); font-weight: 600; }
-  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); }
   .loghead { color: var(--ink-3); padding: 10px 0 6px; }
   .loglist {
     border: 1px solid var(--line); border-radius: 4px; background: #fcfcfd;
-    height: 230px; overflow: auto; padding: 6px 8px;
-    font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    height: 300px; overflow: auto; padding: 6px 8px;
+    font-family: var(--mono); font-size: 12px; line-height: 1.75;
   }
   .loglist .t { color: var(--ink-3); }
   .loglist .inf { color: #4a5568; }
   .loglist .wrn { color: var(--amber); }
   .loglist .err { color: var(--red); }
 
-  /* 记录页 */
-  .rec-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-  .rec-desc { color: var(--ink-2); max-width: 780px; margin-bottom: 4px; }
+  /* ---------- 筛选条 / 表格 / 详情 / 分页 ---------- */
+  .filters { padding: 0 0 8px; display: flex; flex-direction: column; gap: 8px; }
+  .filters .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .filters label.f { color: var(--ink-2); font-size: 12.5px; }
+  .grid-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 4px; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.grid th {
+    text-align: left; font-weight: 600; color: var(--ink-2); background: #f8f9fb;
+    border-bottom: 1px solid var(--line); padding: 6px 10px; position: sticky; top: 0; white-space: nowrap;
+  }
+  table.grid td { padding: 5px 10px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  table.grid tbody tr { cursor: default; }
+  table.grid tbody tr:hover { background: #f5f8ff; }
+  table.grid tbody tr.sel { background: #e3edff; }
+  table.grid tbody tr.fail td { color: var(--red); }
+  .detail-head { display: flex; align-items: center; gap: 8px; padding: 8px 0 4px; color: var(--ink-3); }
+  .detail {
+    font-family: var(--mono); font-size: 12px; line-height: 1.7; white-space: pre-wrap;
+    border: 1px solid var(--line); border-radius: 4px; background: #fff;
+    height: 176px; overflow: auto; padding: 8px 10px;
+  }
+  .pager { display: flex; align-items: center; gap: 6px; padding: 8px 0 4px; }
+  .pager .info { color: var(--ink-2); margin-left: 10px; font-size: 12.5px; }
+  .statusline {
+    border-top: 1px solid var(--line-soft); margin-top: 6px; padding-top: 6px;
+    font-size: 12px; color: var(--ink-2); display: flex; justify-content: space-between;
+  }
+  .statusline .r { color: var(--ink-3); }
 
-  /* 设置页：配置树 */
-  .cfg-scroll { overflow: auto; max-height: 320px; border: 1px solid var(--line); border-radius: 4px; }
+  /* ---------- 设置页：分组与行 ---------- */
+  .section { margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); }
+  .section > .sec-title { font-weight: 700; margin-bottom: 6px; }
+  .srow { display: grid; grid-template-columns: 122px 1fr; column-gap: 8px; align-items: start; padding: 2px 0; }
+  .srow > .lab { color: var(--ink-3); padding: 7px 0 2px; }
+  .srow > .ctl { padding: 3px 0; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .srow .hint { padding-top: 4px; }
+  .viewfoot { display: flex; gap: 8px; padding: 10px 0 2px; border-top: 1px solid var(--line-soft); margin-top: 4px; }
+  .listrow { display: flex; gap: 8px; align-items: flex-start; }
+  .listbox {
+    width: 440px; max-width: 100%; border: 1px solid var(--line); border-radius: 4px;
+    background: #fff; overflow: auto; font-size: 12.5px;
+  }
+  .listbox.h104 { height: 104px; }
+  .listbox.h132 { height: 132px; }
+  .listbox .item { padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+  .listbox .item:hover { background: #f5f8ff; }
+  .listbox .item.on { background: #e3edff; }
+  .btncol { display: flex; flex-direction: column; gap: 4px; }
+
+  /* ---------- 关于页 ---------- */
+  .about-title { font-size: 20px; font-weight: 700; }
+  .about-sub { color: var(--ink-3); margin: 2px 0 10px; }
+
+  /* ---------- 状态栏 ---------- */
+  .statusbar {
+    border-top: 1px solid var(--line-soft); background: var(--chrome); height: 26px;
+    display: flex; align-items: center; padding: 0 12px; font-size: 12px; color: var(--ink-2); flex: 0 0 auto;
+  }
+
+  /* ---------- 模态框 ---------- */
+  .modal {
+    position: fixed; inset: 0; background: rgba(24,29,36,.38);
+    display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px;
+  }
+  .modal.on { display: flex; }
+  .modal .frame { max-height: calc(100vh - 60px); }
+  .modal .body { padding: 14px 18px 14px; overflow: auto; }
+  .modal .frame.narrow { width: 560px; }
+  .modal .frame.mid { width: 700px; }
+  .modal .frame.wide2 { width: 860px; }
+  .dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .dlg-btns.left { justify-content: space-between; }
+  .shot {
+    border: 1px solid var(--line); border-radius: 4px; background: #f2f4f7; height: 220px;
+    display: grid; place-items: center; color: var(--ink-3); font-size: 12px;
+  }
+  .ocr-text {
+    border: 1px solid var(--line); border-radius: 4px; background: #fff; height: 220px; overflow: auto;
+    font-family: var(--mono); font-size: 12px; line-height: 1.7; padding: 8px 10px; white-space: pre-wrap;
+  }
+  .cfg-scroll { overflow: auto; max-height: 420px; border: 1px solid var(--line); border-radius: 4px; }
   details.cfg-group { border-bottom: 1px solid var(--line-soft); }
   details.cfg-group:last-child { border-bottom: none; }
   details.cfg-group summary {
-    list-style: none; cursor: pointer; padding: 8px 12px;
-    font-weight: 600; color: var(--ink); background: #f8f9fb;
-    display: flex; align-items: center; gap: 8px; user-select: none;
+    list-style: none; cursor: pointer; padding: 7px 12px; font-weight: 600;
+    background: #f8f9fb; display: flex; align-items: center; gap: 8px; user-select: none;
   }
   details.cfg-group summary::before { content: "▸"; color: var(--ink-3); font-size: 11px; transition: transform .12s; }
   details.cfg-group[open] summary::before { transform: rotate(90deg); }
   details.cfg-group summary .cls { font-weight: 400; color: var(--ink-3); font-size: 12px; }
-  .cfg-rows { padding: 4px 0 8px; }
-  .cfg-row { display: grid; grid-template-columns: 240px 220px 1fr; column-gap: 12px; padding: 3px 12px 3px 28px; align-items: baseline; }
-  .cfg-row:hover { background: #f5f8ff; }
+  .cfg-row { display: grid; grid-template-columns: 230px 210px 1fr; column-gap: 12px; padding: 3px 12px 3px 28px; }
+  .cfg-row:nth-child(odd) { background: #fcfcfd; }
   .cfg-row .k { font-family: var(--mono); font-size: 12px; }
   .cfg-row .v { font-family: var(--mono); font-size: 12px; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfg-row .d { color: var(--ink-3); font-size: 12px; }
 
-  /* 总结页 */
-  .summary-box {
-    flex: 1; min-height: 320px; resize: none;
-    font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
-    padding: 10px 12px; color: var(--ink); background: #fff;
+  /* ---------- 托盘提示 ---------- */
+  .tray-chip {
+    position: fixed; right: 20px; bottom: 20px; z-index: 95; display: none;
+    background: #2b3138; color: #e7eaee; border-radius: 8px; padding: 10px 14px; font-size: 12.5px;
+    box-shadow: 0 10px 30px rgba(20,25,32,.3); cursor: pointer;
   }
-
-  /* 状态栏 */
-  .statusbar {
-    border-top: 1px solid var(--line-soft); background: var(--chrome);
-    height: 26px; display: flex; align-items: center; gap: 12px;
-    padding: 0 12px; font-size: 12px; color: var(--ink-2); flex: 0 0 auto;
-  }
-  .statusbar .grow { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .statusbar .right { color: var(--ink-3); white-space: nowrap; }
-
-  /* ---------------- 记录查看器 ---------------- */
-  .filters { padding: 10px 12px 8px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 8px; }
-  .filters .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .filters label.f { color: var(--ink); }
-  .grid-wrap { overflow: auto; min-height: 0; }
-  table.grid { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.grid th {
-    text-align: left; font-weight: 600; color: var(--ink-2);
-    background: #f8f9fb; border-bottom: 1px solid var(--line);
-    padding: 6px 10px; position: sticky; top: 0; white-space: nowrap;
-  }
-  table.grid td { padding: 5px 10px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
-  table.grid tbody tr { cursor: default; }
-  table.grid tbody tr:hover { background: #f5f8ff; }
-  table.grid tbody tr.sel { background: #e3edff; }
-  table.grid td.num { text-align: right; font-family: var(--mono); font-size: 12px; }
-  table.grid td.dim { color: var(--ink-3); }
-  .detail-head { color: var(--ink-3); padding: 8px 12px 4px; border-top: 1px solid var(--line); }
-  .detail {
-    font-family: var(--mono); font-size: 12px; line-height: 1.7;
-    padding: 0 12px 10px; white-space: pre-wrap; color: var(--ink);
-    height: 168px; overflow: auto;
-  }
-  .pager { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-top: 1px solid var(--line-soft); }
-  .pager .info { color: var(--ink-2); margin-left: 10px; }
-  .pager button:disabled { opacity: .45; cursor: default; }
-
-  /* ---------------- 常用设置对话框 ---------------- */
-  .dimmer {
-    position: fixed; inset: 0; background: rgba(24,29,36,.38);
-    display: none; align-items: center; justify-content: center; z-index: 100;
-  }
-  .dimmer.on { display: flex; }
-  .dialog { width: 600px; max-width: calc(100vw - 48px); }
-  .dialog .body { padding: 16px 18px 14px; }
-  .form-grid { display: grid; grid-template-columns: 118px 1fr; column-gap: 10px; row-gap: 4px; align-items: start; }
-  .form-grid .lab { padding: 7px 0 4px; color: var(--ink); }
-  .form-grid .ctl { padding: 3px 0; min-width: 0; }
-  .form-grid .ctl input[type="text"], .form-grid .ctl input[type="password"], .form-grid .ctl select { width: 100%; }
-  .form-grid .note { grid-column: 2; color: var(--ink-3); font-size: 12px; padding: 0 0 8px; max-width: 360px; }
-  .num-wrap { display: flex; align-items: center; gap: 6px; }
-  .num-wrap input { width: 96px; }
-  .key-wrap { display: flex; align-items: center; gap: 10px; }
-  .key-wrap input { flex: 1; }
-  .dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
-
+  .tray-chip b { font-weight: 600; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 
-<!-- 原型辅助：视图切换 -->
-<div class="viewbar">
-  <span class="vb-title">SnapLog 原型</span>
-  <button data-view="winMain" class="on" onclick="switchView('winMain', this)">主窗口</button>
-  <button data-view="winRecords" onclick="switchView('winRecords', this)">记录查看器</button>
-  <button onclick="openSettings()">常用设置…</button>
+<div class="proto-bar">
+  <span class="t">SnapLog 原型 · 对话框演示</span>
+  <button onclick="openModal('mdlProvider')">模型配置…</button>
+  <button onclick="openModal('mdlOcrPreview')">识别测试…</button>
+  <button onclick="openModal('mdlDelete')">删除记录…</button>
+  <button onclick="openModal('mdlPrompt')">系统提示词…</button>
+  <button onclick="openModal('mdlAdvanced')">全部选项（高级）…</button>
 </div>
 
-<!-- ================= 主窗口 ================= -->
-<div class="frame" id="winMain" style="height: 700px;">
+<!-- ==================== 主窗口 ==================== -->
+<div class="frame" id="appWin">
   <div class="titlebar">
     <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
     <span class="tb-text">SnapLog · 屏幕活动记录</span>
-    <div class="tb-btns"><span>—</span><span>□</span><span class="close">✕</span></div>
+    <div class="tb-btns">
+      <span title="最小化到托盘" onclick="hideToTray()">—</span>
+      <span>□</span>
+      <span class="close" title="收起到托盘（不退出）" onclick="hideToTray()">✕</span>
+    </div>
   </div>
 
   <div class="client">
     <div class="tabstrip">
       <button class="on" data-tab="tabStatus" onclick="switchTab('tabStatus', this)">状态</button>
-      <button data-tab="tabRecords" onclick="switchTab('tabRecords', this)">记录</button>
-      <button data-tab="tabSettings" onclick="switchTab('tabSettings', this)">设置</button>
-      <button data-tab="tabSummary" onclick="switchTab('tabSummary', this)">总结</button>
+      <button data-tab="tabRecords" onclick="switchTab('tabRecords', this)">抓取记录</button>
+      <button data-tab="tabHistory" onclick="switchTab('tabHistory', this)">总结记录</button>
+      <button data-tab="tabCapture" onclick="switchTab('tabCapture', this)">抓取配置</button>
+      <button data-tab="tabOcr" onclick="switchTab('tabOcr', this)">OCR 配置</button>
+      <button data-tab="tabLlm" onclick="switchTab('tabLlm', this)">大模型配置</button>
+      <button data-tab="tabFeishu" onclick="switchTab('tabFeishu', this)">推送配置</button>
+      <button data-tab="tabAbout" onclick="switchTab('tabAbout', this)">关于</button>
     </div>
 
-    <!-- 状态 -->
+    <!-- ---------------- 状态 ---------------- -->
     <div class="tabpage on" id="tabStatus">
       <dl class="info-grid">
         <dt>运行状态：</dt><dd id="stState" class="state-run">运行中</dd>
-        <dt>本次已记录：</dt><dd>12 条（本次运行）</dd>
-        <dt>库中记录：</dt><dd>1,284 条</dd>
-        <dt>OCR 引擎：</dt><dd>PaddleOCR PP-OCRv6 tiny, zh-Hans-CN, 目标 2400px</dd>
-        <dt>最近一次：</dt><dd>14:32:08 · ZCode — snaplog-prototype.html · 591 字</dd>
-        <dt>数据目录：</dt><dd class="mono">C:\Users\jianyongxing\AppData\Local\SnapLog</dd>
-        <dt>数据库：</dt><dd class="mono">C:\Users\jianyongxing\AppData\Local\SnapLog\activity.db</dd>
+        <dt>本次运行抓取：</dt><dd id="stSession">12 条</dd>
+        <dt>最近一次抓取：</dt><dd id="stLast">21:12:08 · snaplog-prototype.html - snaplog - ZCode</dd>
+        <dt>总共抓取：</dt><dd id="stTotal">1,284 条</dd>
+        <dt>开机自启动：</dt><dd>
+          <label class="chk"><input type="checkbox" checked onchange="setStatus(this.checked ? '已设为开机自动启动' : '已取消开机自动启动')">
+          开机自动启动（登录后最小化到托盘）</label>
+        </dd>
       </dl>
       <div class="btnrow">
         <button class="btn default" id="btnToggle" onclick="toggleRecording()">暂停记录</button>
-        <button class="btn" onclick="setStatus('已记录 591 字')">立即抓取一次</button>
-        <button class="btn" onclick="gotoRecords()">记录查看器…</button>
-        <button class="btn" onclick="openSettings()">常用设置…</button>
-        <button class="btn" onclick="setStatus('原型演示：将在资源管理器中打开数据目录')">打开数据目录</button>
+        <button class="btn" onclick="captureOnce()">立即抓取一次</button>
       </div>
       <div class="loghead">运行日志（最近 500 条）</div>
       <div class="loglist" id="logList">
-        <div><span class="t">2026-09-30 09:02:14</span> <span class="inf">[INF]</span> <span class="inf">SnapLog 已启动，数据目录 C:\Users\jianyongxing\AppData\Local\SnapLog</span></div>
-        <div><span class="t">2026-09-30 09:02:14</span> <span class="inf">[INF]</span> <span class="inf">数据库就绪：activity.db（WAL 模式）</span></div>
-        <div><span class="t">2026-09-30 09:02:15</span> <span class="inf">[INF]</span> <span class="inf">OCR 引擎就绪：PaddleOCR PP-OCRv6 tiny, zh-Hans-CN</span></div>
-        <div><span class="t">2026-09-30 09:02:15</span> <span class="inf">[INF]</span> <span class="inf">触发方式：Both（定时 300 秒 + 前台窗口切换，稳定等待 900ms）</span></div>
-        <div><span class="t">2026-09-30 09:17:41</span> <span class="inf">[INF]</span> <span class="inf">已记录 #1281：Weixin — 文件传输助手（214 字，173ms，PrintWindow）</span></div>
-        <div><span class="t">2026-09-30 09:23:02</span> <span class="wrn">[WRN]</span> <span class="wrn">画面与上一条完全一致，跳过（IgnoreWindowTitleRepeats）</span></div>
-        <div><span class="t">2026-09-30 11:44:59</span> <span class="inf">[INF]</span> <span class="inf">已记录 #1282：Code — MainForm.cs - SnapLog（1104 字，231ms，PrintWindow）</span></div>
-        <div><span class="t">2026-09-30 13:31:12</span> <span class="inf">[INF]</span> <span class="inf">已记录 #1283：explorer — 图片（无有效文字，已按配置丢弃）</span></div>
-        <div><span class="t">2026-09-30 14:32:08</span> <span class="inf">[INF]</span> <span class="inf">已记录 #1284：ZCode — snaplog-prototype.html（591 字，184ms，PrintWindow）</span></div>
+        <div><span class="t">2026-09-30 19:02:11</span> <span class="inf">[INF]</span> <span class="inf">SnapLog 已启动，数据目录 C:\Users\jianyongxing\AppData\Local\SnapLog</span></div>
+        <div><span class="t">2026-09-30 19:02:11</span> <span class="inf">[INF]</span> <span class="inf">数据库就绪：activity.db（WAL 模式，共 1,284 条记录）</span></div>
+        <div><span class="t">2026-09-30 19:02:12</span> <span class="inf">[INF]</span> <span class="inf">OCR 引擎就绪：PaddleOCR PP-OCRv6 tiny（实时识别，CPU 线程 4）</span></div>
+        <div><span class="t">2026-09-30 19:02:12</span> <span class="inf">[INF]</span> <span class="inf">抓取方式：前台窗口切换后延时 5000ms 截图；同一窗口每 10 分钟仅记录一次</span></div>
+        <div><span class="t">2026-09-30 19:02:12</span> <span class="inf">[INF]</span> <span class="inf">开机自启动已启用：C:\Program Files\SnapLog\SnapLog.exe</span></div>
+        <div><span class="t">2026-09-30 19:44:27</span> <span class="inf">[INF]</span> <span class="inf">已记录 #1276：WINWORD — 季度总结报告.docx（947 字，221ms，PrintWindow）</span></div>
+        <div><span class="t">2026-09-30 20:21:12</span> <span class="wrn">[WRN]</span> <span class="wrn">识别结果不足 4 字，按配置丢弃本次记录（explorer — 图片）</span></div>
+        <div><span class="t">2026-09-30 21:04:22</span> <span class="inf">[INF]</span> <span class="inf">已记录 #1283：msedge — SnapLog: 屏幕活动记录 - GitHub（1283 字，206ms）</span></div>
+        <div><span class="t">2026-09-30 21:12:08</span> <span class="inf">[INF]</span> <span class="inf">已记录 #1284：ZCode — snaplog-prototype.html（591 字，184ms）</span></div>
       </div>
     </div>
 
-    <!-- 记录 -->
-    <div class="tabpage" id="tabRecords">
-      <div class="rec-title">记录查看器</div>
-      <p class="rec-desc">记录保存在本机的 SQLite 数据库里，可以按时间范围、进程、状态、关键词筛选，分页浏览，选中任意一条查看完整内容（含全部识别文字和截图路径），也可以把当前筛选结果导出成 CSV。</p>
-      <p class="rec-desc">快捷键：F5 刷新、Ctrl+PageUp/PageDown 翻页、Esc 关闭。</p>
-      <div class="btnrow" style="border-bottom:none; padding:12px 0;">
-        <button class="btn default" onclick="gotoRecords()">打开记录查看器…</button>
-        <button class="btn" onclick="setStatus('已刷新：库中共 1,284 条记录')">刷新条数</button>
-        <button class="btn" onclick="setStatus('原型演示：将在资源管理器中打开数据目录')">打开数据目录</button>
+    <!-- ---------------- 抓取记录 ---------------- -->
+    <div class="tabpage flex" id="tabRecords">
+      <div class="filters">
+        <div class="row">
+          <label class="chk"><input type="checkbox" checked id="useRange" onchange="toggleRange()"> 按时间筛选</label>
+          <input type="text" id="fromTime" value="2026-09-23 00:00" style="width:150px">
+          <span class="hint">→</span>
+          <input type="text" id="toTime" value="2026-09-30 21:30" style="width:150px">
+        </div>
+        <div class="row">
+          <label class="f">进程</label>
+          <select style="width:130px">
+            <option>全部</option><option>ZCode</option><option>msedge</option><option>Weixin</option>
+            <option>Code</option><option>WINWORD</option><option>EXCEL</option><option>OUTLOOK</option>
+            <option>explorer</option><option>WindowsTerminal</option>
+          </select>
+          <label class="f" style="margin-left:8px">状态</label>
+          <select style="width:100px"><option>全部</option><option>Ok</option><option>NoText</option><option>Error</option></select>
+          <label class="f" style="margin-left:8px">关键词</label>
+          <input type="text" placeholder="匹配窗口标题与识别文字" style="width:200px">
+          <button class="btn default" onclick="recStatus('已按当前条件检索：共 1,284 条')">查询</button>
+          <button class="btn" onclick="recStatus('筛选条件已重置')">重置</button>
+          <button class="btn" onclick="recStatus('原型演示：导出筛选结果到 snaplog-20260930-2130.csv')">导出 CSV</button>
+          <button class="btn" id="btnDelete" disabled onclick="openModal('mdlDelete')">删除</button>
+        </div>
       </div>
-      <p class="hint">库中记录数会显示在「状态」页。</p>
+
+      <div class="grid-wrap" style="flex:1; min-height:120px;">
+        <table class="grid" id="recGrid">
+          <thead>
+            <tr>
+              <th style="width:13%">时间</th><th style="width:9%">进程</th><th style="width:24%">窗口标题</th>
+              <th style="width:6%">字数</th><th style="width:8%">耗时(ms)</th><th style="width:7%">状态</th>
+              <th style="width:33%">识别文字摘要</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="detail-head">
+        详情
+        <button class="btn sm" id="btnOpenShot" disabled onclick="recStatus('原型演示：打开该记录的截图文件')">打开截图</button>
+        <button class="btn sm" onclick="recStatus('原型演示：打开截图目录 images')">打开截图目录</button>
+      </div>
+      <div class="detail" id="recDetail">请在上方选择一行查看完整记录。</div>
+
+      <div class="pager">
+        <span class="hint">每页</span>
+        <select style="width:76px"><option>50</option><option selected>100</option><option>200</option><option>500</option><option>1000</option></select>
+        <span class="hint" style="margin-right:10px">条</span>
+        <button class="btn sm" disabled>|&lt; 首页</button>
+        <button class="btn sm" disabled>&lt; 上一页</button>
+        <button class="btn sm">下一页 &gt;</button>
+        <button class="btn sm">末页 &gt;|</button>
+        <span class="info">第 1 / 13 页，共 1,284 条</span>
+      </div>
+      <div class="statusline">
+        <span id="recStatus">已载入本页 100 条（共 1,284 条）</span>
+        <span class="r">F5 刷新 · Ctrl+PgUp/PgDn 翻页</span>
+      </div>
     </div>
 
-    <!-- 设置 -->
-    <div class="tabpage" id="tabSettings">
-      <p class="hint" style="margin-bottom:10px;">改完点「保存配置」，触发方式和间隔会立即生效；数据目录和 OCR 引擎的描述需要重启程序才完全生效。API Key 建议用环境变量传，不要写在这里。</p>
-      <div class="form-grid" style="max-width:620px;">
-        <span class="lab">截图间隔：</span>
-        <div class="ctl num-wrap"><input type="number" value="300" min="5" max="86400" step="5"> <span>秒</span> <span class="hint">定时抓取的周期，默认 300 秒</span></div>
+    <!-- ---------------- 总结记录 ---------------- -->
+    <div class="tabpage flex" id="tabHistory">
+      <div class="filters">
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="successOnly" onchange="renderRuns()"> 只看成功</label>
+          <span class="hint" style="margin-left:8px">显示最近</span>
+          <select style="width:70px"><option>20</option><option selected>50</option><option>100</option><option>200</option></select>
+          <span class="hint">条</span>
+          <button class="btn sm" onclick="recStatusHistory()">刷新</button>
+          <button class="btn sm" onclick="recStatusHistory()">预览要发送的内容</button>
+          <label class="chk" style="margin-left:8px"><input type="checkbox" id="pickDay" onchange="document.getElementById('dayPicker').disabled = !this.checked"> 指定日期</label>
+          <input type="text" id="dayPicker" value="2026-09-29" style="width:110px" disabled>
+          <button class="btn sm default" onclick="openModal('mdlConsent')">现在生成一次</button>
+          <button class="btn sm" onclick="recStatusHistory()">复制总结</button>
+          <button class="btn sm" onclick="recStatusHistory()">打开总结目录</button>
+          <span class="hint" id="runsSummary" style="margin-left:6px">共 6 条，其中失败 1 条</span>
+        </div>
+      </div>
 
-        <span class="lab">监听窗口变化：</span>
-        <div class="ctl"><label class="chk"><input type="checkbox" checked> 跟随前台窗口切换自动抓取</label></div>
+      <div class="grid-wrap" style="flex:1; min-height:120px;">
+        <table class="grid" id="runGrid">
+          <thead>
+            <tr>
+              <th style="width:14%">开始时间</th><th style="width:7%">触发</th><th style="width:7%">结果</th>
+              <th style="width:8%">飞书</th><th style="width:20%">模型</th><th style="width:9%">记录/图</th>
+              <th style="width:7%">耗时</th><th style="width:34%">内容摘要</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
 
-        <span class="lab">OCR 引擎：</span>
-        <div class="ctl">
-          <select>
+      <div class="detail-head">详情</div>
+      <div class="detail" id="runDetail">请在上方选择一条记录查看完整总结（失败时显示原因）。</div>
+    </div>
+
+    <!-- ---------------- 抓取配置 ---------------- -->
+    <div class="tabpage setpage" id="tabCapture">
+      <div class="section">
+        <div class="sec-title">抓取时机</div>
+        <div class="srow"><span class="lab"></span><div class="ctl">
+          <span class="hint">抓取由前台窗口切换驱动：窗口切换后等待下面的时长，仍在前台才截图。</span></div></div>
+        <div class="srow"><span class="lab">延时截图时长</span><div class="ctl">
+          <input type="number" value="5000" min="0" max="30000" step="100" style="width:90px">
+          <span class="hint">毫秒（默认 5000）。窗口首次出现后等待此时长，仍在前台才截图</span></div></div>
+        <div class="srow"><span class="lab">抓取周期</span><div class="ctl">
+          <input type="number" value="10" min="1" max="1440" style="width:90px">
+          <span class="hint">分钟（默认 10）。同一窗口在每个周期内仅记录一次</span></div></div>
+      </div>
+
+      <div class="section">
+        <div class="sec-title">截图与记录</div>
+        <div class="srow"><span class="lab">保存截图</span><div class="ctl">
+          <label class="chk"><input type="checkbox" checked> 保存截图文件，记录可追溯到当时的画面</label></div></div>
+        <div class="srow"><span class="lab">截图目录</span><div class="ctl">
+          <input type="text" placeholder="留空则保存到数据目录的 images 子目录" style="width:300px">
+          <button class="btn sm" onclick="setStatus('原型演示：选择截图存放目录')">浏览…</button>
+          <button class="btn sm" onclick="setStatus('原型演示：打开截图目录 images')">打开</button></div></div>
+        <div class="srow"><span class="lab">截图保留</span><div class="ctl">
+          <input type="number" value="30" min="0" max="3650" style="width:90px">
+          <span class="hint">天。超期删除截图文件，0 表示永久保留</span></div></div>
+        <div class="srow"><span class="lab">记录保留</span><div class="ctl">
+          <input type="number" value="0" min="0" max="3650" style="width:90px">
+          <span class="hint">天。超期删除数据库记录，0 表示永久保留</span></div></div>
+        <div class="srow"><span class="lab"></span><div class="ctl">
+          <span class="hint">定时识别模式必须保存截图，该模式下本开关锁定为开启。</span></div></div>
+      </div>
+
+      <div class="viewfoot">
+        <button class="btn default" data-save disabled>保存设置</button>
+        <button class="btn" data-discard disabled>放弃修改</button>
+      </div>
+    </div>
+
+    <!-- ---------------- OCR 配置 ---------------- -->
+    <div class="tabpage setpage" id="tabOcr">
+      <div class="section">
+        <div class="sec-title">文字识别（OCR）</div>
+        <div class="srow"><span class="lab">OCR 引擎</span><div class="ctl">
+          <select style="width:420px">
             <option selected>PaddleOCR（离线 PP-OCR 模型，中文更准）</option>
             <option>系统内置 Windows OCR（最省内存，中文错字多）</option>
             <option>关闭文字识别（只记录窗口标题）</option>
+          </select></div></div>
+        <div class="srow"><span class="lab">PaddleOCR 模型</span><div class="ctl">
+          <select style="width:420px">
+            <option selected>PP-OCRv6 tiny（推荐）</option>
+            <option>PP-OCRv6 small（精度相当，耗时约为 tiny 的 3 倍）</option>
+            <option>PP-OCRv5 mobile（更慢，精度低于 v6）</option>
+          </select></div></div>
+        <div class="srow"><span class="lab">识别选项</span><div class="ctl">
+          <label class="chk"><input type="checkbox"> 启用 MKLDNN 加速（速度提高约 3 至 4 倍，内存占用由约 145MB 增至约 640MB）</label>
+          <span class="hint" style="margin-left:10px">CPU 线程</span>
+          <input type="number" value="4" min="1" max="32" style="width:60px"></div></div>
+        <div class="srow"><span class="lab">识别方式</span><div class="ctl">
+          <select style="width:300px">
+            <option selected>实时识别（抓取后立即识别）</option>
+            <option>每日定时批量识别（降低日常占用）</option>
           </select>
-        </div>
-        <div class="note">PP-OCRv6 tiny：首次识别时才加载（约 400ms、100MB），之后常驻。模型与原生库随程序发布，全程离线。</div>
-
-        <span class="lab">PaddleOCR 模型：</span>
-        <div class="ctl">
-          <select>
-            <option selected>PP-OCRv6 tiny（推荐：最准最快）</option>
-            <option>PP-OCRv6 small（同样准，慢 3 倍）</option>
-            <option>PP-OCRv5 mobile（慢 6 倍，不如 v6）</option>
-            <option>自定义模型目录…</option>
-          </select>
-        </div>
-
-        <span class="lab">识别语言：</span>
-        <div class="ctl"><input type="text" list="langlist" value="(跟随系统)"></div>
-
-        <span class="lab">接口地址：</span>
-        <div class="ctl"><input type="text" value="https://api.openai.com/v1"></div>
-
-        <span class="lab">模型名：</span>
-        <div class="ctl"><input type="text" value="gpt-4o-mini"></div>
-
-        <span class="lab">API Key：</span>
-        <div class="ctl key-wrap"><input type="password" value=""> <label class="chk"><input type="checkbox" onchange="this.closest('.key-wrap').querySelector('input').type=this.checked?'text':'password'"> 显示</label></div>
-        <div class="note">留空则从环境变量 SNAPLOG_OPENAI_API_KEY 读取。填在这里会以明文写入配置文件。</div>
+          <span class="hint" style="margin-left:6px">时间</span>
+          <input type="text" value="02:00" placeholder="HH:mm" style="width:70px"></div></div>
+        <div class="srow"><span class="lab">识别测试</span><div class="ctl">
+          <button class="btn" onclick="openModal('mdlOcrPreview')">测试识别</button>
+          <span class="hint">抓取当前窗口执行一次完整识别，用于验证引擎与模型是否可用</span></div></div>
+        <div class="srow"><span class="lab"></span><div class="ctl">
+          <span class="hint">PP-OCRv6 tiny：首次识别时加载（约 400ms、100MB），之后常驻内存，全程离线运行。</span></div></div>
       </div>
 
-      <details style="margin-top:6px;">
-        <summary style="cursor:pointer; padding:6px 0; color:var(--ink-2); user-select:none;">全部选项（高级）<span class="hint"> · 分 7 类，日常不用动</span></summary>
-        <div class="cfg-scroll" style="margin-top:6px;">
-        <details class="cfg-group" open>
-          <summary>Capture <span class="cls">SnapLog.Configuration.CaptureOptions（截图相关）</span></summary>
-          <div class="cfg-rows">
-            <div class="cfg-row"><span class="k">MaxImageDimension</span><span class="v">2560</span><span class="d">截图长边上限（像素），超出会等比缩小</span></div>
-            <div class="cfg-row"><span class="k">SaveImages</span><span class="v">false</span><span class="d">是否把截图 PNG 留档到 images\ 目录</span></div>
-            <div class="cfg-row"><span class="k">ImageFormat</span><span class="v">Png</span><span class="d">留档格式（Png / Jpeg）</span></div>
-          </div>
-        </details>
-        <details class="cfg-group">
-          <summary>Triggers <span class="cls">SnapLog.Configuration.TriggerOptions（抓取触发条件）</span></summary>
-          <div class="cfg-rows">
-            <div class="cfg-row"><span class="k">Mode</span><span class="v">Both</span><span class="d">触发方式：Interval / ForegroundWindowChange / Both</span></div>
-            <div class="cfg-row"><span class="k">ForegroundSettleMilliseconds</span><span class="v">900</span><span class="d">窗口切换后的稳定等待时间（毫秒）</span></div>
-            <div class="cfg-row"><span class="k">MinSecondsBetweenCaptures</span><span class="v">20</span><span class="d">两次抓取的最小间隔（秒），节流用</span></div>
-            <div class="cfg-row"><span class="k">IntervalSeconds</span><span class="v">300</span><span class="d">定时抓取周期（秒）</span></div>
-            <div class="cfg-row"><span class="k">IgnoreWindowTitleRepeats</span><span class="v">true</span><span class="d">窗口标题与上一条重复时跳过</span></div>
-            <div class="cfg-row"><span class="k">ExcludedProcesses</span><span class="v">snaplog</span><span class="d">不抓取的进程名列表</span></div>
-            <div class="cfg-row"><span class="k">ExcludedWindowTitles</span><span class="v">Program Manager; Windows Default Lock Screen</span><span class="d">不抓取的窗口标题列表</span></div>
-          </div>
-        </details>
-        <details class="cfg-group">
-          <summary>Ocr <span class="cls">SnapLog.Configuration.OcrOptions（OCR 识别相关）</span></summary>
-          <div class="cfg-rows">
-            <div class="cfg-row"><span class="k">Engine</span><span class="v">PaddleOcr</span><span class="d">PaddleOcr / WindowsMedia / Disabled</span></div>
-            <div class="cfg-row"><span class="k">Language</span><span class="v">""（跟随系统）</span><span class="d">识别语言，留空跟随系统语言包</span></div>
-            <div class="cfg-row"><span class="k">TargetLongestSide</span><span class="v">2400</span><span class="d">识别前把截图缩放到该长边（px）</span></div>
-            <div class="cfg-row"><span class="k">MaxUpscale</span><span class="v">3.0</span><span class="d">小图最大放大倍数</span></div>
-            <div class="cfg-row"><span class="k">MinTextLength</span><span class="v">4</span><span class="d">识别结果少于此字数视为无文字</span></div>
-            <div class="cfg-row"><span class="k">DropEmptyRecords</span><span class="v">true</span><span class="d">无文字的记录不落库</span></div>
-            <div class="cfg-row"><span class="k">PaddleModel</span><span class="v">V6Tiny</span><span class="d">PP-OCR 模型：V6Tiny / V6Small / V5Mobile / Custom</span></div>
-            <div class="cfg-row"><span class="k">PaddleThreads</span><span class="v">4</span><span class="d">推理线程数</span></div>
-            <div class="cfg-row"><span class="k">PaddleMaxSideLength</span><span class="v">2048</span><span class="d">检测侧输入长边上限</span></div>
-          </div>
-        </details>
-        <details class="cfg-group">
-          <summary>Storage <span class="cls">SnapLog.Configuration.StorageOptions（存储路径 / 数据库）</span></summary>
-          <div class="cfg-rows">
-            <div class="cfg-row"><span class="k">DataDirectory</span><span class="v">""（默认 %LocalAppData%\SnapLog）</span><span class="d">数据目录，支持环境变量</span></div>
-            <div class="cfg-row"><span class="k">DatabaseFileName</span><span class="v">activity.db</span><span class="d">SQLite 数据库文件名</span></div>
-            <div class="cfg-row"><span class="k">ImportLegacyCsv</span><span class="v">true</span><span class="d">首次启动时导入旧版 activity.csv</span></div>
-          </div>
-        </details>
-        <details class="cfg-group">
-          <summary>Summarization <span class="cls">SnapLog.Configuration.SummarizationOptions（AI 小结相关）</span></summary>
-          <div class="cfg-rows">
-            <div class="cfg-row"><span class="k">Enabled</span><span class="v">false</span><span class="d">是否启用大模型总结</span></div>
-            <div class="cfg-row"><span class="k">Endpoint</span><span class="v">https://api.openai.com/v1</span><span class="d">OpenAI 兼容接口地址</span></div>
-            <div class="cfg-row"><span class="k">Model</span><span class="v">gpt-4o-mini</span><span class="d">生成小结所用模型</span></div>
-            <div class="cfg-row"><span class="k">ApiKey</span><span class="v">""</span><span class="d">留空则从环境变量读取</span></div>
-            <div class="cfg-row"><span class="k">ApiKeyEnvironmentVariable</span><span class="v">SNAPLOG_OPENAI_API_KEY</span><span class="d">密钥环境变量名</span></div>
-            <div class="cfg-row"><span class="k">MaxInputCharacters</span><span class="v">24000</span><span class="d">发送给模型的字符预算</span></div>
-            <div class="cfg-row"><span class="k">MaxRecords</span><span class="v">200</span><span class="d">最多带入的记录条数</span></div>
-            <div class="cfg-row"><span class="k">Language</span><span class="v">zh-CN</span><span class="d">小结输出语言</span></div>
-          </div>
-        </details>
-        <details class="cfg-group">
-          <summary>Logging <span class="cls">SnapLog.Configuration.LoggingOptions（日志级别 / 输出）</span></summary>
-          <div class="cfg-rows">
-            <div class="cfg-row"><span class="k">Enabled</span><span class="v">true</span><span class="d">是否写日志文件</span></div>
-            <div class="cfg-row"><span class="k">Level</span><span class="v">Info</span><span class="d">日志级别（Info / Warn / Error）</span></div>
-            <div class="cfg-row"><span class="k">RetentionDays</span><span class="v">7</span><span class="d">日志保留天数</span></div>
-          </div>
-        </details>
-        <details class="cfg-group">
-          <summary>Ui <span class="cls">SnapLog.Configuration.UiOptions（界面行为）</span></summary>
-          <div class="cfg-rows">
-            <div class="cfg-row"><span class="k">StartMinimizedToTray</span><span class="v">true</span><span class="d">启动后直接收起到系统托盘</span></div>
-            <div class="cfg-row"><span class="k">ShowFirstRunNotice</span><span class="v">true</span><span class="d">首次运行时显示说明</span></div>
-          </div>
-        </details>
-        </div>
-      </details>
-      <div class="btnrow" style="border-bottom:none; border-top:1px solid var(--line-soft); padding:10px 0 0;">
-        <button class="btn default" onclick="setStatus('配置已保存，触发方式与间隔已立即生效')">保存配置</button>
-        <button class="btn" onclick="setStatus('已放弃未保存的修改，重新载入配置')">放弃修改并重载</button>
-        <button class="btn" onclick="setStatus('原型演示：将在资源管理器中打开配置目录')">打开配置目录</button>
+      <div class="viewfoot">
+        <button class="btn default" data-save disabled>保存设置</button>
+        <button class="btn" data-discard disabled>放弃修改</button>
       </div>
     </div>
 
-    <!-- 总结 -->
-    <div class="tabpage" id="tabSummary">
-      <div class="btnrow" style="border-bottom:none; padding-bottom:10px;">
-        <button class="btn" onclick="previewPayload()">预览将发送的内容</button>
-        <button class="btn default" onclick="generateSummary()">生成小结</button>
-        <button class="btn" onclick="copySummary()">复制</button>
-        <button class="btn" onclick="setStatus('原型演示：将在资源管理器中打开总结目录')">打开总结目录</button>
+    <!-- ---------------- 大模型配置 ---------------- -->
+    <div class="tabpage setpage" id="tabLlm">
+      <div class="section">
+        <div class="sec-title">大模型总结</div>
+        <div class="srow"><span class="lab">总结</span><div class="ctl">
+          <label class="chk"><input type="checkbox" checked> 启用（关闭时不发起任何网络请求）</label></div></div>
+
+        <div class="srow"><span class="lab">模型列表</span><div class="ctl">
+          <div class="listrow">
+            <div class="listbox h104" id="providerList">
+              <div class="item on">主模型</div>
+              <div class="item">备用（DeepSeek）</div>
+            </div>
+            <div class="btncol">
+              <button class="btn sm" onclick="openModal('mdlProvider')">添加…</button>
+              <button class="btn sm" onclick="openModal('mdlProvider')">编辑…</button>
+              <button class="btn sm" onclick="setStatus('原型演示：删除选中的模型配置')">删除</button>
+              <button class="btn sm" onclick="recStatusFil()">上移</button>
+              <button class="btn sm" onclick="recStatusFil()">下移</button>
+            </div>
+          </div>
+          <span class="hint">按列表顺序调用：前一个重试用尽仍失败时自动切换到下一个。双击可编辑。</span></div></div>
+
+        <div class="srow"><span class="lab">发送内容</span><div class="ctl">
+          <select style="width:300px">
+            <option selected>仅发送识别文字（消耗最低）</option>
+            <option>文字与截图（效果最好，需视觉模型）</option>
+            <option>仅发送截图（不发送识别文字，消耗更高）</option>
+          </select></div></div>
+        <div class="srow"><span class="lab">图片选项</span><div class="ctl">
+          <span class="hint">同窗口图片间隔</span>
+          <input type="number" value="300" min="0" max="86400" step="30" style="width:80px"><span class="hint">秒</span>
+          <span class="hint" style="margin-left:10px">最多</span>
+          <input type="number" value="6" min="0" max="50" style="width:60px"><span class="hint">张</span>
+          <select style="width:150px"><option selected>清晰度 自动</option><option>清晰度 低（节省）</option><option>清晰度 高（消耗更高）</option></select></div></div>
+        <div class="srow"><span class="lab"></span><div class="ctl">
+          <span class="hint">仅发送识别文字，不上传截图，消耗与隐私暴露面都最小。识别文字仍可能包含工作内容，请注意排除列表之外的窗口。</span></div></div>
+
+        <div class="srow"><span class="lab">失败重试</span><div class="ctl">
+          <span class="hint">每个模型重试</span>
+          <input type="number" value="2" min="0" max="10" style="width:56px"><span class="hint">次，起始间隔</span>
+          <input type="number" value="3" min="0" max="300" style="width:60px"><span class="hint">秒（指数退避）</span></div></div>
+
+        <div class="srow"><span class="lab">定时生成</span><div class="ctl">
+          <label class="chk"><input type="checkbox" checked> 每天定时生成</label>
+          <span class="hint" style="margin-left:10px">时间</span>
+          <input type="text" value="18:30" placeholder="HH:mm" style="width:70px"><span class="hint">(HH:mm)</span></div></div>
+
+        <div class="srow"><span class="lab">系统提示词</span><div class="ctl">
+          <button class="btn" onclick="openModal('mdlPrompt')">编辑提示词…</button>
+          <span class="hint" id="promptState">使用内置模板，另附 3 条工作项目</span></div></div>
+
+        <div class="srow"><span class="lab">工作项目</span><div class="ctl">
+          <div class="listrow">
+            <div class="listbox h104">
+              <div class="item on">SnapLog 桌面工具</div>
+              <div class="item">数据平台迁移</div>
+              <div class="item">周报与会议纪要</div>
+            </div>
+            <div class="btncol">
+              <button class="btn sm" onclick="setStatus('原型演示：添加工作项目')">添加…</button>
+              <button class="btn sm" onclick="setStatus('原型演示：编辑选中的工作项目')">编辑…</button>
+              <button class="btn sm" onclick="setStatus('原型演示：删除选中的工作项目')">删除</button>
+              <button class="btn sm" onclick="recStatusFil()">上移</button>
+              <button class="btn sm" onclick="recStatusFil()">下移</button>
+            </div>
+          </div>
+          <span class="hint">填写自己的工作项目（项目名与说明）。生成总结时会随提示词发送，模型据此将活动按项目归类。双击可编辑。</span></div></div>
+
+        <div class="srow"><span class="lab">总结历史</span><div class="ctl">
+          <button class="btn" onclick="switchTabTo('tabHistory')">查看总结历史…</button>
+          <span class="hint">成功与失败均会记录，便于事后排查</span></div></div>
       </div>
-      <textarea class="summary-box" id="summaryBox" readonly>点「预览将发送的内容」可以先看清要外发什么，再点「生成小结」调用模型。</textarea>
+
+      <div class="viewfoot">
+        <button class="btn default" data-save disabled>保存设置</button>
+        <button class="btn" data-discard disabled>放弃修改</button>
+      </div>
     </div>
 
-    <div class="statusbar">
-      <span class="grow" id="mainStatus">就绪</span>
-      <span class="right">已记录 ZCode — snaplog-prototype.html · 591 字 (PrintWindow)</span>
+    <!-- ---------------- 推送配置 ---------------- -->
+    <div class="tabpage setpage" id="tabFeishu">
+      <div class="section">
+        <div class="sec-title">写入飞书多维表格</div>
+        <div class="srow"><span class="lab">写入内容</span><div class="ctl">
+          <label class="chk"><input type="checkbox" checked> 将大模型生成的总结写入飞书多维表格</label></div></div>
+        <div class="srow"><span class="lab"></span><div class="ctl">
+          <span class="hint">每条总结写为一行，包含正文与元数据（时间、触发来源、模型、条数等）。已写入的总结会打标记，重复执行不会产生重复行。</span></div></div>
+
+        <div class="srow"><span class="lab">触发时机</span><div class="ctl">
+          <span class="hint">每天</span>
+          <input type="text" value="19:00" placeholder="HH:mm" style="width:70px"><span class="hint">(HH:mm)</span>
+          <label class="chk" style="margin-left:12px"><input type="checkbox" checked> 生成总结成功后立即写入</label></div></div>
+
+        <div class="srow"><span class="lab">写入范围</span><div class="ctl">
+          <input type="number" value="1" min="1" max="365" style="width:60px">
+          <span class="hint">天内生成的总结（调大可补入更早的总结）</span></div></div>
+
+        <div class="srow"><span class="lab">应用凭证</span><div class="ctl">
+          <input type="text" placeholder="App ID（cli_…）" style="width:240px">
+          <span class="hint" style="margin-left:8px">App Secret</span>
+          <input type="password" value="" style="width:200px"></div></div>
+        <div class="srow"><span class="lab"></span><div class="ctl">
+          <span class="hint">App Secret 留空时读取环境变量 SNAPLOG_FEISHU_APP_SECRET（推荐）。应用需同时具备多维表格读写权限（bitable:app）与本文档的可编辑协作权限，缺失时分别返回 99991672 与 91403。</span></div></div>
+
+        <div class="srow"><span class="lab">数据表</span><div class="ctl">
+          <input type="text" placeholder="app_token（整张多维表格）" style="width:250px">
+          <span class="hint" style="margin-left:8px">table_id</span>
+          <input type="text" placeholder="tbl…" style="width:150px">
+          <button class="btn sm" onclick="setStatus('原型演示：正在读取数据表字段名…')">读取表字段名</button></div></div>
+
+        <div class="srow"><span class="lab">字段映射</span><div class="ctl">
+          <div class="listrow">
+            <div class="listbox h132">
+              <div class="item on">StartedAt → 时间</div>
+              <div class="item">Trigger → 触发来源</div>
+              <div class="item">Provider → 模型</div>
+              <div class="item">RecordCount → 记录条数</div>
+              <div class="item">Markdown → 总结</div>
+            </div>
+            <div class="btncol">
+              <button class="btn sm" onclick="setStatus('原型演示：新增字段映射')">新增…</button>
+              <button class="btn sm" onclick="setStatus('原型演示：编辑选中的字段映射')">编辑…</button>
+              <button class="btn sm" onclick="setStatus('原型演示：删除选中的字段映射')">删除</button>
+              <button class="btn sm" onclick="setStatus('原型演示：恢复默认的 5 条映射')">恢复默认</button>
+            </div>
+          </div>
+          <span class="hint">总结字段与飞书列名的对应关系，条数不限：无对应列的映射将“飞书字段名”留空即可跳过。飞书按名称精确匹配（含空格与换行），名称不一致会报 1254045；点“测试连接”可预先核对。</span></div></div>
+
+        <div class="srow"><span class="lab">操作</span><div class="ctl">
+          <button class="btn" onclick="setStatus('原型演示：测试飞书连接（换取令牌并核对字段）')">测试连接</button>
+          <button class="btn" onclick="setStatus('原型演示：将待写入的总结写入飞书表格')">立即写入…</button>
+          <span class="hint">待写入 2 条</span></div></div>
+      </div>
+
+      <div class="viewfoot">
+        <button class="btn default" data-save disabled>保存设置</button>
+        <button class="btn" data-discard disabled>放弃修改</button>
+      </div>
     </div>
+
+    <!-- ---------------- 关于 ---------------- -->
+    <div class="tabpage setpage" id="tabAbout">
+      <div class="about-title">SnapLog</div>
+      <div class="about-sub">屏幕活动的记录、识别、总结与归档</div>
+      <p style="max-width:560px; margin-bottom:12px;">本机运行的屏幕活动记录工具：跟随前台窗口切换截图 → 离线识别文字 → 存入本机数据库 → 按需或定时调用大模型生成工作总结 → 可把总结写入飞书多维表格。</p>
+
+      <dl class="info-grid" style="max-width:520px;">
+        <dt>版本：</dt><dd>1.0.0.0</dd>
+        <dt>运行时：</dt><dd>.NET 10.0.0</dd>
+        <dt>系统：</dt><dd>Microsoft Windows NT 10.0.19045.0</dd>
+        <dt>许可证：</dt><dd>MIT</dd>
+      </dl>
+
+      <div class="btnrow" style="border-bottom:none;">
+        <button class="btn" onclick="setStatus('原型演示：打开项目主页 github.com/jionghang/snap-log')">打开项目主页</button>
+        <button class="btn" onclick="setStatus('原型演示：打开数据目录')">打开数据目录</button>
+        <button class="btn" onclick="setStatus('原型演示：打开日志目录')">打开日志目录</button>
+        <button class="btn" onclick="setStatus('原型演示：打开总结目录')">打开总结目录</button>
+        <button class="btn" onclick="setStatus('原型演示：打开截图目录')">打开截图目录</button>
+      </div>
+
+      <p class="hint" style="max-width:560px; margin-top:14px;">
+        抓取、文字识别、数据库与截图均保存在本机。仅在主动执行“生成总结”“写入飞书”，或已开启相应定时与自动开关时，内容才会发送至外部服务。<br><br>
+        源代码与问题反馈：https://github.com/jionghang/snap-log
+      </p>
+
+      <div class="viewfoot">
+        <button class="btn default" data-save disabled>保存设置</button>
+        <button class="btn" data-discard disabled>放弃修改</button>
+      </div>
+    </div>
+
+    <div class="statusbar"><span id="mainStatus">就绪</span></div>
   </div>
 </div>
 
-<!-- ================= 记录查看器 ================= -->
-<div class="frame wide" id="winRecords" style="height: 720px;" hidden>
-  <div class="titlebar">
-    <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
-    <span class="tb-text">SnapLog 记录</span>
-    <div class="tb-btns"><span>—</span><span>□</span><span class="close" onclick="switchView('winMain')">✕</span></div>
-  </div>
-
-  <div class="client">
-    <div class="filters">
-      <div class="row">
-        <label class="chk"><input type="checkbox" checked> 按时间筛选</label>
-        <input type="text" value="2026-09-28 00:00" style="width:150px">
-        <span class="hint">→</span>
-        <input type="text" value="2026-09-30 15:01" style="width:150px">
-      </div>
-      <div class="row">
-        <label class="f">进程</label>
-        <select style="width:130px"><option>全部</option><option>Weixin</option><option>msedge</option><option>ZCode</option><option>Code</option><option>WINWORD</option><option>EXCEL</option><option>OUTLOOK</option><option>explorer</option><option>WindowsTerminal</option></select>
-        <label class="f" style="margin-left:12px">状态</label>
-        <select style="width:100px"><option>全部</option><option>Ok</option><option>NoText</option><option>Error</option></select>
-        <label class="f" style="margin-left:12px">关键词</label>
-        <input type="text" placeholder="匹配窗口标题和识别文字" style="width:200px">
-        <button class="btn default" style="margin-left:12px" onclick="recStatus('已按当前条件检索：共 1,284 条')">查询</button>
-        <button class="btn" onclick="recStatus('筛选条件已重置')">重置</button>
-        <button class="btn" onclick="recStatus('原型演示：将把筛选结果导出为 snaplog-20260930-1501.csv')">导出 CSV…</button>
-        <button class="btn" onclick="recStatus('原型演示：将在资源管理器中打开数据目录')">打开数据目录</button>
-      </div>
-    </div>
-
-    <div class="grid-wrap" style="flex:1;">
-      <table class="grid" id="recGrid">
-        <thead>
-          <tr><th>时间</th><th>进程</th><th>窗口标题</th><th style="text-align:right">字数</th><th style="text-align:right">耗时ms</th><th>状态</th><th>识别文字摘要</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div class="detail-head">详情</div>
-    <div class="detail" id="recDetail">在上方选中一行查看完整记录。</div>
-
-    <div class="pager">
-      <span>每页</span>
-      <select style="width:76px"><option>50</option><option selected>100</option><option>200</option><option>500</option><option>1000</option></select>
-      <span style="margin-right:12px">条</span>
-      <button class="btn" disabled>|&lt; 首页</button>
-      <button class="btn" disabled>&lt; 上一页</button>
-      <button class="btn">下一页 &gt;</button>
-      <button class="btn">末页 &gt;|</button>
-      <span class="info">第 1 / 13 页，共 1,284 条</span>
-    </div>
-
-    <div class="statusbar">
-      <span class="grow" id="recStatus">已载入本页 100 条（共 1,284 条）</span>
-      <span class="right">F5 刷新 · Ctrl+PgUp/PgDn 翻页 · Esc 关闭</span>
-    </div>
-  </div>
+<div class="tray-chip" id="trayChip" onclick="showFromTray()">
+  <b>SnapLog</b> 已收起到托盘，仍在后台记录 · 点此还原窗口
 </div>
 
-<!-- ================= 常用设置对话框 ================= -->
-<div class="dimmer" id="settingsDimmer" onclick="if(event.target===this)closeSettings()">
-  <div class="frame dialog">
+<!-- ==================== 对话框：模型配置 ==================== -->
+<div class="modal" id="mdlProvider" onclick="if(event.target===this)closeModal('mdlProvider')">
+  <div class="frame narrow">
     <div class="titlebar">
       <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
-      <span class="tb-text">SnapLog 设置</span>
-      <div class="tb-btns"><span class="close" onclick="closeSettings()">✕</span></div>
+      <span class="tb-text">模型配置 · 主模型</span>
+      <div class="tb-btns"><span class="close" onclick="closeModal('mdlProvider')">✕</span></div>
     </div>
     <div class="body">
-      <div class="form-grid">
-        <span class="lab">截图间隔：</span>
-        <div class="ctl num-wrap"><input type="number" value="300" min="5" max="86400" step="5"> <span>秒</span> <span class="hint">定时抓取的周期，默认 300 秒</span></div>
+      <div class="srow"><span class="lab">名称</span><div class="ctl"><input type="text" value="主模型" style="width:300px"></div></div>
+      <div class="srow"><span class="lab">状态</span><div class="ctl"><label class="chk"><input type="checkbox" checked> 启用这个模型</label></div></div>
+      <div class="srow"><span class="lab">接口地址</span><div class="ctl"><input type="text" value="https://api.openai.com/v1" style="width:380px"></div></div>
+      <div class="srow"><span class="lab">模型名称</span><div class="ctl"><input type="text" value="gpt-4o-mini" style="width:280px"></div></div>
+      <div class="srow"><span class="lab">API Key</span><div class="ctl">
+        <input type="password" value="" style="width:260px">
+        <label class="chk"><input type="checkbox" onchange="this.closest('.ctl').querySelector('input').type = this.checked ? 'text' : 'password'"> 显示</label></div></div>
+      <div class="srow"><span class="lab">密钥环境变量</span><div class="ctl"><input type="text" value="SNAPLOG_OPENAI_API_KEY" style="width:280px"></div></div>
+      <div class="srow"><span class="lab"></span><div class="ctl">
+        <span class="hint">留空 API Key 时读取该环境变量；填写明文会写入配置文件。</span></div></div>
+      <div class="dlg-btns left">
+        <button class="btn" onclick="setStatus('原型演示：正在测试该模型的连通性与可用模型清单…')">测试连接</button>
+        <span>
+          <button class="btn default" onclick="closeModal('mdlProvider');setStatus('模型配置已保存')">确定</button>
+          <button class="btn" onclick="closeModal('mdlProvider')">取消</button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
 
-        <span class="lab">监听窗口变化：</span>
-        <div class="ctl"><label class="chk"><input type="checkbox" checked> 跟随前台窗口切换自动抓取</label></div>
-
-        <span class="lab">OCR 引擎：</span>
-        <div class="ctl">
-          <select>
-            <option selected>PaddleOCR（离线 PP-OCR 模型，中文更准）</option>
-            <option>系统内置 Windows OCR（最省内存，中文错字多）</option>
-            <option>关闭文字识别（只记录窗口标题）</option>
-          </select>
+<!-- ==================== 对话框：识别测试 ==================== -->
+<div class="modal" id="mdlOcrPreview" onclick="if(event.target===this)closeModal('mdlOcrPreview')">
+  <div class="frame mid">
+    <div class="titlebar">
+      <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
+      <span class="tb-text">识别测试 · ZCode</span>
+      <div class="tb-btns"><span class="close" onclick="closeModal('mdlOcrPreview')">✕</span></div>
+    </div>
+    <div class="body">
+      <p class="hint mono" style="margin-bottom:8px;">ZCode | Chrome_WidgetWin_1 | snaplog-prototype.html - snaplog - ZCode | PrintWindow 2560x1440 | 591 字 | 184 ms</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div>
+          <div class="hint" style="margin-bottom:4px;">截图</div>
+          <div class="shot">（原型占位）抓取的窗口画面</div>
         </div>
-        <div class="note">PP-OCRv6 tiny：首次识别时才加载（约 400ms、100MB），之后常驻。模型与原生库随程序发布，全程离线。</div>
+        <div>
+          <div class="hint" style="margin-bottom:4px;">识别文字</div>
+          <div class="ocr-text">SnapLog 原型  状态  抓取记录  总结记录  抓取配置  OCR 配置  大模型配置  推送配置  关于
 
-        <span class="lab">PaddleOCR 模型：</span>
-        <div class="ctl">
-          <select>
-            <option selected>PP-OCRv6 tiny（推荐：最准最快）</option>
-            <option>PP-OCRv6 small（同样准，慢 3 倍）</option>
-            <option>PP-OCRv5 mobile（慢 6 倍，不如 v6）</option>
-            <option>自定义模型目录…</option>
-          </select>
+运行状态：运行中
+本次运行抓取：12 条
+最近一次抓取：21:12:08 · snaplog-prototype.html - snaplog - ZCode
+总共抓取：1,284 条
+开机自启动：[√] 开机自动启动（登录后最小化到托盘）</div>
         </div>
-
-        <span class="lab">识别语言：</span>
-        <div class="ctl"><input type="text" list="langlist" value="(跟随系统)"><datalist id="langlist"><option>(跟随系统)</option><option>zh-Hans-CN</option><option>en-US</option></datalist></div>
-
-        <span class="lab">接口地址：</span>
-        <div class="ctl"><input type="text" value="https://api.openai.com/v1"></div>
-
-        <span class="lab">模型名：</span>
-        <div class="ctl"><input type="text" value="gpt-4o-mini"></div>
-
-        <span class="lab">API Key：</span>
-        <div class="ctl key-wrap"><input type="password" value=""> <label class="chk"><input type="checkbox" onchange="this.closest('.key-wrap').querySelector('input').type=this.checked?'text':'password'"> 显示</label></div>
-        <div class="note">留空则从环境变量 SNAPLOG_OPENAI_API_KEY 读取。填在这里会以明文写入配置文件。</div>
       </div>
       <div class="dlg-btns">
-        <button class="btn default" onclick="closeSettings();setStatus('设置已保存并生效')">保存</button>
-        <button class="btn" onclick="closeSettings()">取消</button>
+        <button class="btn" onclick="setStatus('已复制识别文字到剪贴板')">复制文字</button>
+        <button class="btn default" onclick="closeModal('mdlOcrPreview')">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 对话框：删除记录 ==================== -->
+<div class="modal" id="mdlDelete" onclick="if(event.target===this)closeModal('mdlDelete')">
+  <div class="frame narrow" style="width:470px;">
+    <div class="titlebar">
+      <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
+      <span class="tb-text">删除记录</span>
+      <div class="tb-btns"><span class="close" onclick="closeModal('mdlDelete')">✕</span></div>
+    </div>
+    <div class="body">
+      <p id="delText" style="margin-bottom:10px;">将删除 1 条记录，删除后无法恢复。</p>
+      <label class="chk"><input type="checkbox" id="delShots"> <span id="delShotLabel">同时删除这 1 张截图文件（不可恢复）</span></label>
+      <p class="hint" style="margin-top:6px;">不勾选时只删记录，截图文件留在磁盘上。</p>
+      <div class="dlg-btns">
+        <button class="btn" onclick="closeModal('mdlDelete')">取消</button>
+        <button class="btn default" onclick="confirmDelete()">删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 对话框：数据外发确认 ==================== -->
+<div class="modal" id="mdlConsent" onclick="if(event.target===this)closeModal('mdlConsent')">
+  <div class="frame narrow" style="width:520px;">
+    <div class="titlebar">
+      <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
+      <span class="tb-text">数据外发确认</span>
+      <div class="tb-btns"><span class="close" onclick="closeModal('mdlConsent')">✕</span></div>
+    </div>
+    <div class="body">
+      <p>生成总结会把最近的活动记录（窗口标题与识别文字）发送到所配置的模型接口。</p>
+      <p style="margin-top:10px;">内容可能包含隐私信息（聊天记录、文档片段、账号信息等），请确认可以接受。</p>
+      <div class="dlg-btns">
+        <button class="btn" onclick="closeModal('mdlConsent')">取消</button>
+        <button class="btn default" onclick="closeModal('mdlConsent');generateRun()">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 对话框：系统提示词 ==================== -->
+<div class="modal" id="mdlPrompt" onclick="if(event.target===this)closeModal('mdlPrompt')">
+  <div class="frame mid">
+    <div class="titlebar">
+      <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
+      <span class="tb-text">系统提示词</span>
+      <div class="tb-btns"><span class="close" onclick="closeModal('mdlPrompt')">✕</span></div>
+    </div>
+    <div class="body">
+      <textarea style="width:100%; height:260px; font-family:var(--mono); font-size:12.5px; line-height:1.7;">你是一名工作复盘助手，把用户的屏幕活动记录整理成一份简短的小结。
+
+规则：
+1. 只使用记录中出现过的信息，不要推测、不要补充外部知识、不要编造事实。
+2. 记录里的文字来自屏幕 OCR，会有错别字、断行和界面元素噪声（按钮、菜单、时间戳等）。忽略这些噪声，只提取有信息量的内容。
+3. 如果某段时间只有重复内容，合并成一条，不要逐条罗列。
+4. 用 简体中文 输出 Markdown，总长度控制在 400 字以内。
+
+输出结构：
+## 主要工作主题
+按投入时间从多到少列出，每个主题一句话说明在做什么。
+## 时间线
+按时间顺序列出关键活动（可以合并时间段）。
+## 待办与线索
+记录中出现的未完成事项、待回复、待处理的报错等；没有就写“无”。
+## 分心点
+频繁切换的应用或明显偏离主线的活动；没有就写“无”。</textarea>
+      <p class="hint" style="margin-top:8px;">当前未自定义：内容为内置模板，留空保存即恢复使用内置模板。修改后将整体替换内置模板。</p>
+      <div class="dlg-btns left">
+        <span>
+          <button class="btn" onclick="setStatus('已填入内置模板')">填入内置模板</button>
+          <button class="btn" onclick="setStatus('已清空，将改用内置模板')">清空（改用内置模板）</button>
+        </span>
+        <span>
+          <button class="btn default" onclick="closeModal('mdlPrompt');setStatus('系统提示词已保存')">保存</button>
+          <button class="btn" onclick="closeModal('mdlPrompt')">取消</button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 对话框：全部选项（高级） ==================== -->
+<div class="modal" id="mdlAdvanced" onclick="if(event.target===this)closeModal('mdlAdvanced')">
+  <div class="frame wide2">
+    <div class="titlebar">
+      <svg class="appicon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="#2563eb"/><circle cx="8" cy="8" r="2.6" fill="#fff"/><circle cx="8" cy="8" r="1.2" fill="#2563eb"/><rect x="6" y="1.4" width="4" height="2" rx="1" fill="#2563eb"/></svg>
+      <span class="tb-text">全部选项（高级）</span>
+      <div class="tb-btns"><span class="close" onclick="closeModal('mdlAdvanced')">✕</span></div>
+    </div>
+    <div class="body">
+      <p class="hint" style="margin-bottom:8px;">修改后点“保存设置”写入磁盘并生效。本页直接修改内存中的配置对象，与设置页各项为同一份数据。</p>
+      <div class="cfg-scroll">
+        <details class="cfg-group" open>
+          <summary>Capture <span class="cls">SnapLog.Configuration.CaptureOptions</span></summary>
+          <div class="cfg-row"><span class="k">MaxImageDimension</span><span class="v">2560</span><span class="d">截图长边上限（像素）</span></div>
+          <div class="cfg-row"><span class="k">SaveImages</span><span class="v">true</span><span class="d">是否保存截图文件</span></div>
+          <div class="cfg-row"><span class="k">ImageDirectory</span><span class="v">""（数据目录 images）</span><span class="d">截图目录</span></div>
+          <div class="cfg-row"><span class="k">ImageRetentionDays</span><span class="v">30</span><span class="d">截图保留天数，0 永久</span></div>
+          <div class="cfg-row"><span class="k">ImageFormat</span><span class="v">Png</span><span class="d">留档格式</span></div>
+        </details>
+        <details class="cfg-group">
+          <summary>Triggers <span class="cls">SnapLog.Configuration.TriggerOptions</span></summary>
+          <div class="cfg-row"><span class="k">ForegroundSettleMilliseconds</span><span class="v">5000</span><span class="d">窗口切换后延时截图（毫秒）</span></div>
+          <div class="cfg-row"><span class="k">CaptureCycleMinutes</span><span class="v">10</span><span class="d">同一窗口的最小记录周期（分钟）</span></div>
+          <div class="cfg-row"><span class="k">MinSecondsBetweenCaptures</span><span class="v">20</span><span class="d">两次抓取的最小间隔（秒）</span></div>
+          <div class="cfg-row"><span class="k">ExcludedProcesses</span><span class="v">snaplog</span><span class="d">不抓取的进程名</span></div>
+          <div class="cfg-row"><span class="k">ExcludedWindowTitles</span><span class="v">Program Manager; Windows Default Lock Screen</span><span class="d">不抓取的窗口标题</span></div>
+        </details>
+        <details class="cfg-group">
+          <summary>Ocr <span class="cls">SnapLog.Configuration.OcrOptions</span></summary>
+          <div class="cfg-row"><span class="k">Engine</span><span class="v">PaddleOcr</span><span class="d">识别引擎</span></div>
+          <div class="cfg-row"><span class="k">Mode</span><span class="v">Realtime</span><span class="d">实时识别 / 每日定时批量识别</span></div>
+          <div class="cfg-row"><span class="k">BatchTimeOfDay</span><span class="v">02:00</span><span class="d">批量识别时间</span></div>
+          <div class="cfg-row"><span class="k">TargetLongestSide</span><span class="v">2400</span><span class="d">识别前缩放的目标长边</span></div>
+          <div class="cfg-row"><span class="k">MaxUpscale</span><span class="v">3.0</span><span class="d">小图最大放大倍数</span></div>
+          <div class="cfg-row"><span class="k">MinTextLength</span><span class="v">4</span><span class="d">少于此字数视为无文字</span></div>
+          <div class="cfg-row"><span class="k">DropEmptyRecords</span><span class="v">true</span><span class="d">无文字记录不落库</span></div>
+          <div class="cfg-row"><span class="k">PaddleModel</span><span class="v">V6Tiny</span><span class="d">PP-OCR 模型档位</span></div>
+          <div class="cfg-row"><span class="k">PaddleThreads</span><span class="v">4</span><span class="d">推理线程数</span></div>
+          <div class="cfg-row"><span class="k">PaddleEnableMkldnn</span><span class="v">false</span><span class="d">MKLDNN 加速</span></div>
+          <div class="cfg-row"><span class="k">PaddleMaxSideLength</span><span class="v">2048</span><span class="d">检测侧输入长边上限</span></div>
+        </details>
+        <details class="cfg-group">
+          <summary>Storage <span class="cls">SnapLog.Configuration.StorageOptions</span></summary>
+          <div class="cfg-row"><span class="k">DataDirectory</span><span class="v">""（%LocalAppData%\SnapLog）</span><span class="d">数据目录</span></div>
+          <div class="cfg-row"><span class="k">DatabaseFileName</span><span class="v">activity.db</span><span class="d">SQLite 文件名</span></div>
+          <div class="cfg-row"><span class="k">ImportLegacyCsv</span><span class="v">true</span><span class="d">首次启动导入旧版 CSV</span></div>
+          <div class="cfg-row"><span class="k">RecordRetentionDays</span><span class="v">0</span><span class="d">记录保留天数，0 永久</span></div>
+        </details>
+        <details class="cfg-group">
+          <summary>Summarization <span class="cls">SnapLog.Configuration.SummarizationOptions</span></summary>
+          <div class="cfg-row"><span class="k">Enabled</span><span class="v">true</span><span class="d">是否启用大模型总结</span></div>
+          <div class="cfg-row"><span class="k">Providers</span><span class="v">2 项（主模型 / 备用）</span><span class="d">模型列表，按顺序调用</span></div>
+          <div class="cfg-row"><span class="k">PayloadMode</span><span class="v">TextOnly</span><span class="d">发送内容：文字 / 文字与截图 / 仅截图</span></div>
+          <div class="cfg-row"><span class="k">MaxImages / ImageSampleSeconds</span><span class="v">6 / 300</span><span class="d">图片张数与同窗口采样间隔</span></div>
+          <div class="cfg-row"><span class="k">ImageDetail</span><span class="v">Auto</span><span class="d">图片清晰度</span></div>
+          <div class="cfg-row"><span class="k">MaxInputCharacters / MaxRecords</span><span class="v">24000 / 200</span><span class="d">字符预算与记录条数上限</span></div>
+          <div class="cfg-row"><span class="k">Language / ExtraInstructions</span><span class="v">zh-CN / ""</span><span class="d">输出语言与补充要求</span></div>
+          <div class="cfg-row"><span class="k">RetryCount / RetryDelaySeconds</span><span class="v">2 / 3</span><span class="d">失败重试次数与起始间隔</span></div>
+          <div class="cfg-row"><span class="k">RequestTimeoutSeconds</span><span class="v">120</span><span class="d">单次请求超时</span></div>
+          <div class="cfg-row"><span class="k">ScheduleEnabled / ScheduleTimeOfDay</span><span class="v">true / 18:30</span><span class="d">每日定时生成</span></div>
+          <div class="cfg-row"><span class="k">SystemPromptOverride</span><span class="v">""（使用内置模板）</span><span class="d">自定义系统提示词</span></div>
+          <div class="cfg-row"><span class="k">WorkProjects</span><span class="v">3 项</span><span class="d">工作项目，随提示词发送</span></div>
+        </details>
+        <details class="cfg-group">
+          <summary>Logging <span class="cls">SnapLog.Configuration.LoggingOptions</span></summary>
+          <div class="cfg-row"><span class="k">Enabled</span><span class="v">true</span><span class="d">写日志文件</span></div>
+          <div class="cfg-row"><span class="k">Level</span><span class="v">Info</span><span class="d">日志级别</span></div>
+          <div class="cfg-row"><span class="k">RetentionDays</span><span class="v">7</span><span class="d">日志保留天数</span></div>
+        </details>
+        <details class="cfg-group">
+          <summary>Ui <span class="cls">SnapLog.Configuration.UiOptions</span></summary>
+          <div class="cfg-row"><span class="k">StartMinimizedToTray</span><span class="v">true</span><span class="d">启动后最小化到托盘</span></div>
+          <div class="cfg-row"><span class="k">CloseToTrayInsteadOfExit</span><span class="v">true</span><span class="d">关闭按钮收起到托盘而不退出</span></div>
+        </details>
+        <details class="cfg-group">
+          <summary>Feishu <span class="cls">SnapLog.Configuration.FeishuOptions</span></summary>
+          <div class="cfg-row"><span class="k">Enabled</span><span class="v">true</span><span class="d">写入飞书多维表格</span></div>
+          <div class="cfg-row"><span class="k">ScheduleTimeOfDay</span><span class="v">19:00</span><span class="d">每日写入时间</span></div>
+          <div class="cfg-row"><span class="k">PushAfterSummary</span><span class="v">true</span><span class="d">总结成功后立即写入</span></div>
+          <div class="cfg-row"><span class="k">PushLookbackDays</span><span class="v">1</span><span class="d">写入范围（天）</span></div>
+          <div class="cfg-row"><span class="k">AppId / AppToken / TableId</span><span class="v">cli_xxx / bascn… / tbl…</span><span class="d">应用与数据表标识</span></div>
+          <div class="cfg-row"><span class="k">AppSecretEnvironmentVariable</span><span class="v">SNAPLOG_FEISHU_APP_SECRET</span><span class="d">密钥环境变量名</span></div>
+          <div class="cfg-row"><span class="k">AuthMode</span><span class="v">TenantAccessToken</span><span class="d">鉴权方式</span></div>
+          <div class="cfg-row"><span class="k">FieldMappings</span><span class="v">5 条</span><span class="d">总结字段 → 飞书列名</span></div>
+          <div class="cfg-row"><span class="k">MaxTextLength / BatchSize</span><span class="v">2000 / 200</span><span class="d">正文截断长度与批次大小</span></div>
+        </details>
+      </div>
+      <div class="dlg-btns">
+        <button class="btn" onclick="setStatus('已从磁盘重新读取配置')">从磁盘重新读取</button>
+        <span>
+          <button class="btn default" onclick="setStatus('配置已保存并生效')">保存设置</button>
+          <button class="btn" onclick="closeModal('mdlAdvanced')">关闭</button>
+        </span>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// ---------------- 视图 / Tab 切换 ----------------
-function switchView(id, btn) {
-  document.getElementById('winMain').hidden = (id !== 'winMain');
-  document.getElementById('winRecords').hidden = (id !== 'winRecords');
-  document.querySelectorAll('.viewbar button[data-view]').forEach(function (b) {
-    b.classList.toggle('on', b.dataset.view === id);
-  });
-}
-function gotoRecords() { switchView('winRecords'); }
-
-function switchTab(id, btn) {
-  document.querySelectorAll('#winMain .tabpage').forEach(function (p) { p.classList.toggle('on', p.id === id); });
-  document.querySelectorAll('#winMain .tabstrip button').forEach(function (b) { b.classList.toggle('on', b === btn); });
-}
-
-// ---------------- 常用设置对话框 ----------------
-function openSettings() { document.getElementById('settingsDimmer').classList.add('on'); }
-function closeSettings() { document.getElementById('settingsDimmer').classList.remove('on'); }
-document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSettings(); });
-
-// ---------------- 主窗口状态栏 ----------------
+// ------------------------------------------------ 基础
 function setStatus(msg) { document.getElementById('mainStatus').textContent = msg; }
 
-// ---------------- 开始 / 暂停记录 ----------------
+var MODALS = ['mdlProvider', 'mdlOcrPreview', 'mdlDelete', 'mdlConsent', 'mdlPrompt', 'mdlAdvanced'];
+function openModal(id) {
+  if (id === 'mdlDelete') { syncDeleteDialog(); }
+  document.getElementById(id).classList.add('on');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  for (var i = MODALS.length - 1; i >= 0; i--) {
+    if (document.getElementById(MODALS[i]).classList.contains('on')) { closeModal(MODALS[i]); return; }
+  }
+});
+
+// ------------------------------------------------ Tab 切换
+function switchTab(id, btn) {
+  document.querySelectorAll('#appWin .tabpage').forEach(function (p) { p.classList.toggle('on', p.id === id); });
+  document.querySelectorAll('#appWin .tabstrip button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+}
+function switchTabTo(id) {
+  var btn = document.querySelector('#appWin .tabstrip button[data-tab="' + id + '"]');
+  switchTab(id, btn);
+}
+
+// ------------------------------------------------ 托盘
+function hideToTray() {
+  document.getElementById('appWin').hidden = true;
+  document.getElementById('trayChip').style.display = 'block';
+}
+function showFromTray() {
+  document.getElementById('appWin').hidden = false;
+  document.getElementById('trayChip').style.display = 'none';
+}
+
+// ------------------------------------------------ 状态页
 var running = true;
 function toggleRecording() {
   running = !running;
@@ -583,125 +931,224 @@ function toggleRecording() {
   state.textContent = running ? '运行中' : '已暂停';
   state.className = running ? 'state-run' : 'state-pause';
   document.getElementById('btnToggle').textContent = running ? '暂停记录' : '开始记录';
-  setStatus(running ? '已恢复记录' : '已暂停，进程仍在托盘驻留');
+  setStatus(running ? '已恢复记录' : '已暂停记录');
 }
 
-// ---------------- 记录查看器示例数据 ----------------
+var session = 12, total = 1284;
+function captureOnce() {
+  setStatus('正在抓取…');
+  setTimeout(function () {
+    session++; total++;
+    document.getElementById('stSession').textContent = session + ' 条';
+    document.getElementById('stTotal').textContent = total.toLocaleString('en-US') + ' 条';
+    var t = new Date();
+    var hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ':' + String(t.getSeconds()).padStart(2, '0');
+    document.getElementById('stLast').textContent = hh + ' · snaplog-prototype.html - snaplog - ZCode';
+    appendLog(hh, 'inf', '[INF]', '已记录 #' + total + '：ZCode — snaplog-prototype.html（591 字，184ms，PrintWindow）');
+    setStatus('已记录 591 字');
+  }, 400);
+}
+function appendLog(time, cls, level, text) {
+  var list = document.getElementById('logList');
+  var div = document.createElement('div');
+  div.innerHTML = '<span class="t">2026-09-30 ' + time + '</span> <span class="' + cls + '">' + level + '</span> <span class="' + cls + '">' + text + '</span>';
+  list.appendChild(div);
+  list.scrollTop = list.scrollHeight;
+}
+
+// ------------------------------------------------ 抓取记录
 var records = [
-  { id: 1284, t: '2026-09-30 14:32:08', p: 'ZCode', w: 'snaplog-prototype.html - snaplog - ZCode', n: 591, ms: 184, s: 'Ok', m: 'PrintWindow', iw: 1920, ih: 1080,
-    text: 'SnapLog 原型  主窗口  记录查看器  常用设置…\n运行状态：运行中\n本次已记录：12 条（本次运行）\n库中记录：1,284 条\nOCR 引擎：PaddleOCR PP-OCRv6 tiny, zh-Hans-CN, 目标 2400px\n最近一次：14:32:08 · ZCode — snaplog-prototype.html · 591 字\n数据目录：C:\\Users\\jianyongxing\\AppData\\Local\\SnapLog' },
-  { id: 1283, t: '2026-09-30 14:21:55', p: 'msedge', w: 'SnapLog: 跟随前台窗口的屏幕活动记录 - GitHub', n: 1283, ms: 206, s: 'Ok', m: 'PrintWindow', iw: 1920, ih: 1080,
-    text: 'SnapLog\nWindows 桌面小工具：跟随前台窗口切换（或按固定间隔）截图 → 本机 OCR 出文字 → 写入本机 SQLite 数据库\n设计目标是低资源占用：空闲时零轮询（靠系统窗口事件唤醒），OCR 复用系统内置语言包不加载任何模型…' },
-  { id: 1282, t: '2026-09-30 14:15:02', p: 'WINWORD', w: '季度总结报告.docx - Word', n: 947, ms: 221, s: 'Ok', m: 'BitBlt', iw: 1600, ih: 900,
-    text: '三季度工作小结\n一、主要进展\n1. SnapLog 完成 SQLite 存储迁移，记录查看器支持筛选与分页；\n2. OCR 引擎接入 PaddleOCR PP-OCRv6，中文准确率明显提升；\n二、下一步计划…' },
-  { id: 1281, t: '2026-09-30 14:08:37', p: 'Weixin', w: '文件传输助手', n: 214, ms: 173, s: 'Ok', m: 'PrintWindow', iw: 1080, ih: 720,
+  { id: 1284, t: '2026-09-30 21:12:08', p: 'ZCode', w: 'snaplog-prototype.html - snaplog - ZCode', c: 'Chrome_WidgetWin_1', n: 591, ms: 184, s: 'Ok', m: 'PrintWindow', iw: 2560, ih: 1440, shot: true,
+    text: 'SnapLog 原型  状态  抓取记录  总结记录  抓取配置  OCR 配置  大模型配置  推送配置  关于\n\n运行状态：运行中\n本次运行抓取：12 条\n最近一次抓取：21:12:08 · snaplog-prototype.html - snaplog - ZCode\n总共抓取：1,284 条' },
+  { id: 1283, t: '2026-09-30 21:04:22', p: 'msedge', w: 'SnapLog: 屏幕活动记录 - GitHub', c: 'Chrome_WidgetWin_1', n: 1283, ms: 206, s: 'Ok', m: 'PrintWindow', iw: 2560, ih: 1440, shot: true,
+    text: 'SnapLog\nWindows 桌面小工具：跟随前台窗口切换（或按固定间隔）截图 → 本机 OCR 出文字 → 写入本机 SQLite 数据库 → 需要时调用大模型生成一份活动小结。\n设计目标是低资源占用：空闲时零轮询，OCR 复用系统内置语言包不加载任何模型。' },
+  { id: 1282, t: '2026-09-30 20:51:37', p: 'Weixin', w: '文件传输助手', c: 'WeChatMainWndForPC', n: 214, ms: 173, s: 'Ok', m: 'PrintWindow', iw: 1080, ih: 720, shot: true,
     text: '文件传输助手\n[图片]\nrecord-viewer-mock.png\n已发送\n下午记得看下周会的会议纪要草稿' },
-  { id: 1280, t: '2026-09-30 13:57:20', p: 'WindowsTerminal', w: 'jianyongxing@snaplog: ~/snaplog', n: 488, ms: 190, s: 'Ok', m: 'PrintWindow', iw: 1440, ih: 900,
+  { id: 1281, t: '2026-09-30 20:44:10', p: 'WindowsTerminal', w: 'jianyongxing@snaplog: ~/snaplog', c: 'CASCADIA_HOSTING_WINDOW_CLASS', n: 488, ms: 190, s: 'Ok', m: 'PrintWindow', iw: 1440, ih: 900, shot: true,
     text: '$ dotnet build -c Release\n  SnapLog -> src\\SnapLog\\bin\\Release\\net10.0-windows10.0.19041.0\\SnapLog.dll\n已成功生成。 0 个警告 0 个错误\n$ .\\publish.cmd' },
-  { id: 1279, t: '2026-09-30 13:44:59', p: 'Code', w: 'MainForm.cs - SnapLog - Visual Studio Code', n: 1104, ms: 231, s: 'Ok', m: 'BitBlt', iw: 1920, ih: 1080,
-    text: 'private async Task ToggleRecordingAsync()\n{\n    if (_engine.IsRunning)\n    {\n        await _engine.StopAsync();\n    }\n    else\n    {\n        _engine.Start();\n    }\n    RefreshStatus();\n}' },
-  { id: 1278, t: '2026-09-30 13:31:12', p: 'explorer', w: '图片', n: 0, ms: 156, s: 'NoText', m: 'PrintWindow', iw: 1280, ih: 800, text: '' },
-  { id: 1277, t: '2026-09-30 13:18:40', p: 'OUTLOOK', w: '收件箱 - jianyongxing@example.com - Outlook', n: 763, ms: 215, s: 'Ok', m: 'PrintWindow', iw: 1920, ih: 1080,
+  { id: 1280, t: '2026-09-30 20:33:55', p: 'Code', w: 'RecordsView.cs - SnapLog - Visual Studio Code', c: 'Chrome_WidgetWin_1', n: 1104, ms: 231, s: 'Ok', m: 'BitBlt', iw: 2560, ih: 1440, shot: true,
+    text: 'private async Task RunQueryAsync(bool resetOffset, int? absoluteOffset = null)\n{\n    if (_busy) { return; }\n    _busy = true;\n    ...\n    _pageInfo.Text = $"第 {page.PageNumber} / {page.PageCount} 页，共 {page.TotalCount} 条";\n}' },
+  { id: 1279, t: '2026-09-30 20:21:12', p: 'explorer', w: '图片', c: 'CabinetWClass', n: 0, ms: 156, s: 'NoText', m: 'PrintWindow', iw: 1280, ih: 800, shot: true, text: '' },
+  { id: 1278, t: '2026-09-30 20:15:40', p: 'OUTLOOK', w: '收件箱 - jianyongxing@example.com - Outlook', c: 'rctrl_renwnd32', n: 763, ms: 215, s: 'Ok', m: 'PrintWindow', iw: 2560, ih: 1440, shot: false,
     text: '收件箱\n【周报】第 40 周工作进展提醒  14:02\nSnapLog 构建产物已更新  11:48\n会议纪要：桌面工具评审  10:15' },
-  { id: 1276, t: '2026-09-30 11:46:03', p: 'EXCEL', w: '九月数据.xlsx - Excel', n: 312, ms: 198, s: 'Ok', m: 'PrintWindow', iw: 1920, ih: 1080,
-    text: '九月数据\n日期\t新增记录\t平均耗时(ms)\n09-28\t96\t192\n09-29\t104\t187\n09-30\t88\t181' }
+  { id: 1277, t: '2026-09-30 19:58:03', p: 'EXCEL', w: '九月数据.xlsx - Excel', c: 'XLMAIN', n: 312, ms: 198, s: 'Ok', m: 'PrintWindow', iw: 2560, ih: 1440, shot: true,
+    text: '九月数据\n日期\t新增记录\t平均耗时(ms)\n09-28\t96\t192\n09-29\t104\t187\n09-30\t88\t181' },
+  { id: 1276, t: '2026-09-30 19:44:27', p: 'WINWORD', w: '季度总结报告.docx - Word', c: 'OpusApp', n: 947, ms: 221, s: 'Ok', m: 'PrintWindow', iw: 2560, ih: 1440, shot: true,
+    text: '三季度工作小结\n一、主要进展\n1. SnapLog 完成按用途拆分设置页；\n2. OCR 引擎接入 PaddleOCR PP-OCRv6，中文准确率明显提升；\n二、下一步计划' }
 ];
 
-var tbody = document.querySelector('#recGrid tbody');
+var selectedRec = null;
+var recBody = document.querySelector('#recGrid tbody');
 records.forEach(function (r, i) {
   var tr = document.createElement('tr');
-  if (i === 0) tr.className = 'sel';
   var flat = r.text.replace(/\s+/g, ' ').trim();
   tr.innerHTML =
-    '<td class="mono">' + r.t + '</td>' +
-    '<td>' + r.p + '</td>' +
-    '<td>' + r.w + '</td>' +
-    '<td class="num">' + r.n + '</td>' +
-    '<td class="num">' + r.ms + '</td>' +
-    '<td class="' + (r.s === 'Ok' ? '' : 'dim') + '">' + r.s + '</td>' +
-    '<td class="dim">' + (flat.length > 60 ? flat.slice(0, 60) + '…' : flat) + '</td>';
+    '<td class="mono">' + r.t + '</td><td>' + r.p + '</td><td>' + r.w + '</td>' +
+    '<td class="mono">' + r.n + '</td><td class="mono">' + r.ms + '</td><td>' + r.s + '</td>' +
+    '<td class="hint">' + (flat.length > 64 ? flat.slice(0, 64) + '…' : flat) + '</td>';
   tr.onclick = function () {
-    tbody.querySelectorAll('tr').forEach(function (x) { x.classList.remove('sel'); });
+    recBody.querySelectorAll('tr').forEach(function (x) { x.classList.remove('sel'); });
     tr.classList.add('sel');
-    showDetail(r);
+    selectRecord(r);
   };
-  tbody.appendChild(tr);
+  recBody.appendChild(tr);
+  if (i === 0) { tr.classList.add('sel'); }
 });
+selectRecord(records[0]);
 
-function showDetail(r) {
+function selectRecord(r) {
+  selectedRec = r;
+  document.getElementById('btnDelete').disabled = false;
+  document.getElementById('btnOpenShot').disabled = !r.shot;
+  var shot = r.shot
+    ? 'C:\\Users\\jianyongxing\\AppData\\Local\\SnapLog\\images\\2026-09-30\\20260930-' + r.t.slice(11, 19).replace(/:/g, '') + '-' + r.p + '.png'
+    : '（未留档，可在设置中开启“保存截图文件”）';
   document.getElementById('recDetail').textContent =
     '# 记录 #' + r.id + '\n\n' +
     '时间      ：' + r.t + '\n' +
     '进程      ：' + r.p + '\n' +
     '窗口标题  ：' + r.w + '\n' +
+    '窗口类名  ：' + r.c + '\n' +
     '状态      ：' + r.s + '\n' +
     '字数      ：' + r.n + '\n' +
     'OCR 耗时  ：' + r.ms + ' ms\n' +
     '抓取方式  ：' + r.m + '\n' +
     '图像尺寸  ：' + r.iw + 'x' + r.ih + '\n' +
-    '截图文件  ：(未留档)\n' +
-    '错误      ：(无)\n\n' +
+    '截图文件  ：' + shot + '\n' +
+    '提示/错误 ：' + (r.s === 'NoText' ? '识别结果不足 4 字，按配置丢弃' : '(无)') + '\n\n' +
     '--- 识别文字 ---\n' + (r.text || '(无)');
 }
-showDetail(records[0]);
-
+function toggleRange() {
+  var on = document.getElementById('useRange').checked;
+  document.getElementById('fromTime').disabled = !on;
+  document.getElementById('toTime').disabled = !on;
+}
 function recStatus(msg) { document.getElementById('recStatus').textContent = msg; }
+function recStatusFil() { setStatus('原型演示：调整列表顺序'); }
 
-// ---------------- 总结页 ----------------
-function previewPayload() {
-  document.getElementById('summaryBox').value =
-    '=== 将发送到的接口 ===\n' +
-    'https://api.openai.com/v1（模型 gpt-4o-mini）\n' +
-    '合计 6,204 字符\n\n' +
-    '=== system 提示词 ===\n' +
-    '你是一名工作复盘助手，把用户的屏幕活动记录整理成一份简短的小结。\n\n' +
-    '规则：\n' +
-    '1. 只使用记录中出现过的信息，不要推测、不要补充外部知识、不要编造事实。\n' +
-    '2. 记录里的文字来自屏幕 OCR，会有错别字、断行和界面元素噪声（按钮、菜单、时间戳等）。忽略这些噪声，只提取有信息量的内容。\n' +
-    '3. 如果某段时间只有重复内容，合并成一条，不要逐条罗列。\n' +
-    '4. 用 简体中文 输出 Markdown，总长度控制在 400 字以内。\n\n' +
-    '=== user 提示词（即活动记录正文） ===\n' +
-    '时间范围：2026-09-30 09:02 ~ 2026-09-30 14:32\n' +
-    '记录条数：86 条\n\n' +
-    '记录正文（格式：时间 | 进程 | 窗口标题，随后是该时刻屏幕上的文字）：\n\n' +
-    '[2026-09-30 11:46:03] EXCEL | 九月数据.xlsx - Excel\n' +
-    '九月数据 日期 新增记录 平均耗时(ms) 09-28 96 192 …\n\n' +
-    '[2026-09-30 13:44:59] Code | MainForm.cs - SnapLog - Visual Studio Code\n' +
-    'private async Task ToggleRecordingAsync() …\n\n' +
-    '[2026-09-30 14:32:08] ZCode | snaplog-prototype.html - snaplog - ZCode\n' +
-    'SnapLog 原型 主窗口 记录查看器 常用设置… …';
-  setStatus('已生成预览（尚未发送任何数据）');
+function syncDeleteDialog() {
+  var shots = selectedRec && selectedRec.shot ? 1 : 0;
+  document.getElementById('delText').textContent = '将删除 1 条记录，删除后无法恢复。';
+  document.getElementById('delShotLabel').textContent = shots > 0
+    ? '同时删除这 1 张截图文件（不可恢复）'
+    : '这些记录没有截图文件';
+  document.getElementById('delShots').disabled = shots === 0;
+  document.getElementById('delShots').checked = false;
+}
+function confirmDelete() {
+  var withShots = document.getElementById('delShots').checked;
+  closeModal('mdlDelete');
+  recStatus('已删除 1 条记录' + (withShots ? '，同时删除 1 张截图（释放 1.8 MB）' : ''));
+  document.getElementById('recDetail').textContent = '已删除 1 条记录' + (withShots ? '，同时删除 1 张截图（释放 1.8 MB）' : '');
+  document.getElementById('btnDelete').disabled = true;
 }
 
-function generateSummary() {
-  document.getElementById('summaryBox').value = '正在生成，请稍候…';
-  setStatus('正在调用模型生成小结…');
+// ------------------------------------------------ 总结记录
+var runs = [
+  { id: 42, t: '2026-09-30 18:30:02', te: '2026-09-30 18:30:11', trigger: '定时', ok: true, pushed: '2026-09-30 18:30:12', provider: '主模型', rec: 156, img: 0, elapsed: '8.4 秒',
+    preview: '## 主要工作主题 1. SnapLog 设置页重构…', msg: '完成',
+    md: '## 主要工作主题\n1. SnapLog 桌面工具：重构设置页，按用途拆分为抓取、OCR、大模型、推送四个配置页。\n2. 数据平台迁移：核对九月记录耗时数据。\n\n## 时间线\n- 09:00 ~ 12:00 重构设置页并核对配置项。\n- 14:00 ~ 17:30 调试记录查询与导出。\n\n## 待办与线索\n- 回复设计群关于设置页分组的意见。\n\n## 分心点\n- 无' },
+  { id: 41, t: '2026-09-30 12:05:41', te: '2026-09-30 12:05:46', trigger: '手动', ok: true, pushed: '', provider: '主模型', rec: 96, img: 0, elapsed: '4.1 秒',
+    preview: '## 主要工作主题 上午集中在 OCR 配置页…', msg: '完成',
+    md: '## 主要工作主题\n1. OCR 配置：对比 PP-OCRv6 tiny 与 small 的速度与精度。\n\n## 时间线\n- 09:30 ~ 11:40 阅读文档并调整识别参数。\n\n## 待办与线索\n- 无\n\n## 分心点\n- 无' },
+  { id: 40, t: '2026-09-30 09:00:03', te: '2026-09-30 09:00:16', trigger: '定时', ok: false, pushed: '', provider: '', rec: 0, img: 0, elapsed: '12.6 秒',
+    preview: '模型接口返回 401：API Key 无效或未配置', msg: '主模型：找不到 API Key（环境变量 SNAPLOG_OPENAI_API_KEY 或配置里的明文）', md: '' },
+  { id: 39, t: '2026-09-29 18:30:02', te: '2026-09-29 18:30:11', trigger: '定时', ok: true, pushed: '2026-09-29 18:30:12', provider: '主模型', rec: 203, img: 0, elapsed: '9.2 秒',
+    preview: '## 主要工作主题 记录查看器批量删除…', msg: '完成',
+    md: '## 主要工作主题\n1. 抓取记录页：实现批量删除与截图文件同步清理。\n\n## 时间线\n- 全天围绕记录管理功能开发。\n\n## 待办与线索\n- 无\n\n## 分心点\n- 无' },
+  { id: 38, t: '2026-09-29 14:22:10', te: '2026-09-29 14:22:16', trigger: '手动', ok: true, pushed: '', provider: '备用（DeepSeek）', rec: 88, img: 0, elapsed: '5.7 秒',
+    preview: '## 主要工作主题 主模型超时后切换备用模型…', msg: '完成',
+    md: '## 主要工作主题\n1. 大模型配置：验证失败后自动切换备用模型。\n\n## 时间线\n- 14:00 ~ 14:20 联调重试与切换逻辑。\n\n## 待办与线索\n- 无\n\n## 分心点\n- 无' },
+  { id: 37, t: '2026-09-28 18:30:01', te: '2026-09-28 18:30:10', trigger: '定时', ok: true, pushed: '2026-09-28 18:30:11', provider: '主模型', rec: 187, img: 0, elapsed: '8.9 秒',
+    preview: '## 主要工作主题 飞书写入联调…', msg: '完成',
+    md: '## 主要工作主题\n1. 推送配置：完成飞书多维表格字段映射与写入联调。\n\n## 时间线\n- 下午集中在飞书开放平台调试。\n\n## 待办与线索\n- 核对表内列名与映射是否一致。\n\n## 分心点\n- 无' }
+];
+
+var selectedRun = 0;
+function renderRuns() {
+  var onlyOk = document.getElementById('successOnly').checked;
+  var body = document.querySelector('#runGrid tbody');
+  body.innerHTML = '';
+  var shown = 0;
+  runs.forEach(function (r, i) {
+    if (onlyOk && !r.ok) { return; }
+    shown++;
+    var tr = document.createElement('tr');
+    if (i === 0) { tr.classList.add('sel'); }
+    if (!r.ok) { tr.classList.add('fail'); }
+    tr.innerHTML =
+      '<td class="mono">' + r.t.slice(5) + '</td><td>' + r.trigger + '</td><td>' + (r.ok ? '成功' : '失败') + '</td>' +
+      '<td>' + (r.pushed ? '已写入' : '—') + '</td><td>' + (r.provider || '—') + '</td>' +
+      '<td class="mono">' + r.rec + '/' + r.img + '</td><td class="mono">' + r.elapsed + '</td><td class="hint">' + r.preview + '</td>';
+    tr.onclick = function () {
+      body.querySelectorAll('tr').forEach(function (x) { x.classList.remove('sel'); });
+      tr.classList.add('sel');
+      showRun(i);
+    };
+    body.appendChild(tr);
+  });
+  var failed = runs.filter(function (r) { return !r.ok; }).length;
+  document.getElementById('runsSummary').textContent = onlyOk
+    ? '共 ' + shown + ' 条'
+    : '共 ' + runs.length + ' 条' + (failed > 0 ? '，其中失败 ' + failed + ' 条' : '');
+}
+renderRuns();
+
+function showRun(i) {
+  var r = runs[i];
+  selectedRun = i;
+  document.getElementById('runDetail').textContent =
+    '# 总结 #' + r.id + '\n\n' +
+    '开始时间  ：' + r.t + '\n' +
+    '结束时间  ：' + r.te + '\n' +
+    '触发来源  ：' + r.trigger + '\n' +
+    '结果      ：' + (r.ok ? '成功' : '失败') + '\n' +
+    '模型      ：' + (r.provider || '—') + '\n' +
+    '尝试次数  ：' + (r.ok ? 1 : 3) + '\n' +
+    '输入记录  ：' + r.rec + ' 条，附带截图 ' + r.img + ' 张\n' +
+    '耗时      ：' + r.elapsed + '\n' +
+    '飞书写入  ：' + (r.pushed || '尚未写入') + '\n' +
+    '文件      ：' + (r.ok ? 'C:\\Users\\jianyongxing\\AppData\\Local\\SnapLog\\summaries\\summary-' + r.t.slice(0, 10).replace(/-/g, '') + '-' + r.t.slice(11, 13) + r.t.slice(14, 16) + '.md' : '（未保存）') + '\n' +
+    '说明      ：' + r.msg + '\n\n' +
+    '--- ' + (r.md ? '总结正文' : '无总结正文（本次未成功生成）') + ' ---' + (r.md ? '\n' + r.md : '');
+}
+showRun(0);
+
+function recStatusHistory() { setStatus('原型演示：' + '已刷新总结历史（共 6 条，其中失败 1 条）'); }
+function generateRun() {
+  var detail = document.getElementById('runDetail');
+  detail.textContent = '正在生成，请稍候…';
+  setStatus('正在调用模型生成总结…');
   setTimeout(function () {
-    document.getElementById('summaryBox').value =
-      '## 主要工作主题\n' +
-      '1. SnapLog 原型界面设计：在 ZCode 中搭建主窗口与记录查看器的 HTML 原型，投入时间最多。\n' +
-      '2. 代码与文档：在 VS Code 中调整 MainForm.cs，并查阅了 SnapLog 的 README。\n' +
-      '3. 数据处理：整理了「九月数据.xlsx」中的记录耗时统计。\n\n' +
-      '## 时间线\n' +
-      '- 09:02 启动 SnapLog，确认 OCR 引擎就绪。\n' +
-      '- 11:46 在 Excel 中核对九月记录耗时数据。\n' +
-      '- 13:44 ~ 14:32 集中在代码编辑与原型页面，多次在浏览器查阅项目文档。\n\n' +
-      '## 待办与线索\n' +
-      '- 下午查看下周会的会议纪要草稿（来自微信文件传输助手）。\n\n' +
-      '## 分心点\n' +
-      '- 无\n\n' +
-      '---\n' +
-      '已保存：C:\\Users\\jianyongxing\\AppData\\Local\\SnapLog\\summaries\\summary-20260930-1501.md';
-    setStatus('小结已保存：summaries\\summary-20260930-1501.md');
-  }, 900);
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    var r = {
+      id: 43, t: '2026-09-30 ' + hh + ':12', te: '2026-09-30 ' + hh + ':21', trigger: '手动', ok: true,
+      pushed: '', provider: '主模型', rec: 118, img: 0, elapsed: '8.1 秒',
+      preview: '## 主要工作主题 SnapLog 原型界面重建…', msg: '完成',
+      md: '## 主要工作主题\n1. SnapLog：按当前代码结构重建 HTML 原型（8 个标签页与各子对话框）。\n2. 代码与文档：对照 RecordsView / SettingsViewBase 核对字段与文案。\n\n## 时间线\n- 19:00 ~ 21:00 重建原型页面并校验。\n\n## 待办与线索\n- 确认截图保留天数是否要设成 30 天。\n\n## 分心点\n- 无'
+    };
+    runs.unshift(r);
+    renderRuns();
+    showRun(0);
+    setStatus('总结已保存：summaries\\summary-20260930-' + hh.replace(':', '') + '.md');
+  }, 1200);
 }
 
-function copySummary() {
-  var box = document.getElementById('summaryBox');
-  if (!box.value.trim()) return;
-  if (navigator.clipboard) { navigator.clipboard.writeText(box.value); }
-  setStatus('已复制到剪贴板');
-}
+// ------------------------------------------------ 设置页：改动跟踪
+document.querySelectorAll('#appWin .setpage').forEach(function (page) {
+  var save = page.querySelector('[data-save]');
+  var discard = page.querySelector('[data-discard]');
+  if (!save) { return; }
+  page.addEventListener('input', function () { save.disabled = false; discard.disabled = false; });
+  page.addEventListener('change', function () { save.disabled = false; discard.disabled = false; });
+  save.addEventListener('click', function () {
+    save.disabled = true; discard.disabled = true; setStatus('设置已保存并生效');
+  });
+  discard.addEventListener('click', function () {
+    save.disabled = true; discard.disabled = true; setStatus('已放弃本页改动，并从配置文件重新读取');
+  });
+});
 </script>
 </body>
 </html>

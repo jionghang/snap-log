@@ -1,3 +1,4 @@
+using System.Drawing;
 namespace SnapLog.Ocr;
 
 public sealed record OcrOutcome(

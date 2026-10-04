@@ -99,7 +99,7 @@ public sealed class FileLogger
         try
         {
             Directory.CreateDirectory(_directory);
-            var path = Path.Combine(_directory, $"snaplog-{DateTime.Now:yyyyMMdd}.log");
+            var path = Path.Combine(_directory, $"snaplog2-{DateTime.Now:yyyyMMdd}.log");
             File.AppendAllText(path, entry + Environment.NewLine, Encoding.UTF8);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -119,7 +119,7 @@ public sealed class FileLogger
         var cutoff = DateTime.Now.Date.AddDays(-_retentionDays);
         try
         {
-            foreach (var file in Directory.EnumerateFiles(_directory, "snaplog-*.log"))
+            foreach (var file in Directory.EnumerateFiles(_directory, "snaplog2-*.log"))
             {
                 if (File.GetLastWriteTime(file) < cutoff)
                 {

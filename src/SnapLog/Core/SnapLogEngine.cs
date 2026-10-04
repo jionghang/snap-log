@@ -7,6 +7,7 @@ using SnapLog.Imaging;
 using SnapLog.Interop;
 using SnapLog.Ocr;
 using SnapLog.Storage;
+using System.Drawing;
 
 namespace SnapLog.Core;
 

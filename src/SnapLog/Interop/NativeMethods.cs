@@ -64,6 +64,10 @@ internal static class NativeMethods
     internal static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 
     // ---- 窗口信息 ----
+
+    /// <summary>按类名找顶层窗口。用来判断任务栏（Shell_TrayWnd）起来了没有。</summary>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr FindWindowW(string? lpClassName, string? lpWindowName);
     [DllImport("user32.dll")]
     internal static extern IntPtr GetForegroundWindow();
 
@@ -202,4 +206,43 @@ internal static class NativeMethods
 
     [DllImport("wtsapi32.dll")]
     internal static extern void WTSFreeMemory(IntPtr memory);
+
+    // ---- 窗口定位 ----
+
+    /// <summary>
+    /// 直接移动窗口。托盘菜单必须靠它定位：Avalonia 的 Window.Position 在
+    /// "无边框 + Topmost + SizeToContent" 这种窗口上实测不生效（设了仍停在 0,0），
+    /// 菜单会跑到屏幕左上角（用户报过"菜单不在托盘旁"）。
+    /// </summary>
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int x,
+        int y,
+        int cx,
+        int cy,
+        uint flags);
+
+    /// <summary>光标位置。必须用 Win32 读：托管的 Cursor.Position 在这个进程里读出的是 (0,0)，
+    /// 会让菜单被算到屏幕左上角。</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct CursorPoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetCursorPos(out CursorPoint point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetCursorPos(int x, int y);
+
+    internal const uint SwpNoSize = 0x0001;
+    internal const uint SwpNoZOrder = 0x0004;
+    internal const uint SwpNoActivate = 0x0010;
 }

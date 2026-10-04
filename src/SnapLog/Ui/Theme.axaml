@@ -1,0 +1,344 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    2.0 的设计基线。颜色取自 Palette.axaml（Application.Resources），
+    字号/间距/控件外观收在这里，界面文件里不再写死数值——
+    这样"更美观"这件事是集中可调的，而不是散落在几十个视图里。
+  -->
+
+  <!-- 所有窗口统一底色：对话框、主窗口、弹窗都不再各自设背景 -->
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{StaticResource Canvas}" />
+  </Style>
+
+  <!-- ============================================================ 文本 -->
+
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="TextBlock.page">
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="TextBlock.section">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Ink}" />
+  </Style>
+
+  <Style Selector="TextBlock.caption">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{StaticResource Ink3}" />
+  </Style>
+
+  <Style Selector="TextBlock.hint">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{StaticResource Ink2}" />
+  </Style>
+
+  <Style Selector="TextBlock.field">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource Ink2}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <Style Selector="TextBlock.metric">
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- ============================================================ 卡片 -->
+
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="18" />
+  </Style>
+
+  <Style Selector="Border.divider">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{StaticResource LineSoft}" />
+  </Style>
+
+  <!-- 状态徽标：绿=正常，橙=暂停/提醒，灰=未启用 -->
+  <Style Selector="Border.pill">
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="Background" Value="{StaticResource LineSoft}" />
+  </Style>
+
+  <Style Selector="Border.pill.ok">
+    <Setter Property="Background" Value="{StaticResource OkSoft}" />
+  </Style>
+
+  <Style Selector="Border.pill.warn">
+    <Setter Property="Background" Value="{StaticResource WarnSoft}" />
+  </Style>
+
+  <Style Selector="Border.pill.danger">
+    <Setter Property="Background" Value="{StaticResource DangerSoft}" />
+  </Style>
+
+  <Style Selector="Border.pill TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{StaticResource Ink2}" />
+  </Style>
+
+  <Style Selector="Border.pill.ok TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Ok}" />
+  </Style>
+
+  <Style Selector="Border.pill.warn TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Warn}" />
+  </Style>
+
+  <Style Selector="Border.pill.danger TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+  </Style>
+
+  <!-- ============================================================ 按钮 -->
+
+  <!-- 不写默认态就会落回 Fluent 的实心灰（#CCCCCC + 黑字），和这套浅色卡片体系两套外观 -->
+  <Style Selector="Button">
+    <Setter Property="Padding" Value="14,7" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Background" Value="#F3F4F6" />
+    <Setter Property="BorderBrush" Value="#D1D5DB" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{StaticResource Ink}" />
+  </Style>
+
+  <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#E5E7EB" />
+    <Setter Property="BorderBrush" Value="#D1D5DB" />
+  </Style>
+
+  <Style Selector="Button:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#D1D5DB" />
+  </Style>
+
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{StaticResource Accent}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#1D4ED8" />
+    <Setter Property="TextBlock.Foreground" Value="White" />
+  </Style>
+
+  <Style Selector="Button.primary:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#1E40AF" />
+    <Setter Property="TextBlock.Foreground" Value="White" />
+  </Style>
+
+  <!-- 危险操作：浅红描边而不是红色实心——克制，但一眼能分出来 -->
+  <Style Selector="Button.danger">
+    <Setter Property="Background" Value="{StaticResource DangerSoft}" />
+    <Setter Property="BorderBrush" Value="#FCA5A5" />
+    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+  </Style>
+
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="2,0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource Accent}" />
+  </Style>
+
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+    <Setter Property="TextBlock.Foreground" Value="#1D4ED8" />
+  </Style>
+
+  <!-- 托盘右键菜单（Avalonia 弹窗）里的行：和系统菜单一样"透明底 + 悬停变浅" -->
+  <Style Selector="Button.menu">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+  <Style Selector="Button.menu:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource LineSoft}" />
+  </Style>
+
+  <Style Selector="Button.menu:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#E5E7EB" />
+  </Style>
+
+  <!-- 时间/日期选择：显示值的小按钮 + 浮层里的方格 -->
+  <Style Selector="Button.chipValue">
+    <Setter Property="Padding" Value="12,6" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="MinWidth" Value="104" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+
+  <Style Selector="Button.chip">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="MinWidth" Value="34" />
+    <Setter Property="Margin" Value="2" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.chip.on">
+    <Setter Property="Background" Value="{StaticResource Accent}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+  <Style Selector="Button.chip.on:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#1D4ED8" />
+    <Setter Property="TextBlock.Foreground" Value="White" />
+  </Style>
+
+  <!-- 折叠区：去掉 Fluent 默认的灰底灰边，内容跟卡片一样宽 -->
+  <Style Selector="Expander">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+
+  <!-- 停用状态：原来继承 Fluent 的浅灰底加浅灰字，几乎看不清；这里统一加深 -->
+  <Style Selector="Button.chipValue:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource LineSoft}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource Ink3}" />
+  </Style>
+
+  <!-- ============================================================ 导航 -->
+
+  <Style Selector="ToggleButton.nav">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource Ink2}" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+
+  <Style Selector="ToggleButton.nav:checked /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource Accent}" />
+    <Setter Property="TextBlock.FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="ToggleButton.nav:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource LineSoft}" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource Ink}" />
+  </Style>
+
+  <Style Selector="ToggleButton.nav:checked:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource Accent}" />
+  </Style>
+
+  <!-- ============================================================ 表单 -->
+
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="9,6" />
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+    <Setter Property="BorderBrush" Value="#D1D5DB" />
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+    <Setter Property="BorderBrush" Value="#D1D5DB" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="9,4" />
+  </Style>
+
+  <Style Selector="NumericUpDown">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+    <Setter Property="BorderBrush" Value="#D1D5DB" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="MinHeight" Value="32" />
+  </Style>
+
+  <Style Selector="CheckBox">
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+
+  <Style Selector="ToggleSwitch">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="OnContent" Value="" />
+    <Setter Property="OffContent" Value="" />
+  </Style>
+
+  <!-- ============================================================ 列表 -->
+
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <Style Selector="ListBoxItem">
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+
+  <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource Ink}" />
+  </Style>
+
+  <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource LineSoft}" />
+  </Style>
+
+  <!-- ============================================================ 其他 -->
+
+  <Style Selector="ScrollViewer">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="TabControl">
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Padding" Value="12,7" />
+  </Style>
+
+</Styles>

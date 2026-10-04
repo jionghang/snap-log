@@ -162,16 +162,21 @@ public sealed class SummaryJob : IScheduledJob
 
     public async Task<JobRunResult> RunAsync(AppOptions options, CancellationToken cancellationToken)
     {
-        // 只在"今天结束或次日凌晨"这类时间点跑，所以当天的记录还没走完：今天不参与，从昨天往前看。
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        // 只总结"已经过完的日子"：规划器处理到今天之前（含昨天）。
+        //
+        // 为什么不再"准点跑今天"：当天还没过完，22:00 之后的新记录、以及次日凌晨补识别的文字
+        // 都会让当天的数据指纹变化 → 第二天判定为"有更新"→ 重新生成 → 又推一次 →
+        // 飞书表里同一天出现两行。改成只跑整天之后，这份总结落库就不会再变，也就不会重复。
+        // 代价是日报晚几个小时到位（第二天到点出前一天的），换来的是表里每天干净一行。
+        var boundary = DateOnly.FromDateTime(DateTime.Today);
 
         var marks = await _store
-            .GetDayMarksAsync(today.AddDays(-SummaryPlanner.LookbackDays).ToDateTime(TimeOnly.MinValue), cancellationToken)
+            .GetDayMarksAsync(boundary.AddDays(-SummaryPlanner.LookbackDays).ToDateTime(TimeOnly.MinValue), cancellationToken)
             .ConfigureAwait(false);
 
         var history = await _store.GetSummaryRunsAsync(200, cancellationToken).ConfigureAwait(false);
 
-        var plan = SummaryPlanner.Plan(today, marks, history);
+        var plan = SummaryPlanner.Plan(boundary, marks, history);
         if (plan.Count == 0)
         {
             return JobRunResult.Skipped("没有需要生成的天");
@@ -184,13 +189,14 @@ public sealed class SummaryJob : IScheduledJob
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 重新生成前先删掉这一天旧的总结记录：同一天只保留最新的一份。
-            if (item.Reason == SummaryPlanReason.Updated)
+            var result = await _runner.RunAsync(options, "定时", item.Day, cancellationToken).ConfigureAwait(false);
+
+            // 生成成功之后才删旧的那一份（同一天只留最新）：以前是先删后生成，
+            // 模型一失败（断网、额度、密钥失效）旧记录和旧文件就没了，一次故障能抹掉好几天历史。
+            if (result.Success && item.Reason == SummaryPlanReason.Updated)
             {
                 await RemovePreviousRunAsync(item.Day, history, cancellationToken).ConfigureAwait(false);
             }
-
-            var result = await _runner.RunAsync(options, "定时", item.Day, cancellationToken).ConfigureAwait(false);
 
             if (result.Success)
             {
@@ -227,7 +233,7 @@ public sealed class SummaryJob : IScheduledJob
         }
 
         // 新版会写到 summary-<日期>.md；旧版可能是带时间戳的文件名，那些要删掉免得留一堆孤儿。
-        var expected = $"summary-{key}.md";
+        var expected = $"summary-{key}.txt";
 
         foreach (var run in stale)
         {
@@ -266,7 +272,8 @@ public sealed class FeishuPushJob : IScheduledJob
 
     public string DisplayName => "定时写入总结到飞书";
 
-    public bool IsEnabled(AppOptions options) => options.Feishu.Enabled;
+    public bool IsEnabled(AppOptions options) =>
+        options.Feishu.Enabled && options.Feishu.ScheduleEnabled && options.Summarization.ConsentGranted;
 
     public TimeOnly? GetScheduledTime(AppOptions options) =>
         TimeOnly.TryParse(options.Feishu.ScheduleTimeOfDay, out var time) ? time : null;

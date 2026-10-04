@@ -2,6 +2,8 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using SnapLog.Imaging;
 using SnapLog.Interop;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace SnapLog.Capture;
 

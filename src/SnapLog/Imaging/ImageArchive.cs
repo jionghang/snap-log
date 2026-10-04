@@ -1,5 +1,6 @@
 using System.Drawing.Imaging;
 using SnapLog.Configuration;
+using System.Drawing;
 
 namespace SnapLog.Imaging;
 

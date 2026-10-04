@@ -48,16 +48,29 @@ public sealed class ScheduledJobsService : IDisposable
     private readonly IReadOnlyList<IScheduledJob> _jobs;
     private readonly AppPaths _paths;
     private readonly FileLogger _log;
+    private readonly string? _configSourcePath;
+    private readonly Func<bool>? _isRecording;
 
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private bool _disposed;
 
-    public ScheduledJobsService(IReadOnlyList<IScheduledJob> jobs, AppPaths paths, FileLogger log)
+    /// <param name="configSourcePath">
+    /// 本次启动实际加载的那份配置。调度器每轮重新读配置是为了让界面上的改动立即生效，
+    /// 但必须读同一份——用 --config 指定过配置文件时，读默认路径会拿到另一份（或拿到空配置）。
+    /// </param>
+    public ScheduledJobsService(
+        IReadOnlyList<IScheduledJob> jobs,
+        AppPaths paths,
+        FileLogger log,
+        string? configSourcePath = null,
+        Func<bool>? isRecording = null)
     {
         _jobs = jobs;
         _paths = paths;
         _log = log;
+        _configSourcePath = configSourcePath;
+        _isRecording = isRecording;
     }
 
     /// <summary>某个任务跑完时触发（在后台线程）。界面据此刷新状态。</summary>
@@ -111,7 +124,7 @@ public sealed class ScheduledJobsService : IDisposable
             var enabled = job.IsEnabled(options);
             if (!enabled)
             {
-                result.Add((job, false, "未启用"));
+                result.Add((job, false, "没有开启"));
                 continue;
             }
 
@@ -136,12 +149,12 @@ public sealed class ScheduledJobsService : IDisposable
         var todayAt = now.Date.Add(time.ToTimeSpan());
         if (lastRun is not null && lastRun.Value.Date >= now.Date)
         {
-            return $"明天 {time:HH\\:mm}（今天已跑）";
+            return $"下次自动执行：明天 {time:HH\\:mm}";
         }
 
         return now >= todayAt
-            ? $"待补跑（设定 {time:HH\\:mm} 已过）"
-            : $"今天 {time:HH\\:mm}";
+            ? $"今天 {time:HH\\:mm} 已过，还没跑，马上执行"
+            : $"下次自动执行：今天 {time:HH\\:mm}";
     }
 
     private async Task LoopAsync(CancellationToken cancellationToken)
@@ -160,7 +173,7 @@ public sealed class ScheduledJobsService : IDisposable
             try
             {
                 // 配置可能被界面改了，每轮重新读，改完不用重启。
-                var load = OptionsStore.Load(null);
+                var load = OptionsStore.Load(_configSourcePath);
                 await RunDueJobsAsync(load.Options, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -180,23 +193,10 @@ public sealed class ScheduledJobsService : IDisposable
         var state = AppStateStore.Load(_paths.AppStatePath);
         var changed = false;
 
-        foreach (var job in _jobs)
+        var due = SelectDueJobs(state, options, _jobs, _isRecording?.Invoke() ?? true, now);
+
+        foreach (var job in due)
         {
-            if (!job.IsEnabled(options))
-            {
-                continue;
-            }
-
-            var time = job.GetScheduledTime(options);
-            if (time is null)
-            {
-                continue;
-            }
-
-            if (!IsDue(state, job, time.Value, now))
-            {
-                continue;
-            }
 
             _log.Info($"定时任务“{job.DisplayName}”开始执行");
 
@@ -230,20 +230,64 @@ public sealed class ScheduledJobsService : IDisposable
         }
     }
 
-    /// <summary>今天的时间点已过，且今天还没跑过 → 该跑（含"错过就补跑"）。</summary>
+    /// <summary>
+    /// 这一轮该执行哪些任务：启用 + 到点 + 今天这一份还没跑 + 记录没暂停。
+    /// 抽出来是为了让自检能直接验这些语义（不用等半小时的轮询）。
+    /// </summary>
+    internal static IReadOnlyList<IScheduledJob> SelectDueJobs(
+        AppState state,
+        AppOptions options,
+        IReadOnlyList<IScheduledJob> jobs,
+        bool isRecording,
+        DateTime now)
+    {
+        // 记录处于暂停状态时一个都不跑：界面上写着"暂停期间每日自动任务也不会跑"，
+        // 暂停时段的文字更不该被发出去。
+        if (!isRecording)
+        {
+            return [];
+        }
+
+        var due = new List<IScheduledJob>();
+
+        foreach (var job in jobs)
+        {
+            if (!job.IsEnabled(options))
+            {
+                continue;
+            }
+
+            var time = job.GetScheduledTime(options);
+            if (time is null || !IsDue(state, job, time.Value, now))
+            {
+                continue;
+            }
+
+            due.Add(job);
+        }
+
+        return due;
+    }
+
+    /// <summary>
+    /// 该不该跑。判断口径是"今天这一份跑了没有"，而不是"今天有没有跑过"——
+    /// 否则早上开机补跑（补的是昨天那份）会把当晚的准点执行吃掉，日报从此每天晚一天。
+    /// </summary>
     private static bool IsDue(AppState state, IScheduledJob job, TimeOnly time, DateTime now)
     {
-        if (now < now.Date.Add(time.ToTimeSpan()))
+        var todayAt = now.Date.Add(time.ToTimeSpan());
+        var yesterdayAt = todayAt.AddDays(-1);
+
+        var lastRun = state.JobLastRunLocal.TryGetValue(job.Key, out var recorded) ? recorded : (DateTime?)null;
+
+        if (now >= todayAt)
         {
-            return false;
+            // 到点之后：上次跑在这次计划时间之前，说明今天这份还没跑
+            return lastRun is null || lastRun < todayAt;
         }
 
-        if (!state.JobLastRunLocal.TryGetValue(job.Key, out var lastRun))
-        {
-            return true;
-        }
-
-        return lastRun.Date < now.Date;
+        // 还没到点：只有昨天那份整份漏掉了才补跑
+        return lastRun is null || lastRun < yesterdayAt;
     }
 
     public void Dispose()

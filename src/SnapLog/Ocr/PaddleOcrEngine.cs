@@ -34,7 +34,7 @@ namespace SnapLog.Ocr;
 /// </summary>
 public sealed class PaddleOcrEngine : IOcrEngine
 {
-    /// <summary>免费版单次调用的文本框上限。留一点余量，不要顶到 100。</summary>
+    /// <summary>单次调用的文本框上限（社区版推理库的限制）。留一点余量，不要顶到 100。</summary>
     private const int BoxCountLimit = 100;
 
     /// <summary>最大分块深度：2 表示最细拆到 4x4 = 16 块，避免病态输入把耗时拉爆。</summary>
@@ -192,7 +192,7 @@ public sealed class PaddleOcrEngine : IOcrEngine
     }
 
     /// <summary>
-    /// 整图优先，撞到免费版的文本框上限就递归分块。
+    /// 整图优先，撞到单次文本框上限就递归分块。
     /// "块数"和"调用次数"分开统计：失败的整图尝试也算一次调用，但不算一块，
     /// 否则给用户的提示会说"已分 5 块"而实际只有 4 块。
     /// </summary>
@@ -218,7 +218,8 @@ public sealed class PaddleOcrEngine : IOcrEngine
 
         if (run.Tiles > 1)
         {
-            run.Notes.Add($"内容超过免费版单次 {BoxCountLimit} 块上限，已拆分为 {run.Tiles} 块识别");
+            // 说人话：不要出现"免费版/上限"这种让人以为要收费或出错的说法。
+            run.Notes.Add($"画面文字较多，已分 {run.Tiles} 批识别（单次最多 {BoxCountLimit} 个文本块）");
         }
 
         run.Lines = ToReadingOrder(run.Blocks);
@@ -259,7 +260,7 @@ public sealed class PaddleOcrEngine : IOcrEngine
                 if (depth >= MaxSplitDepth)
                 {
                     // 拆到上限还是超，只能放弃这一块，但不能让整次抓取失败。
-                    run.Notes.Add($"部分区域拆分至 {depth} 层仍超出免费版单次上限，该区域文字已跳过");
+                    run.Notes.Add($"有区域文字过于密集，按 {depth} 层拆分后仍超出单次上限，这部分文字已跳过");
                     return result;
                 }
 

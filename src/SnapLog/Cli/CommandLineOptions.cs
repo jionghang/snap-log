@@ -40,6 +40,9 @@ public enum CliCommand
 
     /// <summary>把各窗口截图存成 PNG，人工复查界面用。</summary>
     UiShots,
+
+    /// <summary>把托盘菜单摆到托盘位置显示几秒，供真机核对外观与位置。开发用。</summary>
+    MenuPreview,
     /// <summary>压测：连续抓同一窗口 N 次，用来复现偶发的 GDI+ 错误。</summary>
     CaptureStress,
 
@@ -71,6 +74,9 @@ public sealed record CommandLineOptions
     /// <summary>--ui-shots 的输出目录；为空则写到数据目录下的 shots。</summary>
     public string? ShotsDirectory { get; init; }
 
+    /// <summary>--menu-preview 停留的秒数（开发用：把托盘菜单摆到托盘位置核对外观）。</summary>
+    public int MenuPreviewSeconds { get; init; } = 8;
+
     /// <summary>--date 指定只总结这一天的记录；为空表示总结最近的记录。</summary>
     public DateOnly? Day { get; init; }
 
@@ -99,6 +105,7 @@ public sealed record CommandLineOptions
         var previewOnly = false;
         DateOnly? day = null;
         string? shotsDirectory = null;
+        var menuPreviewSeconds = 8;
         var dryRun = false;
         int? count = null;
         var testOnly = false;
@@ -125,6 +132,16 @@ public sealed record CommandLineOptions
                     break;
                 case "--ui-smoke":
                     command = CliCommand.UiSmoke;
+                    break;
+                case "--menu-preview":
+                    command = CliCommand.MenuPreview;
+                    if (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal)
+                        && int.TryParse(args[i + 1], out var previewSeconds))
+                    {
+                        menuPreviewSeconds = Math.Clamp(previewSeconds, 3, 300);
+                        i++;
+                    }
+
                     break;
                 case "--ui-shots":
                     command = CliCommand.UiShots;
@@ -229,6 +246,7 @@ public sealed record CommandLineOptions
             TargetTitle = targetTitle,
             ExportPath = exportPath,
             ShotsDirectory = shotsDirectory,
+            MenuPreviewSeconds = menuPreviewSeconds,
             PreviewOnly = previewOnly,
             Day = day,
             DryRun = dryRun,

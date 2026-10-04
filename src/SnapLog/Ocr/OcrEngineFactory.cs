@@ -1,5 +1,6 @@
 using SnapLog.Configuration;
 using SnapLog.Diagnostics;
+using System.Drawing;
 
 namespace SnapLog.Ocr;
 

@@ -123,6 +123,36 @@ public sealed class RetentionService
         return report;
     }
 
+    /// <summary>是不是本程序存下来的截图：8 位日期 + 短横 + 9 位毫秒时间 + 短横 + 进程名 + 扩展名。</summary>
+    private static bool IsOwnImage(string name)
+    {
+        if (name.Length < 21 || name[8] != '-' || name[18] != '-')
+        {
+            return false;
+        }
+
+        for (var i = 0; i < 8; i++)
+        {
+            if (!char.IsDigit(name[i]))
+            {
+                return false;
+            }
+        }
+
+        for (var i = 9; i < 18; i++)
+        {
+            if (!char.IsDigit(name[i]))
+            {
+                return false;
+            }
+        }
+
+        var extension = Path.GetExtension(name);
+        return extension.Equals(".png", StringComparison.OrdinalIgnoreCase)
+               || extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+               || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+    }
+
     private (int Count, long Bytes) DeleteOldImages(string directory, DateTime cutoff)
     {
         if (!Directory.Exists(directory))
@@ -135,6 +165,14 @@ public sealed class RetentionService
 
         foreach (var file in Directory.EnumerateFiles(directory))
         {
+            // 只删自己存下来的截图（命名是 yyyyMMdd-HHmmssfff-进程名.扩展名）。
+            // 截图目录是用户可配置的，指到非专用目录时就可能删掉别人的图片——
+            // 清理这种事宁可不删，也不能删错。
+            if (!IsOwnImage(Path.GetFileName(file)))
+            {
+                continue;
+            }
+
             try
             {
                 var info = new FileInfo(file);
