@@ -233,11 +233,21 @@ internal sealed class RecordsPage : UserControl, IRefreshable
                     Describe(item.Status)))
                 .ToList();
 
-            _summary.Text = result.Items.Count == 0
-                ? "没有匹配的记录。可更换关键词，或把时间范围改为「全部」。"
-                : result.TotalCount > MaxRows
+            if (result.Items.Count > 0)
+            {
+                _summary.Text = result.TotalCount > MaxRows
                     ? $"共 {result.TotalCount} 条，显示最近 {result.Items.Count} 条"
                     : $"共 {result.TotalCount} 条";
+            }
+            else
+            {
+                // 空有两种：库里一条都没有（新装），还是筛选没命中。
+                // 新装时说清楚"它自己会抓"，别让用户去换关键词。
+                var total = await _services.Store.CountAsync(CancellationToken.None);
+                _summary.Text = total == 0
+                    ? "还没有记录。保持运行后会自动抓取；切换一下窗口，几秒后就会出现在这里。"
+                    : "没有匹配的记录。可更换关键词，或把时间范围改为「全部」。";
+            }
 
 
         }

@@ -28,8 +28,10 @@ public sealed class AppServices : IAsyncDisposable
         SummaryRunner summaryRunner,
         ScheduledJobsService scheduler,
         string? configSourcePath,
-        IClassicDesktopStyleApplicationLifetime? desktop = null)
+        IClassicDesktopStyleApplicationLifetime? desktop = null,
+        string? startupWarning = null)
     {
+        StartupWarning = startupWarning;
         Options = options;
         Paths = paths;
         Log = log;
@@ -48,6 +50,9 @@ public sealed class AppServices : IAsyncDisposable
     }
 
     private readonly Action<LogEntry> _logEntryHook;
+
+    /// <summary>启动时读配置遇到的问题（配置坏了会退回默认值）。为空表示一切正常。</summary>
+    public string? StartupWarning { get; }
 
     public AppOptions Options { get; }
 
@@ -111,23 +116,34 @@ public sealed class AppServices : IAsyncDisposable
         {
             ShowMainWindow();
         }
-        else
+
+        // 图标进托盘可能要等任务栏起来（开机自启时很常见），所以提示等它真进去了再弹；
+        // 否则 ShowBalloon 会因为"图标还不可见"被静默丢掉。
+        // 配置读坏了必须说出来：退回默认值后用户的密钥/飞书都没了，只写日志等于没说。
+        void NotifyStartup()
         {
-            // 图标进托盘可能要等任务栏起来（开机自启时很常见），所以提示等它真进去了再弹；
-            // 否则 ShowBalloon 会因为"图标还不可见"被静默丢掉。
-            void Greet() => Tray.ShowBalloon(
+            if (!string.IsNullOrWhiteSpace(StartupWarning))
+            {
+                Tray.ShowBalloon(
+                    "配置文件有问题，本次按默认设置启动",
+                    StartupWarning + Environment.NewLine + "在设置里确认一遍，或把日志目录里的文件发给维护的人。",
+                    ToolTipIcon.Warning);
+                return;
+            }
+
+            Tray.ShowBalloon(
                 "SnapLog 已开始记录",
                 "数据保存在本机：" + Environment.NewLine + Paths.DataDirectory,
                 ToolTipIcon.Info);
+        }
 
-            if (Tray.IsReady)
-            {
-                Greet();
-            }
-            else
-            {
-                Tray.IconReady += Greet;
-            }
+        if (Tray.IsReady)
+        {
+            NotifyStartup();
+        }
+        else
+        {
+            Tray.IconReady += NotifyStartup;
         }
 
         // 配置里开着每日流程但没确认过隐私提示的话，启动时就把确认框弹出来。

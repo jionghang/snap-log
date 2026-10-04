@@ -95,7 +95,7 @@ internal static class Program
         {
             if (cli.Command == CliCommand.Run)
             {
-                return RunTrayApplication(options, paths, log, configSourcePath, store);
+                return RunTrayApplication(options, paths, log, configSourcePath, store, load.Warning);
             }
 
             ConsoleBridge.Attach();
@@ -103,6 +103,11 @@ internal static class Program
             if (sandboxDirectory is not null)
             {
                 Console.WriteLine($"[沙盒] 自检在临时副本里运行，不写真实数据：{sandboxDirectory}");
+            }
+
+            if (load.Warning is not null)
+            {
+                Console.WriteLine($"[警告] {load.Warning}");
             }
             Console.CancelKeyPress += (_, eventArgs) =>
             {
@@ -192,7 +197,8 @@ internal static class Program
         AppPaths paths,
         FileLogger log,
         string? configSourcePath,
-        IActivityRepository store)
+        IActivityRepository store,
+        string? startupWarning = null)
     {
         // 只允许一个实例：两个一起跑会把同一条记录写两遍，托盘图标也变成两个。
         // 命令行的一次性命令不走这里，仍可与托盘那份并存。
@@ -235,7 +241,9 @@ internal static class Program
             configSourcePath,
             () => engine.IsRunning);
 
-        var services = new AppServices(options, paths, log, store, engine, summaryRunner, scheduler, configSourcePath);
+        var services = new AppServices(
+            options, paths, log, store, engine, summaryRunner, scheduler, configSourcePath,
+            startupWarning: startupWarning);
         App.Services = services;
 
         // UI 线程上可恢复的异常：记日志 + 托盘气泡，程序继续跑。

@@ -110,7 +110,7 @@ internal sealed class CliRunner
         report.AppendLine($"系统版本      : {Environment.OSVersion.Version} ({(Environment.Is64BitOperatingSystem ? "64 位" : "32 位")})");
         report.AppendLine($"运行时        : .NET {Environment.Version}");
         report.AppendLine($"程序目录      : {AppContext.BaseDirectory}");
-        report.AppendLine($"配置文件      : {configSourcePath ?? "(没有找到配置文件，使用内置默认值)"}");
+        report.AppendLine($"配置文件      : {configSourcePath ?? "(未使用配置文件，当前为内置默认值)"}");
         report.AppendLine($"用户级配置路径: {AppPaths.UserConfigPath}");
         report.AppendLine($"随程序配置路径: {AppPaths.ShippedConfigPath}");
         report.AppendLine($"数据目录      : {_paths.DataDirectory}");

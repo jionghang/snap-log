@@ -56,6 +56,7 @@ internal sealed class AboutWindow : Window
             ("大模型总结", DescribeSummary(options)),
             ("飞书推送", options.Feishu.Enabled ? $"每天 {AsClock(options.Feishu.ScheduleTimeOfDay)}" : "未启用"),
             ("数据库", services.Store.Location),
+            ("配置状态", string.IsNullOrWhiteSpace(services.StartupWarning) ? "正常" : services.StartupWarning),
             ("运行时", $".NET {Environment.Version}　{Environment.OSVersion.Version}　{(Environment.Is64BitOperatingSystem ? "64 位" : "32 位")}"),
             ("程序路径", Environment.ProcessPath ?? "(取不到)"),
         };
