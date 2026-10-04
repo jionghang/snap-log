@@ -137,14 +137,14 @@ public partial class MainWindow : Window
         Ui.UpdatePill(StatePill, running ? "记录中" : "已暂停", running ? PillKind.Ok : PillKind.Warn);
     }
 
-    /// <summary>状态栏的默认文案：下一次自动执行是什么时候。</summary>
+    /// <summary>状态栏的默认文案：最近一次抓取（还没抓到就提示切换窗口）。</summary>
     private string DefaultStatus => _services.Engine.LastRecord is { } last
         ? $"最近一次抓取 {last.Timestamp:HH:mm:ss} · {last.WindowTitle}"
         : "本次启动尚未捕获画面，切换窗口后开始记录";
 
     private DispatcherTimer? _statusReset;
 
-    /// <summary>状态栏先显示这条消息，几秒后回到默认文案——免得一次抓取把"下次执行"永久顶掉。</summary>
+    /// <summary>状态栏先显示这条消息，几秒后回到默认文案——免得一次抓取把"最近一次抓取"永久顶掉。</summary>
     private void SetStatus(string message)
     {
         StatusText.Text = message.Length > 0 ? message : DefaultStatus;

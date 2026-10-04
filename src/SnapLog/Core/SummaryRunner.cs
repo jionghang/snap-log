@@ -31,7 +31,7 @@ public sealed record SummaryPreparation(
         builder.AppendLine(ProviderDescription);
         var textLabel = PayloadMode == LlmPayloadMode.ImageOnly
             ? $"合计 {TextCharacters} 字符（只有提示词和图片清单，不含 OCR 文字）"
-            : $"合计 {TextCharacters} 字符文字";
+            : $"合计 {TextCharacters} 字符（提示词 + 识别文字）";
 
         builder.AppendLine($"发送内容：{DescribeMode(PayloadMode)}　{textLabel}"
                            + (ImageCount > 0 ? $" + {ImageCount} 张图（{FormatBytes(ImageBytes)}）" : string.Empty));
