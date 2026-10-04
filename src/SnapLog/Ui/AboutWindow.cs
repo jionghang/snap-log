@@ -27,14 +27,17 @@ internal sealed class AboutWindow : Window
 
         // 关于窗口首先是"这软件是干什么的"，目录只是附带信息。
         var intro = new StackPanel { Spacing = 6 };
-        intro.Children.Add(new TextBlock
+        var versionLine = new TextBlock
         {
             Text = "SnapLog " + version?.Major + "." + version?.Minor + "." + version?.Build,
             Classes = { "section" },
             FontSize = 16,
-        });
-        intro.Children.Add(Ui.Hint("每天到点把当天的屏幕活动（截图和识别出的文字）交给大模型写成一份总结，再写进飞书多维表格。"));
-        intro.Children.Add(Ui.Hint("截图和识别文字都存在本机；到了设定的时间、并且开着每天自动执行时，才会发送到你配置的模型接口（默认只发文字，是否附带截图取决于大模型设置里的发送内容）。"));
+        };
+
+        intro.Children.Add(Ui.Inline(8, versionLine, Ui.Tip(
+            "截图和识别文字都保存在本机；到了设定的时间、且已开启每日自动执行时，才会发送到已配置的模型接口"
+            + "（默认仅发送文字，是否附带截图取决于大模型设置中的「发送内容」）。")));
+        intro.Children.Add(Ui.Hint("每天到点把当天的屏幕活动交给大模型写成一份总结，再推送到飞书多维表格。"));
 
         var rows = new List<(string Label, string Value)>
         {
@@ -87,12 +90,10 @@ internal sealed class AboutWindow : Window
             }),
             CopyDiagnosticsButton());
 
-        var hint = Ui.Hint("出问题时点复制诊断信息，把内容发给维护的人。");
-
         Content = new Border
         {
             Padding = new Thickness(22, 20, 22, 18),
-            Child = new StackPanel { Spacing = 16, Children = { panel, hint, buttons } },
+            Child = new StackPanel { Spacing = 16, Children = { panel, buttons } },
         };
     }
 
@@ -124,6 +125,7 @@ internal sealed class AboutWindow : Window
     private Button CopyDiagnosticsButton()
     {
         var button = Ui.Secondary("复制诊断信息", () => Task.CompletedTask);
+        ToolTip.SetTip(button, "出现问题时，把复制出来的内容发给维护人员。");
         button.Click += async (_, _) =>
         {
             await CopyDiagnosticsAsync();
@@ -156,8 +158,8 @@ internal sealed class FirstRunWindow : Window
 
         var content = new StackPanel { Spacing = 12 };
         content.Children.Add(new TextBlock { Text = "已经在托盘里开始记录", Classes = { "section" } });
-        content.Children.Add(Ui.Hint("还没配大模型和飞书。现在也会正常记录，只是到点不会生成总结。"));
-        content.Children.Add(Ui.Hint("平时只在本机记录；到点会把当天内容发给你的模型接口并写入飞书（默认只发文字）。不想被记录的程序可以在设置里勾掉。"));
+        content.Children.Add(Ui.Hint("尚未配置大模型和飞书。记录功能不受影响，只是到点不会生成总结。"));
+        content.Children.Add(Ui.Hint("平时只在本机记录；到点会把当天内容发送到你的模型接口并推送到飞书（默认仅发送文字）。"));
 
         var buttons = Ui.ButtonRow(
             Ui.Primary("去设置", () =>
@@ -166,7 +168,7 @@ internal sealed class FirstRunWindow : Window
                 openSettings?.Invoke();
                 return Task.CompletedTask;
             }),
-            Ui.Secondary("以后再说", () =>
+            Ui.Secondary("稍后设置", () =>
             {
                 Close();
                 return Task.CompletedTask;

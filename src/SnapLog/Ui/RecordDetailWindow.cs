@@ -45,17 +45,13 @@ internal sealed class RecordDetailWindow : Window
 
     private Grid BuildLayout()
     {
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
 
-        grid.Children.Add(_title);
-
-        var meta = Ui.Hint("识别到的文字可以选中复制。");
-        meta.Margin = new Thickness(0, 4, 0, 12);
-        Grid.SetRow(meta, 1);
-        grid.Children.Add(meta);
+        grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("识别出的文字可以选中复制，也可以用「复制文字」整段复制。")));
 
         var body = new ScrollViewer { Content = _body };
-        Grid.SetRow(body, 2);
+        body.Margin = new Thickness(0, 12, 0, 0);
+        Grid.SetRow(body, 1);
         grid.Children.Add(body);
 
         return grid;
@@ -149,12 +145,7 @@ internal sealed class RecordDetailWindow : Window
         buttons.Children.Add(Ui.Secondary("删除这条", () => DeleteAsync(recordId)));
         _body.Children.Add(buttons);
 
-        _body.Children.Add(new SelectableTextBlock
-        {
-            Text = record.OcrText.Length > 0 ? record.OcrText : "（这条没有识别到文字）",
-            TextWrapping = TextWrapping.Wrap,
-            FontSize = 13,
-        });
+        _body.Children.Add(Ui.BodyText(record.OcrText.Length > 0 ? record.OcrText : "（这条没有识别到文字）"));
     }
 
     private void CopyText(string text)

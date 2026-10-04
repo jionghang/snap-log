@@ -43,21 +43,76 @@ internal static class Ui
 
     public static TextBlock Mono(string text) => new() { Text = text, Classes = { "mono" } };
 
-    /// <summary>一张白卡片：标题 + 说明 + 内容。内容之间默认 14px 间距。</summary>
-    public static Border Card(string? title = null, string? hint = null, params Control[] children)
+    /// <summary>详情窗口里的正文（识别文字、总结正文）。13px 配默认行高对中文太挤，统一 14 / 22。</summary>
+    public static SelectableTextBlock BodyText(string text) => new()
     {
-        var hintControl = string.IsNullOrEmpty(hint) ? null : Hint(hint);
-        return CardWithHeader(title, hintControl, children);
+        Text = text,
+        TextWrapping = TextWrapping.Wrap,
+        FontSize = 14,
+        LineHeight = 22,
+    };
+
+    /// <summary>
+    /// 问号提示：成段的说明不直接铺在界面上，收成一个"?"，鼠标悬停才展开。
+    /// 界面上只留"要做什么"，"为什么、细节、边界情况"放进这里。
+    /// </summary>
+    public static Border Tip(string text)
+    {
+        var badge = new Border
+        {
+            Classes = { "tip" },
+            Child = new TextBlock { Text = "?" },
+        };
+
+        ToolTip.SetTip(badge, new TextBlock
+        {
+            Text = text,
+            MaxWidth = 320,
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        return badge;
     }
 
+    /// <summary>横向排一行，间距 8：标题+问号、正文+提示这类"并排"都用它。</summary>
+    public static StackPanel Inline(params Control[] children) => Inline(8, children);
+
+    public static StackPanel Inline(double spacing, params Control[] children)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = spacing };
+        foreach (var child in children)
+        {
+            row.Children.Add(child);
+        }
+
+        return row;
+    }
+
+    /// <summary>卡片标题；带提示时标题旁挂一个问号。</summary>
+    public static Control Header(string title, string? tip = null) =>
+        string.IsNullOrEmpty(tip) ? Section(title) : Inline(Section(title), Tip(tip));
+
+    /// <summary>页面标题；带提示时标题旁挂一个问号（原来标题下面那行说明改挂这里）。</summary>
+    public static Control PageHeader(string text, string tip) => Inline(10, PageTitle(text), Tip(tip));
+
+    /// <summary>一张白卡片：标题 + 说明 + 内容。内容之间默认 14px 间距。</summary>
+    public static Border Card(string? title = null, string? hint = null, params Control[] children) =>
+        CardWith(string.IsNullOrEmpty(title) ? null : Section(title),
+            string.IsNullOrEmpty(hint) ? null : Hint(hint),
+            children);
+
     /// <summary>副标题传控件：状态行这种要随配置刷新内容的地方用它（单独一个名字，避免和字符串重载撞车）。</summary>
-    public static Border CardWithHeader(string? title, Control? hintControl, params Control[] children)
+    public static Border CardWithHeader(string? title, Control? hintControl, params Control[] children) =>
+        CardWith(string.IsNullOrEmpty(title) ? null : Section(title), hintControl, children);
+
+    /// <summary>卡片：标题自己给（可以带问号提示），下面可选一行说明。</summary>
+    public static Border CardWith(Control? header, Control? hintControl, params Control[] children)
     {
         var body = new StackPanel { Spacing = 0 };
 
-        if (!string.IsNullOrEmpty(title))
+        if (header is not null)
         {
-            body.Children.Add(Section(title));
+            body.Children.Add(header);
         }
 
         if (hintControl is not null)
@@ -68,13 +123,10 @@ internal static class Ui
 
         foreach (var child in children)
         {
-            if (child is Control control)
-            {
-                control.Margin = control.Margin == default
-                    ? new Thickness(0, 14, 0, 0)
-                    : control.Margin;
-                body.Children.Add(control);
-            }
+            child.Margin = child.Margin == default
+                ? new Thickness(0, 14, 0, 0)
+                : child.Margin;
+            body.Children.Add(child);
         }
 
         return new Border { Classes = { "card" }, Child = body };
@@ -83,8 +135,11 @@ internal static class Ui
     /// <summary>只要卡片外观、内容自己排版。给"列表要占满剩余高度"的页面用。</summary>
     public static Border CardShell(Control child) => new() { Classes = { "card" }, Child = child };
 
-    /// <summary>一行：左侧固定宽度标题，右侧控件，下面可选一行灰色说明。</summary>
-    public static Grid FieldRow(string label, Control editor, string? hint = null)
+    /// <summary>
+    /// 一行：左侧固定宽度标题（可带问号提示），右侧控件，下面可选一行灰色说明。
+    /// 能收进问号的说明就别写成 hint——界面上少一行字，扫起来更快。
+    /// </summary>
+    public static Grid FieldRow(string label, Control editor, string? hint = null, string? tip = null)
     {
         var grid = new Grid
         {
@@ -93,8 +148,18 @@ internal static class Ui
 
         var caption = Label(label);
         caption.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(caption, 0);
-        grid.Children.Add(caption);
+
+        if (string.IsNullOrEmpty(tip))
+        {
+            Grid.SetColumn(caption, 0);
+            grid.Children.Add(caption);
+        }
+        else
+        {
+            var labelRow = Inline(6, caption, Tip(tip));
+            Grid.SetColumn(labelRow, 0);
+            grid.Children.Add(labelRow);
+        }
 
         // 靠左对齐：显式设了 Width 的控件在 Stretch 下会被居中，同一张卡里就会"两个控件列"。
         editor.HorizontalAlignment = HorizontalAlignment.Left;

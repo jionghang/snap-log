@@ -140,7 +140,7 @@ public partial class MainWindow : Window
     /// <summary>状态栏的默认文案：下一次自动执行是什么时候。</summary>
     private string DefaultStatus => _services.Engine.LastRecord is { } last
         ? $"最近一次抓取 {last.Timestamp:HH:mm:ss} · {last.WindowTitle}"
-        : "这次启动还没有抓到画面，切换到别的窗口就会记录";
+        : "本次启动尚未捕获画面，切换窗口后开始记录";
 
     private DispatcherTimer? _statusReset;
 

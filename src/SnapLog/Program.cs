@@ -35,7 +35,26 @@ internal static class Program
 
         var load = OptionsStore.Load(cli.ConfigPath);
         var options = load.Options;
-        if (!string.IsNullOrWhiteSpace(cli.DataDirectory))
+
+        // 自检类命令放进临时沙盒：它们会模拟点击、跑清理、写测试记录，
+        // 不能让这些动作碰到真实配置和数据库（--ui-smoke 曾经把关掉的开关写回真实配置）。
+        // 显式传了 --data 时按用户指定的目标来（本机预览就是这么用临时目录的）。
+        string? sandboxDirectory = null;
+        var configSourcePath = load.SourcePath;
+
+        if (string.IsNullOrWhiteSpace(cli.DataDirectory) && ProbeSandbox.AppliesTo(cli.Command))
+        {
+            var sandbox = ProbeSandbox.Prepare(options, load.SourcePath);
+            options.Storage.DataDirectory = sandbox.DataDirectory;
+            options.Capture.ImageDirectory = string.Empty;   // 截图也别落到真实图库
+            sandboxDirectory = sandbox.DataDirectory;
+
+            if (sandbox.ConfigPath is not null)
+            {
+                configSourcePath = sandbox.ConfigPath;
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(cli.DataDirectory))
         {
             options.Storage.DataDirectory = cli.DataDirectory;
         }
@@ -47,6 +66,11 @@ internal static class Program
         log.Configure(options.Logging.Enabled, options.Logging.Level, options.Logging.RetentionDays);
         log.CleanupExpired();
         log.Info($"SnapLog 启动：{(args.Length == 0 ? "(无参数，托盘模式)" : string.Join(' ', args))}");
+
+        if (sandboxDirectory is not null)
+        {
+            log.Info($"自检沙盒：{sandboxDirectory}（配置与数据库均为副本，不写真实数据）");
+        }
 
         if (load.Warning is not null)
         {
@@ -71,10 +95,15 @@ internal static class Program
         {
             if (cli.Command == CliCommand.Run)
             {
-                return RunTrayApplication(options, paths, log, load.SourcePath, store);
+                return RunTrayApplication(options, paths, log, configSourcePath, store);
             }
 
             ConsoleBridge.Attach();
+
+            if (sandboxDirectory is not null)
+            {
+                Console.WriteLine($"[沙盒] 自检在临时副本里运行，不写真实数据：{sandboxDirectory}");
+            }
             Console.CancelKeyPress += (_, eventArgs) =>
             {
                 eventArgs.Cancel = true;
@@ -82,7 +111,7 @@ internal static class Program
             };
 
             return CliRunner
-                .RunAsync(cli, options, paths, log, load.SourcePath, store, Shutdown.Token)
+                .RunAsync(cli, options, paths, log, configSourcePath, store, Shutdown.Token)
                 .GetAwaiter()
                 .GetResult();
         }

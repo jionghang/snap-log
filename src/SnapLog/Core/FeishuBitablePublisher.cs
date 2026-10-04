@@ -24,7 +24,7 @@ public sealed record FeishuPushResult(bool Success, string Message, int Written,
 /// 分三层：
 ///   ① 数据层：app_token（整张多维表格）+ table_id（一张数据表）
 ///   ② 通道层：App ID + App Secret → tenant_access_token → 多维表格开放接口
-///   ③ 触发层：生成总结后自动 / 定时任务 / 手动（由 SummaryRunner、ScheduledJobsService 与界面按钮负责）
+///   ③ 触发层：生成总结后自动 / 定时任务（由 SummaryRunner 与 ScheduledJobsService 负责）
 ///
 /// 三个"踩过坑"的点都在这里落实了：
 ///   1. 用应用身份 tenant_access_token，令牌缓存并提前 5 分钟刷新，不会每条记录都换令牌。

@@ -105,7 +105,8 @@ internal sealed class RecordsPage : UserControl, IRefreshable
     private Control BuildHeader()
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        grid.Children.Add(Ui.PageTitle("抓取记录"));
+        grid.Children.Add(Ui.PageHeader("抓取记录",
+            "最多列出最近 300 条；更早的记录请把时间范围改为「全部」。选择一行查看详情。"));
         Grid.SetColumn(_summary, 1);
         _summary.VerticalAlignment = VerticalAlignment.Center;
         grid.Children.Add(_summary);
@@ -118,10 +119,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
         row.Children.Add(_keyword);
         row.Children.Add(_range);
 
-        var hint = Ui.Hint("最多列出最近 300 条；更早的请把时间范围改成全部。点一行看详情。");
-        hint.Margin = new Thickness(0, 10, 0, 0);
-
-        return Ui.Card(null, null, row, hint);
+        return Ui.Card(null, null, row);
     }
 
     private Control BuildListCard()
@@ -130,7 +128,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
         AddHeaderCell(header, 0, "时间");
         AddHeaderCell(header, 1, "进程");
         AddHeaderCell(header, 2, "窗口标题");
-        AddHeaderCell(header, 3, "识别字数");
+        AddHeaderCell(header, 3, "识别字数", right: true);
         AddHeaderCell(header, 4, "状态");
 
         _list.ItemTemplate = new FuncDataTemplate<RecordRow>((row, _) =>
@@ -139,7 +137,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
             AddCell(line, 0, row.Time);
             AddCell(line, 1, row.Process);
             AddCell(line, 2, row.Title);
-            AddCell(line, 3, row.Chars);
+            AddCell(line, 3, row.Chars, right: true);
             AddCell(line, 4, row.Status);
             return line;
         }, supportsRecycling: true);
@@ -154,15 +152,21 @@ internal sealed class RecordsPage : UserControl, IRefreshable
 
     private static ColumnDefinitions Columns() => new("150,90,*,64,72");
 
-    private static void AddHeaderCell(Grid grid, int column, string text)
+    private static void AddHeaderCell(Grid grid, int column, string text, bool right = false)
     {
         var block = Ui.Caption(text);
         block.FontWeight = FontWeight.SemiBold;
+        if (right)
+        {
+            block.TextAlignment = TextAlignment.Right;
+            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
+        }
+
         Grid.SetColumn(block, column);
         grid.Children.Add(block);
     }
 
-    private static void AddCell(Grid grid, int column, string text)
+    private static void AddCell(Grid grid, int column, string text, bool right = false)
     {
         var block = new TextBlock
         {
@@ -171,6 +175,12 @@ internal sealed class RecordsPage : UserControl, IRefreshable
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
+
+        if (right)
+        {
+            block.TextAlignment = TextAlignment.Right;
+            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
+        }
 
         Grid.SetColumn(block, column);
         grid.Children.Add(block);
@@ -214,7 +224,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
                 .ToList();
 
             _summary.Text = result.Items.Count == 0
-                ? "没有匹配的记录。可以换个关键词，或把时间范围改成全部。"
+                ? "没有匹配的记录。可更换关键词，或把时间范围改为「全部」。"
                 : result.TotalCount > MaxRows
                     ? $"共 {result.TotalCount} 条，显示最近 {result.Items.Count} 条"
                     : $"共 {result.TotalCount} 条";

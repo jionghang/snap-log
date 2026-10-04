@@ -207,9 +207,6 @@ public sealed class AppServices : IAsyncDisposable
         StateChanged?.Invoke();
     }
 
-    public Task<CaptureOutcome> CaptureNowAsync(CancellationToken cancellationToken) =>
-        Engine.CaptureNowAsync(CaptureTrigger.Manual, cancellationToken);
-
     /// <summary>写开机自启（注册表）。失败时返回 false，界面要把开关拨回真实状态。</summary>
     public bool SetAutoStart(bool wanted)
     {
@@ -222,16 +219,6 @@ public sealed class AppServices : IAsyncDisposable
         Log.Info(wanted ? $"已设为开机自动启动：{AutoStart.ExecutablePath}" : "已取消开机自动启动");
         return true;
     }
-
-    /// <summary>
-    /// 生成总结。调用方负责先让用户确认隐私提示（<see cref="AppOptions.Summarization"/> 的 ConsentGranted）。
-    /// </summary>
-    public Task<SummaryRunResult> RunSummaryAsync(DateOnly? day, CancellationToken cancellationToken) =>
-        SummaryRunner.RunAsync(Options, "手动", day, cancellationToken);
-
-    /// <summary>把还没写入飞书的总结推过去（手动触发）。</summary>
-    public Task<FeishuPushResult> PushToFeishuAsync(CancellationToken cancellationToken) =>
-        new FeishuWriter(Store, Log).WritePendingAsync(Options, cancellationToken);
 
     /// <summary>某个定时任务最近一次的说法（下次什么时候跑 / 未启用）。</summary>
     public string DescribeSchedule(string jobKey)

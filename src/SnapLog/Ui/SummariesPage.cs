@@ -11,7 +11,7 @@ namespace SnapLog.Ui;
 /// <summary>
 /// 总结记录：只看历史，不放任何"手动生成/手动推送"的入口。
 /// 这个软件只有一条路径——到点自动跑；失败了规划器会在下一次自动补上，不需要人来点。
-/// 点某一行会用详情窗口打开正文（和"抓取记录"一致）。
+/// 选择某一行会在详情窗口打开正文（和「抓取记录」一致）。
 /// </summary>
 internal sealed class SummariesPage : UserControl, IRefreshable
 {
@@ -39,25 +39,23 @@ internal sealed class SummariesPage : UserControl, IRefreshable
     private Control BuildHeader()
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        grid.Children.Add(Ui.PageTitle("总结记录"));
+        grid.Children.Add(Ui.PageHeader("总结记录",
+            "每天到点自动生成；失败或遗漏的日期会在下一次执行时重做。选择一行可查看正文。"));
 
         Grid.SetColumn(_count, 1);
         _count.VerticalAlignment = VerticalAlignment.Center;
         grid.Children.Add(_count);
 
-        var hint = Ui.Hint("每天到点自动生成。某天失败或漏掉，会在下一次执行时重做。");
-        hint.Margin = new Thickness(0, 6, 0, 0);
-
-        return new StackPanel { Spacing = 0, Children = { grid, hint } };
+        return new StackPanel { Spacing = 0, Children = { grid } };
     }
 
     private Control BuildList()
     {
         var header = new Grid { ColumnDefinitions = Columns() };
         AddHeaderCell(header, 0, "生成时间");
-        AddHeaderCell(header, 1, "总结的是哪天");
-        AddHeaderCell(header, 2, "用了几条");
-        AddHeaderCell(header, 3, "写入飞书");
+        AddHeaderCell(header, 1, "总结日期");
+        AddHeaderCell(header, 2, "记录数", right: true);
+        AddHeaderCell(header, 3, "飞书推送");
         AddHeaderCell(header, 4, "结果");
 
         _list.ItemTemplate = new FuncDataTemplate<SummaryRun>((run, _) =>
@@ -65,8 +63,8 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             var line = new Grid { ColumnDefinitions = Columns() };
             AddCell(line, 0, run.StartedAt.ToString("MM-dd HH:mm"));
             AddCell(line, 1, run.CoveredDay.Length > 0 ? run.CoveredDay : "—");
-            AddCell(line, 2, run.RecordCount.ToString());
-            AddCell(line, 3, run.PushedAt is { } pushed ? pushed.ToString("MM-dd HH:mm") : "未写入");
+            AddCell(line, 2, run.RecordCount.ToString(), right: true);
+            AddCell(line, 3, run.PushedAt is not null ? "已推送" : "未推送", run.PushedAt is not null ? "#15803D" : "#6B7280");
             AddCell(line, 4, run.Success ? "成功" : "失败", run.Success ? "#15803D" : "#B91C1C");
             return line;
         }, supportsRecycling: true);
@@ -76,20 +74,26 @@ internal sealed class SummariesPage : UserControl, IRefreshable
         listBlock.Children.Add(Ui.Divider());
         listBlock.Children.Add(_list);
 
-        return Ui.Card(null, "点一行看正文。", listBlock);
+        return Ui.Card(null, null, listBlock);
     }
 
-    private static ColumnDefinitions Columns() => new("110,*,56,110,56");
+    private static ColumnDefinitions Columns() => new("110,*,56,72,56");
 
-    private static void AddHeaderCell(Grid grid, int column, string text)
+    private static void AddHeaderCell(Grid grid, int column, string text, bool right = false)
     {
         var block = Ui.Caption(text);
         block.FontWeight = FontWeight.SemiBold;
+        if (right)
+        {
+            block.TextAlignment = TextAlignment.Right;
+            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
+        }
+
         Grid.SetColumn(block, column);
         grid.Children.Add(block);
     }
 
-    private static void AddCell(Grid grid, int column, string text, string? color = null)
+    private static void AddCell(Grid grid, int column, string text, string? color = null, bool right = false)
     {
         var block = new TextBlock
         {
@@ -98,6 +102,12 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
+
+        if (right)
+        {
+            block.TextAlignment = TextAlignment.Right;
+            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
+        }
 
         if (color is not null)
         {
@@ -116,12 +126,12 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             _list.ItemsSource = runs;
 
             var pushed = runs.Count(run => run.PushedAt is not null);
-            _count.Text = $"共 {runs.Count} 条　已写入飞书 {pushed} 条";
+            _count.Text = $"共 {runs.Count} 条　已推送 {pushed} 条";
 
             if (runs.Count == 0)
             {
                 _list.ItemsSource = null;
-                _count.Text = "还没有生成过总结";
+                _count.Text = "暂无总结记录";
             }
         }
         catch (Exception ex)
@@ -161,16 +171,12 @@ internal sealed class SummaryDetailWindow : Window
         Icon = IconFactory.WindowIcon;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
-        grid.Children.Add(_title);
-
-        var meta = Ui.Hint("正文可以选中复制。");
-        meta.Margin = new Thickness(0, 4, 0, 12);
-        Grid.SetRow(meta, 1);
-        grid.Children.Add(meta);
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("正文可以选中复制。")));
 
         var scroller = new ScrollViewer { Content = _body };
-        Grid.SetRow(scroller, 2);
+        scroller.Margin = new Thickness(0, 12, 0, 0);
+        Grid.SetRow(scroller, 1);
         grid.Children.Add(scroller);
 
         Content = new Border { Padding = new Thickness(22, 18, 22, 18), Child = grid };
@@ -205,11 +211,11 @@ internal sealed class SummaryDetailWindow : Window
         {
             // 生成后立刻推送时两个时间在同一分钟，写两遍只是噪音。
             var sameMinute = Math.Abs((pushed - run.StartedAt).TotalMinutes) < 1;
-            meta.Append(sameMinute ? "　已写入飞书" : $"　已写入飞书 {pushed:MM-dd HH:mm}");
+            meta.Append(sameMinute ? "　已推送到飞书" : $"　已推送到飞书 {pushed:MM-dd HH:mm}");
         }
         else
         {
-            meta.Append("　还没有写入飞书");
+            meta.Append("　尚未推送到飞书");
         }
 
         _body.Children.Add(Ui.Hint(meta.ToString()));
@@ -227,12 +233,7 @@ internal sealed class SummaryDetailWindow : Window
                 Ui.Secondary("打开文件", () => { MainWindow.OpenPath(run.SavedPath); return Task.CompletedTask; })));
         }
 
-        _body.Children.Add(new SelectableTextBlock
-        {
-            Text = run.Markdown.Length > 0 ? run.Markdown : run.Message,
-            TextWrapping = TextWrapping.Wrap,
-            FontSize = 13,
-        });
+        _body.Children.Add(Ui.BodyText(run.Markdown.Length > 0 ? run.Markdown : run.Message));
 
         _ = services;
     }

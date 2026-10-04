@@ -266,7 +266,7 @@ internal static class UiProbes
         string? configSourcePath)
     {
         Console.WriteLine("=== 界面自检 ===");
-        Console.WriteLine("离屏构造每个页面并强制布局，检查有没有运行时异常；不修改任何数据。");
+        Console.WriteLine("离屏构造每个页面并强制布局，检查有没有运行时异常；在临时沙盒里运行，不写真实数据。");
 
         var failures = new List<string>();
 
@@ -289,6 +289,8 @@ internal static class UiProbes
         Probe("主窗口", () => new MainWindow(services), failures);
         Probe("关于", () => new AboutWindow(services), failures);
         Probe("首次运行", () => new FirstRunWindow(), failures);
+
+        ProbeTips(services, failures);
 
         ProbeRunState(services, failures);
         ProbeExitPath(services, failures);
@@ -347,6 +349,108 @@ internal static class UiProbes
             Console.WriteLine($"{Fit(label, 14)} 失败：{ex.GetType().Name}: {ex.Message}");
             Console.WriteLine(ex.StackTrace);
         }
+    }
+
+    /// <summary>
+    /// 问号提示校验：界面上的每个"?"都必须挂着非空的提示文字。
+    /// 提示是"界面少写字"的交换条件——问号要是空的，信息就真丢了。
+    /// </summary>
+    private static void ProbeTips(AppServices services, List<string> failures)
+    {
+        var pages = new (string Label, Func<Control> Factory)[]
+        {
+            ("概览", () => new HomePage(services)),
+            ("抓取记录", () => new RecordsPage(services)),
+            ("总结记录", () => new SummariesPage(services)),
+            ("设置", () => new SettingsPage(services)),
+            ("关于", () => new AboutWindow(services)),
+        };
+
+        var total = 0;
+
+        foreach (var (label, factory) in pages)
+        {
+            try
+            {
+                var root = factory();
+                var window = root as Window ?? new Window { Content = root, Width = 1060, Height = 720 };
+                window.Show();
+
+                // 折叠区里的提示也要数到，先展开。
+                if (window.GetVisualDescendants().OfType<Expander>().FirstOrDefault() is { } expander)
+                {
+                    expander.IsExpanded = true;
+                }
+
+                Pump(250);
+
+                var count = 0;
+                var empty = 0;
+                var samples = new List<string>();
+
+                foreach (var border in CollectTips(window))
+                {
+                    count++;
+                    if (ToolTip.GetTip(border) is TextBlock { Text: { Length: > 0 } text })
+                    {
+                        if (samples.Count < 2)
+                        {
+                            samples.Add(text.Length > 20 ? text[..20] + "…" : text);
+                        }
+                    }
+                    else
+                    {
+                        empty++;
+                    }
+                }
+
+                window.Close();
+                Pump(40);
+
+                total += count;
+                if (empty > 0)
+                {
+                    failures.Add($"{label}：有 {empty} 个问号没有提示文字");
+                }
+
+                var sample = samples.Count > 0 ? "   " + string.Join(" / ", samples) : string.Empty;
+                Console.WriteLine($"{Fit(label + " 提示", 14)} {count} 个 ✓{sample}");
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{label} 问号提示：{ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        if (total == 0)
+        {
+            failures.Add("界面上一个问号提示都没有（说明文字被删干净，或提示构件没接上）");
+        }
+    }
+
+    /// <summary>收集界面上的问号提示（带 "tip" 样式的 Border）。</summary>
+    private static List<Border> CollectTips(Visual root)
+    {
+        var tips = new List<Border>();
+        var stack = new Stack<Visual>();
+        stack.Push(root);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+
+            if (current is Border { Classes: var classes } border && classes.Contains("tip"))
+            {
+                tips.Add(border);
+            }
+
+            foreach (var child in current.GetVisualChildren())
+            {
+                stack.Push(child);
+            }
+        }
+
+        return tips;
     }
 
     /// <summary>

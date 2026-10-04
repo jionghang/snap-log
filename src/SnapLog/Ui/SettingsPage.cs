@@ -36,7 +36,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     private readonly TextBox _appToken;
     private readonly TextBox _tableId;
 
-    private readonly StackPanel _excluded;
+    private readonly Panel _excluded;
     private readonly TextBox _extraInstructions;
     private readonly StackPanel _projects;
     private readonly StackPanel _mappings;
@@ -66,11 +66,12 @@ internal sealed class SettingsPage : UserControl, IRefreshable
         _feishuEnabled = Ui.Switch(feishu.Enabled, value => feishu.Enabled = value);
         _appId = Ui.Input(feishu.AppId, value => feishu.AppId = value, "cli_xxxxxxxxxxxxx", 380);
         _appSecret = Ui.Secret(feishu.AppSecret, value => feishu.AppSecret = value, 380);
-        _appToken = Ui.Input(feishu.AppToken, value => feishu.AppToken = value, "多维表格 URL 里 /base/ 之后那一串", 380);
+        _appToken = Ui.Input(feishu.AppToken, value => feishu.AppToken = value, "多维表格链接中 /base/ 之后的部分", 380);
         _tableId = Ui.Input(feishu.TableId, value => feishu.TableId = value, "tblxxxxxxxxxxxxxx", 380);
 
         // 勾选面板：内容在 Refresh 里按"库里出现过的程序"填（手打进程名不现实）。
-        _excluded = new StackPanel { Spacing = 6 };
+        // 流式排列：条目多时自动换行，不用滚动区，也不会出现"半个条目"被裁掉。
+        _excluded = new WrapPanel { ItemWidth = 210, ItemHeight = 30 };
         _extraInstructions = BuildMultiline(services.Options.Summarization.ExtraInstructions, 3,
             value => services.Options.Summarization.ExtraInstructions = value);
         _projects = new StackPanel { Spacing = 8 };
@@ -114,7 +115,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     {
         var text = string.Equals(Snapshot(), _savedSnapshot, StringComparison.Ordinal)
             ? _lastSaveMessage
-            : "有未保存的更改，记得点保存";
+            : "有未保存的更改，请保存";
 
         _llmNote.Text = text;
         _feishuNote.Text = text;
@@ -133,11 +134,11 @@ internal sealed class SettingsPage : UserControl, IRefreshable
         _providers.IsEnabled = summarization.Enabled;
 
         var llmReady = Ui.IsLlmReady(_services.Options);
-        _llmStatus.Text = llmReady ? "已配置，可以生成总结" : "还没配好：接口地址、模型名称、API Key 三项都要有";
+        _llmStatus.Text = llmReady ? "已配置，可生成总结" : "配置不完整：接口地址、模型名称、API Key 均为必填";
         _llmStatus.Foreground = new SolidColorBrush(Color.Parse(llmReady ? "#15803D" : "#B45309"));
 
         var feishuReady = Ui.IsFeishuReady(_services.Options);
-        _feishuStatus.Text = feishuReady ? "已配置，可以写入多维表格" : "还没配好：下面四个标识都要填";
+        _feishuStatus.Text = feishuReady ? "已配置，可推送到多维表格" : "配置不完整：以下四项均为必填";
         _feishuStatus.Foreground = new SolidColorBrush(Color.Parse(feishuReady ? "#15803D" : "#B45309"));
 
         RenderProjects();
@@ -151,16 +152,15 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     {
         var head = Ui.FieldRow("启用大模型总结", _summaryEnabled);
 
-        var hint = Ui.Hint("按顺序调用：前一个失败就换下一个。接口地址填任意 OpenAI 兼容服务的地址，一般以 /v1 结尾。");
-        hint.Margin = new Avalonia.Thickness(0, 10, 0, 0);
-
         // 保存行放在卡片顶部：模型多的时候卡片会很长，按钮留在底部就会被挤出屏幕。
         var buttons = Ui.ButtonRow(
             Ui.Primary("保存大模型设置", () => SaveAsync(_llmNote)),
             Ui.Secondary("测试连接", TestLlmAsync),
             _llmNote);
 
-        return Ui.CardWithHeader("大模型", _llmStatus, head, buttons, hint, _providers);
+        return Ui.CardWith(
+            Ui.Header("大模型", "按顺序调用：前一个失败就换下一个。接口地址填任意 OpenAI 兼容服务的地址，一般以 /v1 结尾。"),
+            _llmStatus, head, buttons, _providers);
     }
 
     /// <summary>把进程名说成人话：勾选清单里出现 et / msedge 这种名字，没人知道是什么。</summary>
@@ -201,7 +201,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
         var name = string.IsNullOrWhiteSpace(provider.Name) ? provider.Model : provider.Name;
 
-        if (!await Ui.Confirm(owner, "删除这个模型？", $"模型 {name} 会从列表里去掉，它填的密钥也会一起消失。", "删除", danger: true))
+        if (!await Ui.Confirm(owner, "删除这个模型？", $"模型 {name} 将从列表中移除，已填写的密钥会一并删除。", "删除", danger: true))
         {
             return;
         }
@@ -268,11 +268,11 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     private Control BuildFeishuCard()
     {
         var rows = Ui.RowStack(
-            Ui.FieldRow("启用飞书推送", _feishuEnabled, "关掉后每日流程里没有写入飞书这一步。"),
-            Ui.FieldRow("App ID", _appId, "自建应用的 App ID。"),
-            Ui.FieldRow("App Secret", _appSecret, "留空则读环境变量 SNAPLOG_FEISHU_APP_SECRET。"),
-            Ui.FieldRow("多维表格 token", _appToken, "表格链接里 /base/ 之后那串。"),
-            Ui.FieldRow("数据表 ID", _tableId, "形如 tblxxxxxxxxxxxxxx。"));
+            Ui.FieldRow("启用飞书推送", _feishuEnabled, tip: "关闭后，每日流程不再推送到飞书。"),
+            Ui.FieldRow("App ID", _appId, tip: "自建应用的 App ID。"),
+            Ui.FieldRow("App Secret", _appSecret, tip: "留空则读取环境变量 SNAPLOG_FEISHU_APP_SECRET。"),
+            Ui.FieldRow("多维表格 token", _appToken, tip: "表格链接中 /base/ 之后的部分。"),
+            Ui.FieldRow("数据表 ID", _tableId, tip: "形如 tblxxxxxxxxxxxxxx。"));
 
         var buttons = Ui.ButtonRow(Ui.Primary("保存飞书设置", () => SaveAsync(_feishuNote)), _feishuNote);
 
@@ -287,23 +287,21 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
         panel.Children.Add(Ui.FieldRow(
             "不记录的软件",
-            new ScrollViewer { Content = _excluded, MaxHeight = 240, MinWidth = 420 },
-            "勾上的不再记录。密码管理器这类请勾上。"));
+            _excluded,
+            tip: "勾选的程序不再记录。密码管理器等敏感程序建议勾选。"));
 
         panel.Children.Add(Ui.FieldRow(
             "附加要求",
             _extraInstructions,
-            "追加到提示词末尾，例如：只写完成的事和结论。"));
+            tip: "追加到提示词末尾，例如：只写完成的事和结论。"));
 
         var projectsBlock = new StackPanel { Spacing = 10 };
-        projectsBlock.Children.Add(Ui.Section("工作项目清单"));
-        projectsBlock.Children.Add(Ui.Hint("填了以后，总结按这些项目分组写。"));
+        projectsBlock.Children.Add(Ui.Header("工作项目清单", "填了以后，总结按这些项目分组写。"));
         projectsBlock.Children.Add(_projects);
         panel.Children.Add(projectsBlock);
 
         var mappingsBlock = new StackPanel { Spacing = 10 };
-        mappingsBlock.Children.Add(Ui.Section("飞书字段映射"));
-        mappingsBlock.Children.Add(Ui.Hint("右边填飞书表里的列名，必须完全一致；也可以点下面自动匹配。"));
+        mappingsBlock.Children.Add(Ui.Header("飞书字段映射", "右侧填写飞书表格中的列名，需完全一致；也可使用下方的自动匹配。"));
         mappingsBlock.Children.Add(_mappings);
         panel.Children.Add(mappingsBlock);
 
@@ -325,7 +323,9 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             Ui.Secondary("关于", () => { Ui.ShowDialog(this, new AboutWindow(_services)); return Task.CompletedTask; }),
             Ui.Secondary("退出 SnapLog", ExitAsync));
 
-        return Ui.Card("其他", "关闭窗口只是收进托盘、仍在记录；要停就用托盘菜单里的退出。换机器时把数据目录整个拷过去即可。", buttons);
+        return Ui.CardWith(
+            Ui.Header("其他", "关闭窗口只是收进托盘，仍会继续记录；要停止请用托盘菜单中的「退出 SnapLog」。更换电脑时，把数据目录整体复制过去即可。"),
+            null, buttons);
     }
 
     private Window? OwnerWindow() => TopLevel.GetTopLevel(this) as Window;
@@ -442,7 +442,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
         if (targets.Count == 0)
         {
-            await Ui.Info(owner, "没有可测的模型", "把要测的模型打开「启用」再测；关着的模型不会参与每日流程。");
+            await Ui.Info(owner, "没有可测的模型", "请先启用要测试的模型；未启用的模型不会参与每日流程。");
             return;
         }
 
@@ -497,44 +497,6 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             string.Join(Environment.NewLine, lines)
             + Environment.NewLine + Environment.NewLine
             + "地址、密钥、模型名三者任一不对都会失败；接口地址通常要以 /v1 结尾。");
-    }
-
-    private async Task PushAsync()
-    {
-        if (OwnerWindow() is not { } owner)
-        {
-            return;
-        }
-
-        if (_services.SaveOptions())
-        {
-            _savedSnapshot = Snapshot();
-            _lastSaveMessage = "已保存　" + DateTime.Now.ToString("HH:mm:ss");
-        }
-
-        if (!IsFeishuReady())
-        {
-
-            return;
-        }
-
-        _status.Text = "正在写入飞书…";
-
-        try
-        {
-            var result = await _services.PushToFeishuAsync(CancellationToken.None);
-            _status.Text = result.Message;
-
-            if (!result.Success)
-            {
-                await Ui.Info(owner, "写入未成功", result.Message);
-            }
-        }
-        catch (Exception ex)
-        {
-            _services.Log.Error("写入飞书失败", ex);
-            _status.Text = $"写入失败：{ex.Message}";
-        }
     }
 
     private Task ExitAsync()
@@ -666,13 +628,13 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
             if (names.Count == 0)
             {
-                _excluded.Children.Add(Ui.Caption("还没有记录过任何程序。"));
+                _excluded.Children.Add(Ui.Caption("暂无已记录的程序。"));
             }
         }
         catch (Exception ex)
         {
             _services.Log.Warn($"读取进程清单失败：{ex.Message}");
-            _excluded.Children.Add(Ui.Caption("读取进程清单失败，可以先跳过这一项。"));
+            _excluded.Children.Add(Ui.Caption("读取进程清单失败，此项可稍后重试。"));
         }
     }
 

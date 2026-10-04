@@ -107,8 +107,8 @@ internal sealed class HomePage : UserControl, IRefreshable
             var running = _services.Engine.IsRunning;
             _stateTitle.Text = running ? "正在记录" : "已暂停";
             _stateHint.Text = running
-                ? "跟随前台窗口切换自动截图并识别文字。截图存在本机，到点会把识别出的文字发给你的模型接口。"
-                : "暂停期间不截图，每天自动执行也不会跑。";
+                ? "跟随前台窗口自动识别；截图和文字只存本机。"
+                : "暂停期间不截图，也不执行每日流程。";
             _stateDot.Background = new SolidColorBrush(Color.Parse(running ? "#15803D" : "#B45309"));
             _toggleButton.Content = running ? "暂停记录" : "开始记录";
 
@@ -152,22 +152,22 @@ internal sealed class HomePage : UserControl, IRefreshable
     {
         if (run is null)
         {
-            Ui.UpdatePill(_reportPill, "还没有", PillKind.Neutral);
-            _reportTitle.Text = "还没有生成过总结";
-            _reportDetail.Text = "配好大模型和飞书后，每天到点会自动生成。";
+            Ui.UpdatePill(_reportPill, "暂无", PillKind.Neutral);
+            _reportTitle.Text = "暂无总结记录";
+            _reportDetail.Text = "配置大模型和飞书后，每天到点自动生成。";
             return;
         }
 
         if (!run.Success)
         {
             Ui.UpdatePill(_reportPill, "失败", PillKind.Danger);
-            _reportTitle.Text = $"{DayLabel(run)} {run.StartedAt:HH:mm} 没有生成成功";
+            _reportTitle.Text = $"{DayLabel(run)} {run.StartedAt:HH:mm} 生成失败";
             _reportDetail.Text = Ui.Shorten(run.Message, 90);
             return;
         }
 
         var pushed = run.PushedAt is not null;
-        Ui.UpdatePill(_reportPill, pushed ? "已写入飞书" : "未写入飞书", pushed ? PillKind.Ok : PillKind.Warn);
+        Ui.UpdatePill(_reportPill, pushed ? "已推送" : "未推送", pushed ? PillKind.Ok : PillKind.Warn);
         _reportTitle.Text = $"{DayLabel(run)} {run.StartedAt:HH:mm}";
 
         var details = $"覆盖 {run.CoveredDay}　{run.RecordCount} 条记录"
@@ -176,7 +176,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         if (!pushed)
         {
-            details += _services.Options.Feishu.Enabled ? "　到点会自动补写" : "　飞书推送没启用";
+            details += _services.Options.Feishu.Enabled ? "　到点会自动推送" : "　飞书推送未启用";
         }
 
         _reportDetail.Text = details;
@@ -226,7 +226,7 @@ internal sealed class HomePage : UserControl, IRefreshable
         _unifyButton.IsVisible = enabled && drifted;
         if (_unifyButton.IsVisible)
         {
-            _unifyButton.Content = $"识别、总结、写入飞书的时间不一致，统一改成 {time}";
+            _unifyButton.Content = $"三个步骤的时间不一致，统一为 {time}";
         }
 
         _pipelineWarning.Text = enabled ? BuildWarning() : string.Empty;
@@ -250,12 +250,12 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         if (!llmReady)
         {
-            return "还没配好大模型：到设置里填上接口地址、模型名称和 API Key，否则不会生成总结。";
+            return "大模型尚未配置：请在设置中填写接口地址、模型名称和 API Key，否则不会生成总结。";
         }
 
         if (!Ui.IsFeishuReady(options))
         {
-            return "还没填飞书接入信息，总结不会写进表格。";
+            return "飞书接入信息未填写，总结不会推送到多维表格。";
         }
 
         return string.Empty;
@@ -303,9 +303,8 @@ internal sealed class HomePage : UserControl, IRefreshable
         var ok = await Ui.Confirm(
             owner,
             "开启每天自动执行？",
-            "到点会把当天的活动内容发送到你配置的大模型接口，并把生成的总结写入飞书多维表格；"
-            + "发送的是识别出的文字、还是连截图一起发，取决于你在大模型设置里的"
-            + "「发送内容」。随时可以在这里关掉。",
+            "到点会把当天的活动内容发送到你配置的大模型接口，并把生成的总结推送到飞书多维表格。"
+            + "发送内容（仅文字，或附带截图）取决于大模型设置中的「发送内容」。可随时在此关闭。",
             "开启");
 
         if (!ok)
@@ -375,7 +374,9 @@ internal sealed class HomePage : UserControl, IRefreshable
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
 
         var titleColumn = new StackPanel { Spacing = 3 };
-        titleColumn.Children.Add(_stateTitle);
+        titleColumn.Children.Add(Ui.Inline(8, _stateTitle, Ui.Tip(
+            "到点会把识别出的文字发送到你配置的模型接口，并把总结推送到飞书；"
+            + "是否附带截图取决于大模型设置中的「发送内容」。")));
         titleColumn.Children.Add(_stateHint);
         Grid.SetColumn(titleColumn, 1);
         head.Children.Add(_stateDot);
@@ -407,10 +408,11 @@ internal sealed class HomePage : UserControl, IRefreshable
                 }
 
                 return Task.CompletedTask;
-            }),
-            Ui.Caption("失败或漏掉的那天，到点会自动重做。"));
+            }));
 
-        return Ui.Card("最近一次总结", null, head, _reportDetail, buttons);
+        return Ui.CardWith(
+            Ui.Header("最近一次总结", "每天到点自动生成；失败或遗漏的日期会在下一次执行时重做。"),
+            null, head, _reportDetail, buttons);
     }
 
     private Control BuildPipelineCard()
@@ -424,15 +426,13 @@ internal sealed class HomePage : UserControl, IRefreshable
         _pipelineNext.VerticalAlignment = VerticalAlignment.Center;
         row.Children.Add(_pipelineNext);
 
-        var steps = Ui.Hint("到点自动做三件事：把前一天的截图识别成文字，写成那一天的总结，再写进飞书表格。平时只截图，识别集中在这个时间做。");
-        steps.Margin = new Avalonia.Thickness(0, 10, 0, 0);
-
-        var note = Ui.Hint("总结的是已经过完的那一天，所以晚上加班的记录也会包含在内。这个时间电脑没开的话，下次开机后会自动补上。");
-        note.Margin = new Avalonia.Thickness(0, 10, 0, 0);
-
         var autoStart = Ui.FieldRow("开机自动启动", _autoStartSwitch);
 
-        return Ui.Card("每天自动执行", null, row, steps, _pipelineWarning, _unifyButton, note, Ui.Divider(), autoStart);
+        return Ui.CardWith(
+            Ui.Header("每天自动执行",
+                "到点自动执行三步：把前一天的截图识别成文字，生成那一天的总结，再推送到飞书多维表格。"
+                + "总结的是已经结束的那一天，晚上加班的记录也会包含在内；到点电脑未开机时，会在下次启动后自动执行。"),
+            null, row, _pipelineWarning, _unifyButton, Ui.Divider(), autoStart);
     }
 
     // ---------------------------------------------------------------- 动作

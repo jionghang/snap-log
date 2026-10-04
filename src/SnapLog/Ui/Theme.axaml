@@ -38,6 +38,8 @@
   <Style Selector="TextBlock.hint">
     <Setter Property="FontSize" Value="12" />
     <Setter Property="Foreground" Value="{StaticResource Ink2}" />
+    <!-- 多行说明（详情窗的信息行、卡片下的备注）在默认行高下挤在一起 -->
+    <Setter Property="LineHeight" Value="18" />
   </Style>
 
   <Style Selector="TextBlock.field">
@@ -69,6 +71,25 @@
   <Style Selector="Border.divider">
     <Setter Property="Height" Value="1" />
     <Setter Property="Background" Value="{StaticResource LineSoft}" />
+  </Style>
+
+  <!-- 问号提示：说明文字收在这里，鼠标悬停展开 -->
+  <Style Selector="Border.tip">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="Background" Value="{StaticResource LineSoft}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Border.tip TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="LineHeight" Value="15" />
+    <Setter Property="Foreground" Value="{StaticResource Ink3}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
   <!-- 状态徽标：绿=正常，橙=暂停/提醒，灰=未启用 -->
