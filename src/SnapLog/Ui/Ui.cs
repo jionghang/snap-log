@@ -46,14 +46,25 @@ internal static class Ui
 
     /// <summary>详情窗口里的正文（识别文字、总结正文）。13px 配默认行高对中文太挤，统一 14 / 22。</summary>
     /// <param name="raw">原始材料（例如识别出的文字）：小一号、灰一档，和成稿的总结正文区分开。</param>
-    public static SelectableTextBlock BodyText(string text, bool raw = false) => new()
+    public static SelectableTextBlock BodyText(string text, bool raw = false)
     {
-        Text = text,
-        TextWrapping = TextWrapping.Wrap,
-        FontSize = raw ? 13 : 14,
-        LineHeight = raw ? 20 : 22,
-        Foreground = raw ? new SolidColorBrush(Color.Parse("#4B5563")) : null,
-    };
+        var block = new SelectableTextBlock
+        {
+            Text = text,
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = raw ? 13 : 14,
+            LineHeight = raw ? 20 : 22,
+        };
+
+        if (raw)
+        {
+            block.Foreground = new SolidColorBrush(Color.Parse("#4B5563"));
+        }
+
+        // 注意：非 raw 时**不要**把 Foreground 设成 null。本地赋值哪怕是 null 也会盖掉主题色，
+        // 结果是文字"布局在、滚动条也在，但一个字都看不见"（总结正文这么空过一次）。
+        return block;
+    }
 
     /// <summary>
     /// 问号提示：成段的说明不直接铺在界面上，收成一个"?"，鼠标悬停才展开。

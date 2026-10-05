@@ -299,6 +299,7 @@ internal static class UiProbes
         ProbeDialogs(failures);
         ProbeEscCloses(services, failures);
         ProbeListRecycle(services, failures);
+        ProbeBodyVisibility(services, failures);
 
         ProbeRunState(services, failures);
         ProbeExitPath(services, failures);
@@ -556,6 +557,54 @@ internal static class UiProbes
         catch (Exception ex)
         {
             failures.Add($"{label}：{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 详情窗正文必须可见：前景色为空时布局还在、滚动条也在，但一个字都看不见——
+    /// 这种问题不会抛异常，只看自检日志发现不了，靠这条用例盯着（总结正文踩过一次）。
+    /// </summary>
+    private static void ProbeBodyVisibility(AppServices services, List<string> failures)
+    {
+        try
+        {
+            var run = services.Store
+                .GetSummaryRunsAsync(1, CancellationToken.None)
+                .GetAwaiter().GetResult()
+                .FirstOrDefault();
+
+            var window = new SummaryDetailWindow();
+            window.Show();
+            Pump(200);
+
+            if (run is not null)
+            {
+                window.Render(services, run);
+                Pump(300);
+            }
+
+            // 正文（不是那行元数据）：找一段像总结的长文本
+            var body = window.GetVisualDescendants()
+                .OfType<SelectableTextBlock>()
+                .FirstOrDefault(block => block.Text is { Length: > 40 });
+
+            var visible = body is not null && body.Foreground is not null;
+
+            window.Close();
+            Pump(40);
+
+            if (visible)
+            {
+                Console.WriteLine($"{Fit("正文可见性", 14)} 通过   前景色已设置（{body!.Text!.Length} 字）");
+            }
+            else
+            {
+                failures.Add("正文可见性：详情窗正文的前景色为空或找不到正文（文字会布局在但不显示）");
+            }
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"正文可见性：{ex.GetType().Name}: {ex.Message}");
         }
     }
 
