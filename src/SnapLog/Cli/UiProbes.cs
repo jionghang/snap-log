@@ -300,6 +300,7 @@ internal static class UiProbes
         ProbeEscCloses(services, failures);
         ProbeListRecycle(services, failures);
         ProbeBodyVisibility(services, failures);
+        ProbeFailureReasonOnce(services, failures);
 
         ProbeRunState(services, failures);
         ProbeExitPath(services, failures);
@@ -605,6 +606,56 @@ internal static class UiProbes
         catch (Exception ex)
         {
             failures.Add($"正文可见性：{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 失败原因只显示一处：这条盯的是"同一句话在窗口里显示两遍"的重复
+    /// （元数据区一条提示 + 正文区回退到 Message，曾经各显示一份）。
+    /// </summary>
+    private static void ProbeFailureReasonOnce(AppServices services, List<string> failures)
+    {
+        try
+        {
+            // 沙盒数据库是真实库的副本，失败记录通常取得到；没有就跳过（不算失败）。
+            var run = services.Store
+                .GetSummaryRunsAsync(50, CancellationToken.None)
+                .GetAwaiter().GetResult()
+                .FirstOrDefault(candidate => !candidate.Success && candidate.Message.Length > 0);
+
+            if (run is null)
+            {
+                Console.WriteLine($"{Fit("失败原因一次", 14)} 跳过   库里没有失败记录可渲染");
+                return;
+            }
+
+            var window = new SummaryDetailWindow();
+            window.Show();
+            Pump(200);
+            window.Render(services, run);
+            Pump(300);
+
+            // 用失败原因的首行去数：窗口里应当只有一处文本包含它。
+            var probe = run.Message.Split('\n')[0].Trim();
+            var hits = window.GetVisualDescendants()
+                .OfType<TextBlock>()
+                .Count(block => block.Text is { } text && text.Contains(probe, StringComparison.Ordinal));
+
+            window.Close();
+            Pump(40);
+
+            if (hits == 1)
+            {
+                Console.WriteLine($"{Fit("失败原因一次", 14)} 通过   窗口内只出现 1 处");
+            }
+            else
+            {
+                failures.Add($"失败原因一次：期望窗口内出现 1 处，实际 {hits} 处（失败原因重复显示）");
+            }
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"失败原因一次：{ex.GetType().Name}: {ex.Message}");
         }
     }
 

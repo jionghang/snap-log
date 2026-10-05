@@ -214,20 +214,20 @@ internal sealed class SummaryDetailWindow : Window
         // 与记录详情一致：元数据只留一行浅字，不加框。
         _meta.Children.Add(Ui.Caption(meta.ToString()));
 
-        if (!run.Success)
-        {
-            _meta.Children.Add(Ui.Hint("失败原因：" + (run.Message.Length > 0
-                ? run.Message
-                : "没有记录原因，可能是模型接口没有返回内容。下次自动执行时会重试这一天。")));
-        }
-
         if (run.SavedPath.Length > 0 && File.Exists(run.SavedPath))
         {
             _meta.Children.Add(Ui.ButtonRow(
                 Ui.Secondary("打开文件", () => { MainWindow.OpenPath(run.SavedPath); return Task.CompletedTask; })));
         }
 
-        _text.Text = run.Markdown.Length > 0 ? run.Markdown : run.Message;
+        // 失败原因只显示一处，放在正文区（可选中复制）；以前元数据区还有一条同样的提示，重复。
+        var fallback = run.Message.Length > 0
+            ? run.Message
+            : "没有记录原因，可能是模型接口没有返回内容。下次自动执行时会重试这一天。";
+
+        _text.Text = run.Markdown.Length > 0
+            ? run.Markdown
+            : run.Success ? fallback : "失败原因：" + fallback;
 
         _ = services;
     }
