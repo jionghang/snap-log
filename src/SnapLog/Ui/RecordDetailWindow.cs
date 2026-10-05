@@ -25,7 +25,7 @@ internal sealed class RecordDetailWindow : Window
 
     /// <summary>标题下面的元数据与按钮：固定不动，滚动只滚正文。</summary>
     private readonly StackPanel _meta = new() { Spacing = 10 };
-    private readonly SelectableTextBlock _text = Ui.BodyText(string.Empty);
+    private readonly SelectableTextBlock _text = Ui.BodyText(string.Empty, raw: true);
     private readonly TextBlock _title = new() { Classes = { "headline" } };
 
     public RecordDetailWindow(AppServices services)
@@ -73,9 +73,11 @@ internal sealed class RecordDetailWindow : Window
         Grid.SetRow(divider, 2);
         grid.Children.Add(divider);
 
-        var scroller = new ScrollViewer { Content = _text };
-        Grid.SetRow(scroller, 3);
-        grid.Children.Add(scroller);
+        // 正文加分组框：长文本只在框内滚动，框本身不跟着动。
+        // 注意行要设在框上（设在里面的 ScrollViewer 上，框会落回第 0 行）。
+        var frame = new Border { Classes = { "well" }, Child = new ScrollViewer { Content = _text } };
+        Grid.SetRow(frame, 3);
+        grid.Children.Add(frame);
 
         return grid;
     }
@@ -145,12 +147,8 @@ internal sealed class RecordDetailWindow : Window
 
         _title.Text = $"记录详情 · {record.Timestamp:MM-dd HH:mm}";
 
-        // 元数据收进分组框，字号颜色都比正文轻一档：它是"关于这条记录的说明"，不该和正文抢注意力。
-        _meta.Children.Add(new Border
-        {
-            Classes = { "well" },
-            Child = Ui.Caption(meta.ToString()),
-        });
+        // 元数据只留一行浅字，不加框：框留给正文。
+        _meta.Children.Add(Ui.Caption(meta.ToString()));
 
         var imagePath = _services.Paths.ResolveStoredImagePath(record.ImagePath);
         var copy = Ui.Secondary("复制文字", () => Task.CompletedTask);

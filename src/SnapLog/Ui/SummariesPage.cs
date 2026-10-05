@@ -164,9 +164,11 @@ internal sealed class SummaryDetailWindow : Window
         Grid.SetRow(divider, 2);
         grid.Children.Add(divider);
 
-        var scroller = new ScrollViewer { Content = _text };
-        Grid.SetRow(scroller, 3);
-        grid.Children.Add(scroller);
+        // 正文加分组框：长文本只在框内滚动，框本身不跟着动。
+        // 注意行要设在框上（设在里面的 ScrollViewer 上，框会落回第 0 行）。
+        var frame = new Border { Classes = { "well" }, Child = new ScrollViewer { Content = _text } };
+        Grid.SetRow(frame, 3);
+        grid.Children.Add(frame);
 
         Content = new Border { Padding = new Thickness(22, 18, 22, 18), Child = grid };
     }
@@ -208,12 +210,8 @@ internal sealed class SummaryDetailWindow : Window
             meta.Append("　尚未推送到飞书");
         }
 
-        // 与记录详情一致：元数据收进分组框，文字用更轻的一档。
-        _meta.Children.Add(new Border
-        {
-            Classes = { "well" },
-            Child = Ui.Caption(meta.ToString()),
-        });
+        // 与记录详情一致：元数据只留一行浅字，不加框。
+        _meta.Children.Add(Ui.Caption(meta.ToString()));
 
         if (!run.Success)
         {

@@ -45,12 +45,14 @@ internal static class Ui
     public static TextBlock Mono(string text) => new() { Text = text, Classes = { "mono" } };
 
     /// <summary>详情窗口里的正文（识别文字、总结正文）。13px 配默认行高对中文太挤，统一 14 / 22。</summary>
-    public static SelectableTextBlock BodyText(string text) => new()
+    /// <param name="raw">原始材料（例如识别出的文字）：小一号、灰一档，和成稿的总结正文区分开。</param>
+    public static SelectableTextBlock BodyText(string text, bool raw = false) => new()
     {
         Text = text,
         TextWrapping = TextWrapping.Wrap,
-        FontSize = 14,
-        LineHeight = 22,
+        FontSize = raw ? 13 : 14,
+        LineHeight = raw ? 20 : 22,
+        Foreground = raw ? new SolidColorBrush(Color.Parse("#4B5563")) : null,
     };
 
     /// <summary>
