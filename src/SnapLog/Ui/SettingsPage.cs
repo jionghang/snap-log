@@ -73,8 +73,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             _status,
             BuildLlmCard(),
             BuildFeishuCard(),
-            BuildAboutCard(),
-            BuildDataCard()));
+            BuildAboutCard()));
 
         _savedSnapshot = Snapshot();
         _dirtyWatch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -244,8 +243,15 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
     private Control BuildAboutCard()
     {
+        // 清空是危险操作，但要和其他杂项放在一起：排在"关于"前面，靠浅红描边区分。
+        var clear = new Button { Content = "清空本地记录和总结", Classes = { "danger" } };
+        ToolTip.SetTip(clear, "删除本机的抓取记录、截图与总结，操作需要两次确认；"
+                              + "已推送到飞书的内容不受影响。");
+        clear.Click += (_, _) => _ = ClearLocalDataAsync();
+
         var buttons = Ui.ButtonRow(
             Ui.Secondary("高级设置", OpenAdvancedAsync),
+            clear,
             Ui.Secondary("关于", () => { Ui.ShowDialog(this, new AboutWindow(_services)); return Task.CompletedTask; }),
             Ui.Secondary("退出 SnapLog", ExitAsync));
 
@@ -253,18 +259,6 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             Ui.Header("其他", "关闭窗口只收进托盘，仍在后台记录；退出请使用托盘菜单。"
                               + "排除的程序、附加要求、工作项目与字段映射都在高级设置里。"),
             null, buttons);
-    }
-
-    /// <summary>清空属于危险操作：单独成卡片放页尾，点下去要过两道确认。</summary>
-    private Control BuildDataCard()
-    {
-        var clear = new Button { Content = "清空本地记录和总结", Classes = { "danger" } };
-        clear.Click += (_, _) => _ = ClearLocalDataAsync();
-
-        return Ui.CardWith(
-            Ui.Header("本地数据", "抓取记录、截图与总结都保存在本机。清空后无法恢复；"
-                                  + "已推送到飞书的内容不受影响，程序也会照常继续记录。"),
-            null, Ui.ButtonRow(clear));
     }
 
     /// <summary>
