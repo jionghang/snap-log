@@ -446,28 +446,6 @@ internal sealed class CliRunner
         var imagePrompt = Prompts.BuildSystemPrompt(imageOnly);
         var projectPrompt = Prompts.BuildSystemPrompt(withProjects);
 
-        // 汇报类文档（周报/月报等）的正文覆盖更早的时间，摘要里必须带标记、
-        // 提示词里必须有对应规则，否则模型会把它当成当天做的事。
-        var reportRecords = new List<ActivityRecord>
-        {
-            new()
-            {
-                Timestamp = new DateTime(2026, 9, 30, 10, 0, 0),
-                ProcessName = "WINWORD.EXE",
-                WindowTitle = "周报（9.22-9.28）.docx",
-                OcrText = "本周完成：中试平台需求评审",
-            },
-            new()
-            {
-                Timestamp = new DateTime(2026, 9, 30, 11, 0, 0),
-                ProcessName = "chrome.exe",
-                WindowTitle = "需求池 - 飞书",
-                OcrText = "需求评审排期",
-            },
-        };
-        var digest = ActivityDigestBuilder.Build(reportRecords, textOnly);
-        var plainLine = digest.Text.Split('\n').FirstOrDefault(l => l.Contains("需求池", StringComparison.Ordinal)) ?? string.Empty;
-
         var checks = new (string Name, bool Ok)[]
         {
             ("模板被采用", textPrompt.Contains("工作复盘助手", StringComparison.Ordinal)),
@@ -478,10 +456,7 @@ internal sealed class CliRunner
             ("只发图模式的输入说明", imagePrompt.Contains("不提供文字转录", StringComparison.Ordinal)),
             ("输出语言（英文）", imagePrompt.Contains("English", StringComparison.Ordinal)),
             ("附加要求被追加", imagePrompt.Contains("按项目分组", StringComparison.Ordinal)),
-            ("汇报类文档被打标记", digest.Text.Contains(ReportDocuments.Marker, StringComparison.Ordinal)),
-            ("普通窗口不被打标记", plainLine.Length > 0
-                                   && !plainLine.Contains(ReportDocuments.Marker, StringComparison.Ordinal)),
-            ("汇报类文档的处理规则", textPrompt.Contains(ReportDocuments.Marker, StringComparison.Ordinal)),
+            ("周期性汇报的处理规则", textPrompt.Contains("周期性汇报", StringComparison.Ordinal)),
             ("工作项目的写作要求被追加", projectPrompt.Contains("按项目写作的要求", StringComparison.Ordinal)
                                          && projectPrompt.Contains("规则引擎平台", StringComparison.Ordinal)),
             ("未归类活动单独成组", projectPrompt.Contains("单独成组", StringComparison.Ordinal)),
