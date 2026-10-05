@@ -161,14 +161,16 @@ internal sealed class HomePage : UserControl, IRefreshable
         if (!run.Success)
         {
             Ui.UpdatePill(_reportPill, "失败", PillKind.Danger);
-            _reportTitle.Text = $"{DayLabel(run)} {run.StartedAt:HH:mm} 生成失败";
+            _reportTitle.Text = $"{DayLabel(run)}的总结　{run.StartedAt:MM-dd HH:mm} 生成失败";
             _reportDetail.Text = Ui.Shorten(run.Message, 90);
             return;
         }
 
         var pushed = run.PushedAt is not null;
         Ui.UpdatePill(_reportPill, pushed ? "已推送" : "未推送", pushed ? PillKind.Ok : PillKind.Warn);
-        _reportTitle.Text = $"{DayLabel(run)} {run.StartedAt:HH:mm}";
+        // 覆盖日与生成时刻是两个日期概念，别拼成"昨天 08:32"那种读着像同一时刻的样子：
+        // 补跑（夜里没开机、早上启动才执行）时两者会差一天。
+        _reportTitle.Text = $"{DayLabel(run)}的总结　{run.StartedAt:MM-dd HH:mm} 生成";
 
         var details = $"覆盖：{run.CoveredDay}　记录：{run.RecordCount} 条"
                       + (run.Provider.Length > 0 ? $"　模型：{run.Provider}" : string.Empty)
