@@ -269,14 +269,14 @@ internal sealed class AdvancedSettingsWindow : Window
                 + " 写成 "
                 + (m.FeishuField.Length > 0 ? m.FeishuField : "（没找到对应列，将跳过）"));
 
-            _status.Text = "已匹配 " + matched.Count(m => m.FeishuField.Length > 0) + " 列，点保存生效";
+            _status.Text = "已匹配 " + matched.Count(m => m.FeishuField.Length > 0) + " 列，保存后生效";
 
             await Ui.Info(this, "已按列名匹配",
                 "表里读到 " + fields.Count + " 列。"
                 + Environment.NewLine + Environment.NewLine
                 + string.Join(Environment.NewLine, lines)
                 + Environment.NewLine + Environment.NewLine
-                + "核对无误后点保存。");
+                + "核对无误后保存。");
         }
         catch (Exception ex)
         {

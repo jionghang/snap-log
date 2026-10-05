@@ -19,6 +19,9 @@ internal sealed class TimeField : UserControl
     private readonly UniformGrid _minutes = new() { Columns = 4 };
 
     private readonly Action<string> _changed;
+
+    /// <summary>浮层挂在字段按钮上（不在芯片上）：芯片里写 button.Flyout?.Hide() 恒为 null。</summary>
+    private readonly Flyout _flyout;
     private int _hour;
     private int _minute;
 
@@ -27,7 +30,7 @@ internal sealed class TimeField : UserControl
         _changed = changed;
         Set(hhmm);
 
-        _button.Flyout = new Flyout
+        _flyout = new Flyout
         {
             Placement = PlacementMode.BottomEdgeAlignedLeft,
             Content = Ui.CardShell(new StackPanel
@@ -42,6 +45,7 @@ internal sealed class TimeField : UserControl
                 },
             }),
         };
+        _button.Flyout = _flyout;
 
         _hours.Children.AddRange(Enumerable.Range(0, 24).Select(hour => Chip(
             $"{hour:00}",
@@ -80,14 +84,14 @@ internal sealed class TimeField : UserControl
         Render();
     }
 
-    private static Button Chip(string text, Func<bool> isOn, Action click)
+    private Button Chip(string text, Func<bool> isOn, Action click)
     {
         var button = new Button { Content = text, Classes = { "chip" } };
 
         button.Click += (_, _) =>
         {
             click();
-            button.Flyout?.Hide();
+            _flyout.Hide();   // 点完一个选项就收起浮层（和系统下拉一致）
         };
 
         button.AttachedToVisualTree += (_, _) => Mark(button, isOn());
@@ -141,6 +145,9 @@ internal sealed class DateField : UserControl
     private readonly TextBlock _current = new() { FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
 
     private readonly Action<DateOnly> _changed;
+
+    /// <summary>浮层挂在字段按钮上（不在芯片上）。步进按钮刻意不收起，微调要点好几下。</summary>
+    private readonly Flyout _flyout;
     private DateOnly _value;
 
     public DateField(DateOnly value, Action<DateOnly> changed)
@@ -168,7 +175,7 @@ internal sealed class DateField : UserControl
         Grid.SetColumn(forward, 2);
         stepper.Children.Add(forward);
 
-        _button.Flyout = new Flyout
+        _flyout = new Flyout
         {
             Placement = PlacementMode.BottomEdgeAlignedLeft,
             Content = Ui.CardShell(new StackPanel
@@ -177,6 +184,7 @@ internal sealed class DateField : UserControl
                 Children = { quick, stepper },
             }),
         };
+        _button.Flyout = _flyout;
 
         Content = _button;
         Render();
@@ -196,7 +204,7 @@ internal sealed class DateField : UserControl
         button.Click += (_, _) =>
         {
             Select(pick());
-            button.Flyout?.Hide();
+            _flyout.Hide();
         };
 
         return button;
