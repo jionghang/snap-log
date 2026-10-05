@@ -34,8 +34,7 @@ internal sealed class AboutWindow : Window
         var versionLine = new TextBlock
         {
             Text = "SnapLog " + version?.Major + "." + version?.Minor + "." + version?.Build,
-            Classes = { "section" },
-            FontSize = 16,
+            Classes = { "headline" },
         };
 
         intro.Children.Add(Ui.Inline(8, versionLine, Ui.Tip(

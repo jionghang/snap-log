@@ -73,6 +73,7 @@ internal sealed class MessageWindow : Window
         {
             Text = message,
             TextWrapping = TextWrapping.Wrap,
+            FontSize = 13,          // 与全应用正文同号（不写会落回框架默认值）
             MaxHeight = 460,
         };
 

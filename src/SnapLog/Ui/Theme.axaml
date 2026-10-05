@@ -53,8 +53,15 @@
     <Setter Property="FontSize" Value="12" />
   </Style>
 
+  <!-- 数字/状态这类"页面主角"：比正文大一号，但不抢页面标题 -->
   <Style Selector="TextBlock.metric">
     <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- 窗口标题、结果值这类第二层级 -->
+  <Style Selector="TextBlock.headline">
+    <Setter Property="FontSize" Value="15.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 

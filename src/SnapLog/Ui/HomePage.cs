@@ -53,13 +53,13 @@ internal sealed class HomePage : UserControl, IRefreshable
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Avalonia.Thickness(0, 0, 10, 0),
         };
-        _stateTitle = new TextBlock { FontSize = 17, FontWeight = FontWeight.SemiBold };
+        _stateTitle = new TextBlock { Classes = { "metric" } };
         _stateHint = Ui.Caption(string.Empty);
         _toggleButton = Ui.Primary("暂停记录", ToggleRecordingAsync);
         _statsLine = Ui.Caption(string.Empty);
 
         _reportPill = Ui.Pill("—", PillKind.Neutral);
-        _reportTitle = new TextBlock { FontSize = 15.5, FontWeight = FontWeight.SemiBold };
+        _reportTitle = new TextBlock { Classes = { "headline" } };
         _reportDetail = Ui.Caption(string.Empty);
 
         _pipelineSwitch = Ui.Switch(false, OnPipelineToggled);

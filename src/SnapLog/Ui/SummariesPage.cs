@@ -129,7 +129,7 @@ internal sealed class SummaryDetailWindow : Window
     /// <summary>标题下面的元数据与按钮：固定不动，滚动只滚正文。</summary>
     private readonly StackPanel _meta = new() { Spacing = 10 };
     private readonly SelectableTextBlock _text = Ui.BodyText(string.Empty);
-    private readonly TextBlock _title = new() { FontSize = 15.5, FontWeight = FontWeight.SemiBold };
+    private readonly TextBlock _title = new() { Classes = { "headline" } };
 
     public SummaryDetailWindow()
     {
