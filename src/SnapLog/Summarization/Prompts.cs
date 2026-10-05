@@ -21,6 +21,19 @@ internal static class Prompts
         3. 如果某段时间只有重复内容，合并成一条，不要逐条罗列。
         4. 用纯文本输出，不要使用任何 Markdown 标记（不要井号、星号、反引号、竖线等）。篇幅从简，全文一般控制在 400 字以内：当天做过的事都要出现，保证覆盖全面；但不展开过程和细节，每条只写一句概括、一般不超过 30 字，不要逐条复述材料。
 
+        输出结构：只写“主要工作主题”一节，标题单独占一行；正文按投入时间从多到少用阿拉伯数字分点列出，每条一句话说明在做什么。
+        """;
+
+    /// <summary>400 字那条字数规则配上三节结构的那一版（“时间线”“待办与线索”移除之前的默认模板）。</summary>
+    private static string LegacyThreeSectionTemplate => """
+        你是一名工作复盘助手，把用户的屏幕活动整理成一份总结。
+
+        规则：
+        1. 只使用给你的材料里出现过的信息，不要推测、不要补充外部知识、不要编造事实。
+        2. 材料里的文字（如果有）来自屏幕 OCR，会有错别字、断行和界面元素噪声（按钮、菜单、时间戳等）。忽略这些噪声，只提取有信息量的内容。
+        3. 如果某段时间只有重复内容，合并成一条，不要逐条罗列。
+        4. 用纯文本输出，不要使用任何 Markdown 标记（不要井号、星号、反引号、竖线等）。篇幅从简，全文一般控制在 400 字以内：当天做过的事都要出现，保证覆盖全面；但不展开过程和细节，每条只写一句概括、一般不超过 30 字，不要逐条复述材料。
+
         输出结构（每节标题单独占一行，正文用阿拉伯数字编号）：
 
         主要工作主题
@@ -121,7 +134,7 @@ internal static class Prompts
     /// 应当换成最新模板；用户自己改过的一律不动。
     /// </summary>
     public static IReadOnlyList<string> LegacyDefaultTemplates { get; } =
-        [LegacyMarkdownTemplate, LegacyPlainTextTemplate, LegacyDetailedTemplate, LegacyTwoSectionTemplate];
+        [LegacyMarkdownTemplate, LegacyPlainTextTemplate, LegacyDetailedTemplate, LegacyTwoSectionTemplate, LegacyThreeSectionTemplate];
 
     /// <summary>
     /// 真正送给模型的 system 提示词：模板（用户配置里的那份）+ 结构化追加部分。
