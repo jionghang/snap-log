@@ -87,7 +87,7 @@ internal sealed class AdvancedSettingsWindow : Window
         Ui.FieldRow("附加要求", _extraInstructions));
 
     private Control BuildProjectsCard() => Ui.CardWith(
-        Ui.Header("工作项目", "告诉总结按哪些项目归类：主要工作主题按这里的项目分组，说明越具体归类越准。"),
+        Ui.Header("工作项目", "指定总结的分组方式：主要工作主题按这里的项目分组，说明越具体归类越准。"),
         null,
         _projects);
 

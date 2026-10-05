@@ -243,7 +243,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             Ui.Secondary("退出 SnapLog", ExitAsync));
 
         return Ui.CardWith(
-            Ui.Header("其他", "关窗只收进托盘，仍在记录；退出请用托盘菜单。"
+            Ui.Header("其他", "关闭窗口只收进托盘，仍在后台记录；退出请使用托盘菜单。"
                               + "排除的程序、附加要求、工作项目与字段映射都在高级设置里。"),
             null, buttons);
     }

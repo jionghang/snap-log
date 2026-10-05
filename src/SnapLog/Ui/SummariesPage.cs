@@ -208,7 +208,12 @@ internal sealed class SummaryDetailWindow : Window
             meta.Append("　尚未推送到飞书");
         }
 
-        _meta.Children.Add(Ui.Hint(meta.ToString()));
+        // 与记录详情一致：元数据收进分组框，文字用更轻的一档。
+        _meta.Children.Add(new Border
+        {
+            Classes = { "well" },
+            Child = Ui.Caption(meta.ToString()),
+        });
 
         if (!run.Success)
         {

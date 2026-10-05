@@ -375,7 +375,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         var titleColumn = new StackPanel { Spacing = 3 };
         titleColumn.Children.Add(Ui.Inline(8, _stateTitle, Ui.Tip(
-            "记录状态：开启后自动截图并识别文字，并在每天设定时间生成总结、推送到飞书；暂停后全部停止。")));
+            "记录状态：开启后自动截图并识别文字，每天在设定时间生成总结并推送到飞书；暂停后两者都停止。")));
         titleColumn.Children.Add(_stateHint);
         Grid.SetColumn(titleColumn, 1);
         head.Children.Add(_stateDot);

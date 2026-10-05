@@ -62,7 +62,7 @@ internal sealed class RecordDetailWindow : Window
         // 标题 / 元数据与按钮 / 分隔线 都是固定的，只有正文在滚动区里。
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,Auto,*") };
 
-        grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("识别出的文字可以选中复制，也可以使用复制文字按钮整段复制。")));
+        grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("识别出的文字可选中复制，或用复制文字按钮整段复制。")));
 
         _meta.Margin = new Thickness(0, 10, 0, 0);
         Grid.SetRow(_meta, 1);
@@ -145,7 +145,12 @@ internal sealed class RecordDetailWindow : Window
 
         _title.Text = $"记录详情 · {record.Timestamp:MM-dd HH:mm}";
 
-        _meta.Children.Add(Ui.Hint(meta.ToString()));
+        // 元数据收进分组框，字号颜色都比正文轻一档：它是"关于这条记录的说明"，不该和正文抢注意力。
+        _meta.Children.Add(new Border
+        {
+            Classes = { "well" },
+            Child = Ui.Caption(meta.ToString()),
+        });
 
         var imagePath = _services.Paths.ResolveStoredImagePath(record.ImagePath);
         var copy = Ui.Secondary("复制文字", () => Task.CompletedTask);
