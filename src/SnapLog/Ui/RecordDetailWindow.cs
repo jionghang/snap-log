@@ -25,7 +25,7 @@ internal sealed class RecordDetailWindow : Window
 
     /// <summary>标题下面的元数据与按钮：固定不动，滚动只滚正文。</summary>
     private readonly StackPanel _meta = new() { Spacing = 10 };
-    private readonly SelectableTextBlock _text = Ui.BodyText(string.Empty, raw: true);
+    private readonly SelectableTextBlock _text = Ui.BodyText(string.Empty);
     private readonly TextBlock _title = new() { Classes = { "headline" } };
 
     public RecordDetailWindow(AppServices services)
