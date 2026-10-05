@@ -24,6 +24,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
     private readonly TextBox _keyword;
     private readonly ComboBox _range;
     private readonly TextBlock _summary;
+    private readonly TextBlock _empty;
     private readonly ListBox _list;
 
 
@@ -58,7 +59,8 @@ internal sealed class RecordsPage : UserControl, IRefreshable
             120);
 
         _summary = Ui.Caption("正在读取…");
-        _list = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 460 };
+        _empty = Ui.Hint(string.Empty);
+        _list = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 520 };
         // 详情单独开窗（全进程只有一个，看另一条时内容被覆盖）：挤在列表下面两边都不够用。
         _list.SelectionChanged += (_, _) => OpenDetail();
 
@@ -135,66 +137,35 @@ internal sealed class RecordsPage : UserControl, IRefreshable
     private Control BuildListCard()
     {
         var header = new Grid { ColumnDefinitions = Columns() };
-        AddHeaderCell(header, 0, "时间");
-        AddHeaderCell(header, 1, "进程");
-        AddHeaderCell(header, 2, "窗口标题");
-        AddHeaderCell(header, 3, "识别字数", right: true);
-        AddHeaderCell(header, 4, "状态");
+        Ui.ListHeaderCell(header, 0, "时间");
+        Ui.ListHeaderCell(header, 1, "进程");
+        Ui.ListHeaderCell(header, 2, "窗口标题");
+        Ui.ListHeaderCell(header, 3, "识别字数", right: true);
+        Ui.ListHeaderCell(header, 4, "状态");
 
         _list.ItemTemplate = new FuncDataTemplate<RecordRow>((row, _) =>
         {
             var line = new Grid { ColumnDefinitions = Columns() };
-            AddCell(line, 0, row.Time);
-            AddCell(line, 1, row.Process);
-            AddCell(line, 2, row.Title);
-            AddCell(line, 3, row.Chars, right: true);
-            AddCell(line, 4, row.Status);
+
+            // 回收容器时 Avalonia 会用 null 重建模板（刷新列表、切页都会走到）。
+            // 不挡住就会抛 NullReferenceException，界面随即显示"读取失败"，看着就是"没有内容"。
+            if (row is null)
+            {
+                return line;
+            }
+
+            Ui.ListCell(line, 0, row.Time);
+            Ui.ListCell(line, 1, row.Process);
+            Ui.ListCell(line, 2, row.Title);
+            Ui.ListCell(line, 3, row.Chars, right: true);
+            Ui.ListCell(line, 4, row.Status);
             return line;
         }, supportsRecycling: true);
 
-        var listBlock = new StackPanel { Spacing = 10 };
-        listBlock.Children.Add(header);
-        listBlock.Children.Add(Ui.Divider());
-        listBlock.Children.Add(_list);
-
-        return Ui.Card(null, null, listBlock);
+        return Ui.ListCard(header, _empty, _list);
     }
 
-    private static ColumnDefinitions Columns() => new("150,90,*,64,72");
-
-    private static void AddHeaderCell(Grid grid, int column, string text, bool right = false)
-    {
-        var block = Ui.Caption(text);
-        block.FontWeight = FontWeight.SemiBold;
-        if (right)
-        {
-            block.TextAlignment = TextAlignment.Right;
-            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
-        }
-
-        Grid.SetColumn(block, column);
-        grid.Children.Add(block);
-    }
-
-    private static void AddCell(Grid grid, int column, string text, bool right = false)
-    {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontSize = 13,
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
-
-        if (right)
-        {
-            block.TextAlignment = TextAlignment.Right;
-            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
-        }
-
-        Grid.SetColumn(block, column);
-        grid.Children.Add(block);
-    }
+    private static ColumnDefinitions Columns() => new("150,110,*,72,72");
 
     // ---------------------------------------------------------------- 数据
 
@@ -238,15 +209,18 @@ internal sealed class RecordsPage : UserControl, IRefreshable
                 _summary.Text = result.TotalCount > MaxRows
                     ? $"共 {result.TotalCount} 条，显示最近 {result.Items.Count} 条"
                     : $"共 {result.TotalCount} 条";
+                _empty.IsVisible = false;
             }
             else
             {
                 // 空有两种：库里一条都没有（新装），还是筛选没命中。
                 // 新装时说清楚"它自己会抓"，别让用户去换关键词。
                 var total = await _services.Store.CountAsync(CancellationToken.None);
-                _summary.Text = total == 0
+                _summary.Text = "共 0 条";
+                _empty.Text = total == 0
                     ? "还没有记录。保持运行后会自动抓取；切换一下窗口，几秒后就会出现在这里。"
                     : "没有匹配的记录。可更换关键词，或把时间范围改为「全部」。";
+                _empty.IsVisible = true;
             }
 
 
@@ -255,6 +229,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
         {
             _services.Log.Error("查询记录失败", ex);
             _summary.Text = "读取失败";
+            _empty.IsVisible = false;
         }
         finally
         {

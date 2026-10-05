@@ -295,6 +295,7 @@ internal static class UiProbes
         ProbeTips(services, failures);
         ProbeDialogs(failures);
         ProbeEscCloses(services, failures);
+        ProbeListRecycle(services, failures);
 
         ProbeRunState(services, failures);
         ProbeExitPath(services, failures);
@@ -551,6 +552,53 @@ internal static class UiProbes
         catch (Exception ex)
         {
             failures.Add($"{label}：{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 列表刷新（容器回收）不能把行模板打崩：Avalonia 回收容器时会用 null 重建模板，
+    /// 行模板没挡住就抛 NullReferenceException——界面表现是"页面没有内容"（列表被清空 + 显示读取失败）。
+    /// 已经踩过一次：总结记录和抓取记录都会随机变空，日志里是 NRE。
+    /// </summary>
+    private static void ProbeListRecycle(AppServices services, List<string> failures)
+    {
+        var pages = new (string Label, Func<Control> Factory)[]
+        {
+            ("总结记录", () => new SummariesPage(services)),
+            ("抓取记录", () => new RecordsPage(services)),
+        };
+
+        foreach (var (label, factory) in pages)
+        {
+            try
+            {
+                var page = factory();
+                var window = new Window { Content = page, Width = 1060, Height = 720 };
+                window.Show();
+                Pump(700);                                  // 首次加载 + 容器实化
+
+                (page as IRefreshable)?.Refresh();
+                Pump(700);                                  // 第二次：走容器回收路径
+
+                var list = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault();
+                var count = list?.ItemCount ?? -1;
+
+                window.Close();
+                Pump(40);
+
+                if (count > 0)
+                {
+                    Console.WriteLine($"{Fit(label + " 刷新", 14)} 通过   回收后仍有 {count} 行");
+                }
+                else
+                {
+                    failures.Add($"{label} 刷新：容器回收后列表为空（行模板可能在 null 上抛异常）");
+                }
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{label} 刷新：{ex.GetType().Name}: {ex.Message}");
+            }
         }
     }
 

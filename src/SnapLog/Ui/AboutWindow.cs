@@ -11,6 +11,9 @@ namespace SnapLog.Ui;
 /// <summary>关于：版本、位置、当前状态。诊断问题的第一步信息都在这。</summary>
 internal sealed class AboutWindow : Window
 {
+    /// <summary>项目主页。README 里写的是同一个地址。</summary>
+    private const string GitHubUrl = "github.com/jionghang/snap-log";
+
     private readonly string _diagnostics;
 
     public AboutWindow(AppServices services)
@@ -65,32 +68,15 @@ internal sealed class AboutWindow : Window
             Environment.NewLine,
             diagnostics.Concat(rows).Select(row => $"{row.Label}：{row.Value}"));
 
+        // 关于窗口只讲"这是什么、去哪找它"；目录、版本这些排错信息都在「复制诊断信息」里。
         var panel = new StackPanel { Spacing = 10 };
         panel.Children.Add(intro);
+        panel.Children.Add(Ui.Inline(8, Ui.Label("项目主页"),
+            Ui.Link(GitHubUrl, () => MainWindow.OpenPath("https://" + GitHubUrl))));
         panel.Children.Add(Ui.Divider());
+        panel.Children.Add(Ui.Hint("数据目录、日志目录和运行状态都在「复制诊断信息」的内容里，排错时一并带走。"));
 
-        foreach (var (label, value) in rows)
-        {
-            panel.Children.Add(Ui.FieldRow(label, new SelectableTextBlock
-            {
-                Text = value,
-                TextWrapping = TextWrapping.Wrap,
-                FontSize = 12.5,
-            }));
-        }
-
-        var buttons = Ui.ButtonRow(
-            Ui.Secondary("打开数据目录", () =>
-            {
-                MainWindow.OpenPath(services.Paths.DataDirectory);
-                return Task.CompletedTask;
-            }),
-            Ui.Secondary("打开日志目录", () =>
-            {
-                MainWindow.OpenPath(services.Paths.LogsDirectory);
-                return Task.CompletedTask;
-            }),
-            CopyDiagnosticsButton());
+        var buttons = Ui.ButtonRow(CopyDiagnosticsButton());
 
         Content = new Border
         {

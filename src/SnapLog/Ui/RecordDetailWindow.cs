@@ -22,7 +22,10 @@ internal sealed class RecordDetailWindow : Window
     public static event Action? RecordDeleted;
 
     private readonly AppServices _services;
-    private readonly StackPanel _body = new() { Spacing = 10 };
+
+    /// <summary>标题下面的元数据与按钮：固定不动，滚动只滚正文。</summary>
+    private readonly StackPanel _meta = new() { Spacing = 10 };
+    private readonly SelectableTextBlock _text = Ui.BodyText(string.Empty);
     private readonly TextBlock _title = new() { FontSize = 15.5, FontWeight = FontWeight.SemiBold };
 
     public RecordDetailWindow(AppServices services)
@@ -56,14 +59,23 @@ internal sealed class RecordDetailWindow : Window
 
     private Grid BuildLayout()
     {
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        // 标题 / 元数据与按钮 / 分隔线 都是固定的，只有正文在滚动区里。
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,Auto,*") };
 
         grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("识别出的文字可以选中复制，也可以用「复制文字」整段复制。")));
 
-        var body = new ScrollViewer { Content = _body };
-        body.Margin = new Thickness(0, 12, 0, 0);
-        Grid.SetRow(body, 1);
-        grid.Children.Add(body);
+        _meta.Margin = new Thickness(0, 10, 0, 0);
+        Grid.SetRow(_meta, 1);
+        grid.Children.Add(_meta);
+
+        var divider = Ui.Divider();
+        divider.Margin = new Thickness(0, 12, 0, 10);
+        Grid.SetRow(divider, 2);
+        grid.Children.Add(divider);
+
+        var scroller = new ScrollViewer { Content = _text };
+        Grid.SetRow(scroller, 3);
+        grid.Children.Add(scroller);
 
         return grid;
     }
@@ -84,7 +96,8 @@ internal sealed class RecordDetailWindow : Window
 
     internal async Task LoadAsync(long recordId)
     {
-        _body.Children.Clear();
+        _meta.Children.Clear();
+        _text.Text = string.Empty;
         _title.Text = "记录详情";
 
         ActivityRecord? record;
@@ -96,7 +109,7 @@ internal sealed class RecordDetailWindow : Window
         catch (Exception ex)
         {
             _services.Log.Error("读取记录详情失败", ex);
-            _body.Children.Add(Ui.Caption("读取失败：" + ex.Message));
+            _meta.Children.Add(Ui.Caption("读取失败：" + ex.Message));
             return;
         }
 
@@ -132,7 +145,7 @@ internal sealed class RecordDetailWindow : Window
 
         _title.Text = $"记录详情 · {record.Timestamp:MM-dd HH:mm}";
 
-        _body.Children.Add(Ui.Hint(meta.ToString()));
+        _meta.Children.Add(Ui.Hint(meta.ToString()));
 
         var imagePath = _services.Paths.ResolveStoredImagePath(record.ImagePath);
         var copy = Ui.Secondary("复制文字", () => Task.CompletedTask);
@@ -154,9 +167,9 @@ internal sealed class RecordDetailWindow : Window
         }
 
         buttons.Children.Add(Ui.Secondary("删除这条", () => DeleteAsync(recordId)));
-        _body.Children.Add(buttons);
+        _meta.Children.Add(buttons);
 
-        _body.Children.Add(Ui.BodyText(record.OcrText.Length > 0 ? record.OcrText : "（这条没有识别到文字）"));
+        _text.Text = record.OcrText.Length > 0 ? record.OcrText : "（这条没有识别到文字）";
     }
 
     private void CopyText(string text)

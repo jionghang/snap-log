@@ -99,6 +99,61 @@ internal static class Ui
     /// <summary>页面标题；带提示时标题旁挂一个问号（原来标题下面那行说明改挂这里）。</summary>
     public static Control PageHeader(string text, string tip) => Inline(10, PageTitle(text), Tip(tip));
 
+    /// <summary>列表表头的一格：列名。列宽由各页的 Columns() 决定，两个记录页共用这套。</summary>
+    public static void ListHeaderCell(Grid grid, int column, string text, bool right = false)
+    {
+        var block = Caption(text);
+        block.FontWeight = FontWeight.SemiBold;
+        if (right)
+        {
+            block.TextAlignment = TextAlignment.Right;
+            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
+        }
+
+        Grid.SetColumn(block, column);
+        grid.Children.Add(block);
+    }
+
+    /// <summary>列表行的一格：正文。右对齐的数字列同样留出 14px 间距。</summary>
+    public static void ListCell(Grid grid, int column, string text, bool right = false, string? color = null)
+    {
+        var block = new TextBlock
+        {
+            Text = text,
+            FontSize = 13,
+            TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+
+        if (right)
+        {
+            block.TextAlignment = TextAlignment.Right;
+            block.Margin = new Thickness(0, 0, 14, 0);
+        }
+
+        if (color is not null)
+        {
+            block.Foreground = new SolidColorBrush(Color.Parse(color));
+        }
+
+        Grid.SetColumn(block, column);
+        grid.Children.Add(block);
+    }
+
+    /// <summary>
+    /// 列表卡片骨架：表头 + 分隔线 + 空态说明 + 列表。
+    /// 抓取记录和总结记录共用它，保证两个页面的列表长得一模一样。
+    /// </summary>
+    public static Border ListCard(Grid header, TextBlock empty, ListBox list)
+    {
+        var body = new StackPanel { Spacing = 10 };
+        body.Children.Add(header);
+        body.Children.Add(Divider());
+        body.Children.Add(empty);
+        body.Children.Add(list);
+        return Card(null, null, body);
+    }
+
     /// <summary>一张白卡片：标题 + 说明 + 内容。内容之间默认 14px 间距。</summary>
     public static Border Card(string? title = null, string? hint = null, params Control[] children) =>
         CardWith(string.IsNullOrEmpty(title) ? null : Section(title),

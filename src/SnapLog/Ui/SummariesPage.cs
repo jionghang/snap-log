@@ -19,12 +19,14 @@ internal sealed class SummariesPage : UserControl, IRefreshable
     private readonly AppServices _services;
     private readonly ListBox _list;
     private readonly TextBlock _count;
+    private readonly TextBlock _empty;
 
     public SummariesPage(AppServices services)
     {
         _services = services;
 
         _count = Ui.Caption(string.Empty);
+        _empty = Ui.Hint(string.Empty);
         _list = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 520 };
         _list.SelectionChanged += (_, _) => OpenDetail();
 
@@ -53,71 +55,37 @@ internal sealed class SummariesPage : UserControl, IRefreshable
     private Control BuildList()
     {
         var header = new Grid { ColumnDefinitions = Columns() };
-        AddHeaderCell(header, 0, "生成时间");
-        AddHeaderCell(header, 1, "总结日期");
-        AddHeaderCell(header, 2, "记录数", right: true);
-        AddHeaderCell(header, 3, "飞书推送");
-        AddHeaderCell(header, 4, "结果");
+        Ui.ListHeaderCell(header, 0, "生成时间");
+        Ui.ListHeaderCell(header, 1, "总结日期");
+        Ui.ListHeaderCell(header, 2, "记录数", right: true);
+        Ui.ListHeaderCell(header, 3, "飞书推送");
+        Ui.ListHeaderCell(header, 4, "结果");
 
         _list.ItemTemplate = new FuncDataTemplate<SummaryRun>((run, _) =>
         {
             var line = new Grid { ColumnDefinitions = Columns() };
-            AddCell(line, 0, run.StartedAt.ToString("MM-dd HH:mm"));
-            AddCell(line, 1, run.CoveredDay.Length > 0 ? run.CoveredDay : "—");
-            AddCell(line, 2, run.RecordCount.ToString(), right: true);
-            AddCell(line, 3, run.PushedAt is not null ? "已推送" : "未推送", run.PushedAt is not null ? "#15803D" : "#6B7280");
-            AddCell(line, 4, run.Success ? "成功" : "失败", run.Success ? "#15803D" : "#B91C1C");
+
+            // 回收容器时 Avalonia 会用 null 重建模板（刷新列表、切页都会走到）。
+            // 不挡住就会抛 NullReferenceException，界面随即显示"读取失败"，看着就是"没有内容"。
+            if (run is null)
+            {
+                return line;
+            }
+
+            Ui.ListCell(line, 0, run.StartedAt.ToString("MM-dd HH:mm"));
+            Ui.ListCell(line, 1, run.CoveredDay.Length > 0 ? run.CoveredDay : "—");
+            Ui.ListCell(line, 2, run.RecordCount.ToString(), right: true);
+            Ui.ListCell(line, 3, run.PushedAt is not null ? "已推送" : "未推送",
+                color: run.PushedAt is not null ? "#15803D" : "#6B7280");
+            Ui.ListCell(line, 4, run.Success ? "成功" : "失败",
+                color: run.Success ? "#15803D" : "#B91C1C");
             return line;
         }, supportsRecycling: true);
 
-        var listBlock = new StackPanel { Spacing = 10 };
-        listBlock.Children.Add(header);
-        listBlock.Children.Add(Ui.Divider());
-        listBlock.Children.Add(_list);
-
-        return Ui.Card(null, null, listBlock);
+        return Ui.ListCard(header, _empty, _list);
     }
 
-    private static ColumnDefinitions Columns() => new("110,*,56,72,56");
-
-    private static void AddHeaderCell(Grid grid, int column, string text, bool right = false)
-    {
-        var block = Ui.Caption(text);
-        block.FontWeight = FontWeight.SemiBold;
-        if (right)
-        {
-            block.TextAlignment = TextAlignment.Right;
-            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
-        }
-
-        Grid.SetColumn(block, column);
-        grid.Children.Add(block);
-    }
-
-    private static void AddCell(Grid grid, int column, string text, string? color = null, bool right = false)
-    {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontSize = 13,
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
-
-        if (right)
-        {
-            block.TextAlignment = TextAlignment.Right;
-            block.Margin = new Thickness(0, 0, 14, 0);   // 和右边那一列留出间距
-        }
-
-        if (color is not null)
-        {
-            block.Foreground = new SolidColorBrush(Color.Parse(color));
-        }
-
-        Grid.SetColumn(block, column);
-        grid.Children.Add(block);
-    }
+    private static ColumnDefinitions Columns() => new("150,*,72,84,72");
 
     private async Task LoadAsync()
     {
@@ -129,11 +97,9 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             var pushed = runs.Count(run => run.PushedAt is not null);
             _count.Text = $"共 {runs.Count} 条　已推送 {pushed} 条";
 
-            if (runs.Count == 0)
-            {
-                _list.ItemsSource = null;
-                _count.Text = "暂无总结记录";
-            }
+            // 空态说明放在列表的位置上，和"抓取记录"同一处、同一样式；页头只留计数。
+            _empty.Text = "还没有生成过总结。开启每天自动执行后，到点会自动生成。";
+            _empty.IsVisible = runs.Count == 0;
         }
         catch (Exception ex)
         {
@@ -142,6 +108,7 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             // 读失败也要说一句，否则页面就是一片空白，用户以为没生成过。
             _count.Text = "读取失败，稍后重试";
             _list.ItemsSource = null;
+            _empty.IsVisible = false;
         }
     }
 
@@ -159,7 +126,9 @@ internal sealed class SummaryDetailWindow : Window
 {
     private static SummaryDetailWindow? _current;
 
-    private readonly StackPanel _body = new() { Spacing = 10 };
+    /// <summary>标题下面的元数据与按钮：固定不动，滚动只滚正文。</summary>
+    private readonly StackPanel _meta = new() { Spacing = 10 };
+    private readonly SelectableTextBlock _text = Ui.BodyText(string.Empty);
     private readonly TextBlock _title = new() { FontSize = 15.5, FontWeight = FontWeight.SemiBold };
 
     public SummaryDetailWindow()
@@ -182,12 +151,21 @@ internal sealed class SummaryDetailWindow : Window
             }
         };
 
-        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        // 标题 / 元数据与按钮 / 分隔线 都是固定的，只有正文在滚动区里。
+        var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,Auto,*") };
         grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("正文可以选中复制。")));
 
-        var scroller = new ScrollViewer { Content = _body };
-        scroller.Margin = new Thickness(0, 12, 0, 0);
-        Grid.SetRow(scroller, 1);
+        _meta.Margin = new Thickness(0, 10, 0, 0);
+        Grid.SetRow(_meta, 1);
+        grid.Children.Add(_meta);
+
+        var divider = Ui.Divider();
+        divider.Margin = new Thickness(0, 12, 0, 10);
+        Grid.SetRow(divider, 2);
+        grid.Children.Add(divider);
+
+        var scroller = new ScrollViewer { Content = _text };
+        Grid.SetRow(scroller, 3);
         grid.Children.Add(scroller);
 
         Content = new Border { Padding = new Thickness(22, 18, 22, 18), Child = grid };
@@ -208,7 +186,8 @@ internal sealed class SummaryDetailWindow : Window
 
     internal void Render(AppServices services, SummaryRun run)
     {
-        _body.Children.Clear();
+        _meta.Children.Clear();
+        _text.Text = string.Empty;
 
         _title.Text = $"{run.CoveredDay} 的总结"
                       + (run.Success ? string.Empty : "（失败）");
@@ -229,22 +208,22 @@ internal sealed class SummaryDetailWindow : Window
             meta.Append("　尚未推送到飞书");
         }
 
-        _body.Children.Add(Ui.Hint(meta.ToString()));
+        _meta.Children.Add(Ui.Hint(meta.ToString()));
 
         if (!run.Success)
         {
-            _body.Children.Add(Ui.Hint("失败原因：" + (run.Message.Length > 0
+            _meta.Children.Add(Ui.Hint("失败原因：" + (run.Message.Length > 0
                 ? run.Message
                 : "没有记录原因，可能是模型接口没有返回内容。下次自动执行时会重试这一天。")));
         }
 
         if (run.SavedPath.Length > 0 && File.Exists(run.SavedPath))
         {
-            _body.Children.Add(Ui.ButtonRow(
+            _meta.Children.Add(Ui.ButtonRow(
                 Ui.Secondary("打开文件", () => { MainWindow.OpenPath(run.SavedPath); return Task.CompletedTask; })));
         }
 
-        _body.Children.Add(Ui.BodyText(run.Markdown.Length > 0 ? run.Markdown : run.Message));
+        _text.Text = run.Markdown.Length > 0 ? run.Markdown : run.Message;
 
         _ = services;
     }
