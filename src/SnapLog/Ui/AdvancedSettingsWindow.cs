@@ -75,22 +75,30 @@ internal sealed class AdvancedSettingsWindow : Window
     // ---------------------------------------------------------------- 分组
 
     private Control BuildRecordingCard() => Ui.CardWith(
-        Ui.Header("记录范围", "勾选后不再记录。密码管理器等敏感程序建议勾选。"),
+        Ui.Header("记录范围",
+            "按进程名匹配：勾选后不再截图，也不会进入总结；已有记录不受影响。"
+            + "清单取自历史记录中出现过的程序。"),
         null,
         Ui.FieldRow("排除的程序", _excluded));
 
     private Control BuildSummaryCard() => Ui.CardWith(
-        Ui.Header("总结偏好", "附加要求会追加到提示词末尾，例如：只写完成的事和结论。"),
+        Ui.Header("总结偏好",
+            "这段文字会原样追加到发给模型的提示词末尾，用于补充写作要求，"
+            + "例如：只写完成的事和结论。留空则不加。"),
         null,
         Ui.FieldRow("附加要求", _extraInstructions));
 
     private Control BuildProjectsCard() => Ui.CardWith(
-        Ui.Header("工作项目", "填了以后，总结按这些项目分组写。"),
+        Ui.Header("工作项目",
+            "总结的主要工作主题按这里的项目分组：项目名称与说明都会发给模型用于归类，"
+            + "说明写得越具体，归类越准。"),
         null,
         _projects);
 
     private Control BuildMappingsCard() => Ui.CardWith(
-        Ui.Header("飞书字段映射", "右侧填写飞书表格中的列名，需完全一致；也可使用下方的自动匹配。"),
+        Ui.Header("飞书字段映射",
+            "左侧是总结里的字段，右侧填对应的飞书表格列名，需与表头完全一致；留空表示该列不写入。"
+            + "下方的自动匹配会读取表头列名后自动配对，核对无误再保存。"),
         null,
         _mappings);
 

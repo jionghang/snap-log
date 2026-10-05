@@ -103,6 +103,10 @@ internal static class Ui
     public static void ListHeaderCell(Grid grid, int column, string text, bool right = false)
     {
         var block = Caption(text);
+
+        // 字号与列内容一致（13），只用字重和颜色区分表头——12 号的表头配 13 号的内容看着不协调。
+        block.FontSize = 13;
+        block.Foreground = new SolidColorBrush(Color.Parse("#4B5563"));
         block.FontWeight = FontWeight.SemiBold;
         if (right)
         {
@@ -146,6 +150,10 @@ internal static class Ui
     /// </summary>
     public static Border ListCard(Grid header, TextBlock empty, ListBox list)
     {
+        // ListBoxItem 自带 10px 横向内边距（见 Theme.axaml 的 ListBoxItem 样式），
+        // 表头不补同样的缩进，列名和列内容就会整整错开 10px。
+        header.Margin = new Thickness(10, 0, 10, 0);
+
         var body = new StackPanel { Spacing = 10 };
         body.Children.Add(header);
         body.Children.Add(Divider());
