@@ -43,7 +43,7 @@ internal sealed class SummariesPage : UserControl, IRefreshable
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         grid.Children.Add(Ui.PageHeader("总结记录",
-            "每天到点自动生成；失败或遗漏的日期会在下一次执行时重做。选择一行可查看正文。"));
+            "每天在设定时间自动生成；失败或遗漏的日期会在下一次执行时重做。选择一行可查看正文。"));
 
         Grid.SetColumn(_count, 1);
         _count.VerticalAlignment = VerticalAlignment.Center;
@@ -98,7 +98,7 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             _count.Text = $"共 {runs.Count} 条　已推送 {pushed} 条";
 
             // 空态说明放在列表的位置上，和"抓取记录"同一处、同一样式；页头只留计数。
-            _empty.Text = "暂无总结记录。开启每天自动执行后，到点自动生成。";
+            _empty.Text = "暂无总结记录。开启每天自动执行后，会在设定时间自动生成。";
             _empty.IsVisible = runs.Count == 0;
         }
         catch (Exception ex)

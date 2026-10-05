@@ -41,7 +41,7 @@ internal sealed class AboutWindow : Window
         intro.Children.Add(Ui.Inline(8, versionLine, Ui.Tip(
             "截图和识别文字都保存在本机；到了设定的时间、且已开启每日自动执行时，才会发送到已配置的模型接口"
             + "（默认仅发送文字；是否附带截图取决于大模型设置）。")));
-        intro.Children.Add(Ui.Hint("每天到点由大模型将当天的屏幕活动整理成一份总结，再推送到飞书多维表格。"));
+        intro.Children.Add(Ui.Hint("每天在设定时间由大模型将当天的屏幕活动整理成一份总结，再推送到飞书多维表格。"));
 
         var rows = new List<(string Label, string Value)>
         {
@@ -146,8 +146,8 @@ internal sealed class FirstRunWindow : Window
 
         var content = new StackPanel { Spacing = 12 };
         content.Children.Add(new TextBlock { Text = "已在后台开始记录", Classes = { "section" } });
-        content.Children.Add(Ui.Hint("尚未配置大模型和飞书。记录功能不受影响，只是到点不会生成总结。"));
-        content.Children.Add(Ui.Hint("平时仅在本机记录；到点会将当天内容发送到配置的模型接口并推送到飞书（默认仅发送文字）。"));
+        content.Children.Add(Ui.Hint("尚未配置大模型和飞书。记录功能不受影响，但每天不会自动生成总结。"));
+        content.Children.Add(Ui.Hint("平时仅在本机记录；每天在设定时间会将当天的内容发送到配置的模型接口并推送到飞书（默认仅发送文字）。"));
 
         var goSettings = Ui.Primary("去设置", () =>
         {

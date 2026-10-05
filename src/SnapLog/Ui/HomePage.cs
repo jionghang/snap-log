@@ -154,7 +154,7 @@ internal sealed class HomePage : UserControl, IRefreshable
         {
             Ui.UpdatePill(_reportPill, "暂无", PillKind.Neutral);
             _reportTitle.Text = "暂无总结记录";
-            _reportDetail.Text = "配置大模型和飞书后，每天到点自动生成。";
+            _reportDetail.Text = "配置大模型和飞书后，会在每天设定时间自动生成。";
             return;
         }
 
@@ -176,7 +176,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         if (!pushed)
         {
-            details += _services.Options.Feishu.Enabled ? "　到点会自动推送" : "　飞书推送未启用";
+            details += _services.Options.Feishu.Enabled ? "　会在设定时间自动推送" : "　飞书推送未启用";
         }
 
         _reportDetail.Text = details;
@@ -303,7 +303,7 @@ internal sealed class HomePage : UserControl, IRefreshable
         var ok = await Ui.Confirm(
             owner,
             "开启每天自动执行？",
-            "到点会将当天的活动内容发送到配置的模型接口，并将生成的总结推送到飞书多维表格。"
+            "每天在设定时间会将当天的活动内容发送到配置的模型接口，并将生成的总结推送到飞书多维表格。"
             + "发送方式（仅文字或附带截图）取决于大模型设置中的发送内容选项。可随时在此关闭。",
             "开启");
 
@@ -375,7 +375,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         var titleColumn = new StackPanel { Spacing = 3 };
         titleColumn.Children.Add(Ui.Inline(8, _stateTitle, Ui.Tip(
-            "到点会将识别出的文字发送到配置的模型接口，并将总结推送到飞书；"
+            "每天在设定时间会将识别出的文字发送到配置的模型接口，并将总结推送到飞书；"
             + "是否附带截图取决于大模型设置。")));
         titleColumn.Children.Add(_stateHint);
         Grid.SetColumn(titleColumn, 1);
@@ -411,7 +411,7 @@ internal sealed class HomePage : UserControl, IRefreshable
             }));
 
         return Ui.CardWith(
-            Ui.Header("最近一次总结", "每天到点自动生成；失败或遗漏的日期会在下一次执行时重做。"),
+            Ui.Header("最近一次总结", "每天在设定时间自动生成；失败或遗漏的日期会在下一次执行时重做。"),
             null, head, _reportDetail, buttons);
     }
 
@@ -430,8 +430,8 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         return Ui.CardWith(
             Ui.Header("每天自动执行",
-                "到点自动执行三步：把前一天的截图识别成文字，生成那一天的总结，再推送到飞书多维表格。"
-                + "总结的是已经结束的那一天，晚上加班的记录也会包含在内；到点电脑未开机时，会在下次启动后自动执行。"),
+                "在设定时间自动执行三步：把前一天的截图识别成文字，生成那一天的总结，再推送到飞书多维表格。"
+                + "总结的是已经结束的那一天，晚上加班的记录也会包含在内；设定时间电脑未开机时，会在下次启动后自动执行。"),
             null, row, _pipelineWarning, _unifyButton, Ui.Divider(), autoStart);
     }
 
