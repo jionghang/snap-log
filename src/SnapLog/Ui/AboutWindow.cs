@@ -144,7 +144,7 @@ internal sealed class FirstRunWindow : Window
 
         var content = new StackPanel { Spacing = 12 };
         content.Children.Add(new TextBlock { Text = "已在后台开始记录", Classes = { "section" } });
-        content.Children.Add(Ui.Hint("尚未配置大模型和飞书。记录功能不受影响，但每天不会自动生成总结。"));
+        content.Children.Add(Ui.Hint("尚未配置大模型与飞书接入。记录功能不受影响，但不会自动生成每天的总结。"));
         content.Children.Add(Ui.Hint("平时仅在本机记录；每天在设定时间会将当天的内容发送到配置的模型接口并推送到飞书（默认仅发送文字）。"));
 
         var goSettings = Ui.Primary("去设置", () =>
