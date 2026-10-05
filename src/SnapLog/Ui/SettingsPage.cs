@@ -100,6 +100,12 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     /// <summary>每秒比一次：配置被改过就提示"有未保存的更改"，改回原样或保存后自动恢复。</summary>
     private void ShowDirtyState()
     {
+        // 测试连接时状态行归测试进度用：每秒一次的覆盖会把"正在测试"一闪就抹掉。
+        if (_testingLlm)
+        {
+            return;
+        }
+
         var text = string.Equals(Snapshot(), _savedSnapshot, StringComparison.Ordinal)
             ? _lastSaveMessage
             : "有未保存的更改，请保存";
@@ -362,12 +368,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
     private async Task RunLlmTestAsync(Window owner)
     {
-        if (_services.SaveOptions())
-        {
-            _savedSnapshot = Snapshot();
-            _lastSaveMessage = "已保存　" + DateTime.Now.ToString("HH:mm:ss");
-        }
-
+        // 测试只读界面当前填写的内存值，不写配置文件：
+        // 测完发现填错了要改，没有被一条"已保存"绊住（此前的保存动作是历史遗留，已去掉）。
         var all = _services.Options.Summarization;
         var targets = all.Providers.Where(provider => provider.Enabled).ToList();
 
@@ -387,9 +389,13 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             lines.Add((string.IsNullOrWhiteSpace(skipped.Name) ? skipped.Model : skipped.Name) + "：未启用，已跳过");
         }
 
-        foreach (var provider in targets)
+        for (var index = 0; index < targets.Count; index++)
         {
+            var provider = targets[index];
             var name = string.IsNullOrWhiteSpace(provider.Name) ? provider.Model : provider.Name;
+
+            // 每个模型开始时更新状态行：测试过程全程有反馈。
+            SetNote(_llmNote, $"正在测试（{index + 1}/{targets.Count}）：{name}…");
 
             // 只带这一个模型、且不重试：这样每条结果就对应一个模型的真实情况。
             var single = new SummarizationOptions
@@ -403,7 +409,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
             if (!OpenAiCompatibleSummarizer.TryCreate(single, _services.Log, out var summarizer, out var createError))
             {
-                lines.Add(name + "：还不能测（" + (createError ?? "配置不完整") + "）");
+                lines.Add(name + "：还不能测，原因：" + (createError ?? "配置不完整"));
+                SetNote(_llmNote, $"已完成（{index + 1}/{targets.Count}）：{name} 配置不完整");
                 continue;
             }
 
@@ -413,11 +420,20 @@ internal sealed class SettingsPage : UserControl, IRefreshable
                 var completion = await summarizer!.SummarizeAsync(request, CancellationToken.None);
                 passed++;
                 lines.Add(name + "：通过（返回 " + Ui.Shorten(completion.Text, 20) + "）");
+                SetNote(_llmNote, $"已完成（{index + 1}/{targets.Count}）：{name} 通过");
             }
             catch (Exception ex)
             {
-                _services.Log.Warn("模型 " + name + " 连通性测试失败：" + ex.Message);
-                lines.Add(name + "：失败（" + Ui.Shorten(ex.Message, 60) + "）");
+                // 聚合异常的消息是汇总语（所有模型都没能完成请求…），真实原因在最后一次尝试里
+                //（例如：接口返回 400、主机解析失败），把它提到提示里来。
+                var reason = ex is SummaryFailedException aggregate && aggregate.Attempts.Count > 0
+                    ? aggregate.Attempts[^1].Error
+                    : ex.Message;
+
+                _services.Log.Warn("模型 " + name + " 连通性测试失败：" + reason);
+                // 原因本身可能带括号，不再用括号包一层（否则会出现嵌套括号）。
+                lines.Add(name + "：失败，原因：" + Ui.Shorten(reason, 80));
+                SetNote(_llmNote, $"已完成（{index + 1}/{targets.Count}）：{name} 失败");
             }
         }
 
