@@ -113,7 +113,7 @@ internal sealed class AboutWindow : Window
     private Button CopyDiagnosticsButton()
     {
         var button = Ui.Secondary("复制诊断信息", () => Task.CompletedTask);
-        ToolTip.SetTip(button, "出现问题时，把复制出来的内容发给维护人员。");
+        ToolTip.SetTip(button, "出现问题时，将复制出来的内容提供给维护人员。");
         button.Click += async (_, _) =>
         {
             await CopyDiagnosticsAsync();

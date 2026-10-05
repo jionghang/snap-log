@@ -141,7 +141,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             _llmNote);
 
         return Ui.CardWith(
-            Ui.Header("大模型", "按顺序调用：前一个失败就换下一个。接口地址填任意 OpenAI 兼容服务的地址，一般以 /v1 结尾。"),
+            Ui.Header("大模型配置", "按顺序调用：前一个失败就换下一个。接口地址填任意 OpenAI 兼容服务的地址，一般以 /v1 结尾。"),
             _llmStatus, head, buttons, _providers);
     }
 
@@ -231,7 +231,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
         var buttons = Ui.ButtonRow(Ui.Primary("保存飞书设置", () => SaveAsync(_feishuNote)), _feishuNote);
 
-        return Ui.CardWithHeader("飞书", _feishuStatus, rows, buttons);
+        return Ui.CardWithHeader("飞书配置", _feishuStatus, rows, buttons);
     }
 
     private Control BuildAboutCard()

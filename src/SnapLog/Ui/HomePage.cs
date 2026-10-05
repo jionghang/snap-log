@@ -375,7 +375,8 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         var titleColumn = new StackPanel { Spacing = 3 };
         titleColumn.Children.Add(Ui.Inline(8, _stateTitle, Ui.Tip(
-            "每天在设定时间会将识别出的文字发送到配置的模型接口，并将总结推送到飞书；"
+            "记录期间会跟随前台窗口自动截图并识别文字；暂停期间不截图，也不执行每日流程。"
+            + "每天在设定时间会将识别出的文字发送到配置的模型接口并生成总结，再推送到飞书；"
             + "是否附带截图取决于大模型设置。")));
         titleColumn.Children.Add(_stateHint);
         Grid.SetColumn(titleColumn, 1);
