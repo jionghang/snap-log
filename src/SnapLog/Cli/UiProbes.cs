@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -297,6 +298,7 @@ internal static class UiProbes
 
         ProbeRunState(services, failures);
         ProbeExitPath(services, failures);
+        ProbeExitWiring(options, paths, log, store, configSourcePath, failures);
         ProbeRetentionScope(paths, log, failures);
         ProbeScheduleRules(services, failures);
         ProbeTrayMenu(services, failures);
@@ -454,6 +456,46 @@ internal static class UiProbes
         }
 
         return tips;
+    }
+
+    /// <summary>
+    /// 退出必须真的走到桌面生命周期的 Shutdown。
+    /// 踩过的坑：托盘模式构造 AppServices 时拿不到生命周期，退出请求被静默丢掉——
+    /// 表现是"点了托盘退出，窗口还在"（自动化里一直没抓到，因为菜单预览那条路径是显式传入的）。
+    /// </summary>
+    private static void ProbeExitWiring(
+        AppOptions options,
+        AppPaths paths,
+        FileLogger log,
+        IActivityRepository store,
+        string? configSourcePath,
+        List<string> failures)
+    {
+        try
+        {
+            // 真的生命周期对象（构造它是安全的，Start() 才会跑起来），
+            // 再用替身挡住 Shutdown——自检进程不能真的被关掉调度器。
+            var lifetime = new ClassicDesktopStyleApplicationLifetime();
+            var services = BuildServices(options, paths, log, store, configSourcePath, desktop: lifetime);
+
+            var reached = false;
+            services.ShutdownOverride = () => reached = true;
+
+            services.ExitApplication();
+
+            if (reached)
+            {
+                Console.WriteLine($"{Fit("退出接线", 14)} 通过   到达桌面生命周期 Shutdown");
+            }
+            else
+            {
+                failures.Add("退出接线：ExitApplication 没有走到桌面生命周期（退出会被静默丢掉）");
+            }
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"退出接线：{ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     /// <summary>

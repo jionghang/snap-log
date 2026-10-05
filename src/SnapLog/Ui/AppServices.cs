@@ -17,7 +17,9 @@ namespace SnapLog.Ui;
 /// </summary>
 public sealed class AppServices : IAsyncDisposable
 {
-    private readonly IClassicDesktopStyleApplicationLifetime? _desktop;
+    // 谁拿到桌面生命周期谁登记：AppServices 是在它存在之前构造的，
+    // 只在构造时赋值会漏（真实托盘模式就是这么漏的，"点了退出窗口还在"）。
+    private IClassicDesktopStyleApplicationLifetime? _desktop;
 
     public AppServices(
         AppOptions options,
@@ -53,6 +55,13 @@ public sealed class AppServices : IAsyncDisposable
 
     /// <summary>启动时读配置遇到的问题（配置坏了会退回默认值）。为空表示一切正常。</summary>
     public string? StartupWarning { get; }
+
+    /// <summary>
+    /// 自检替身：设置后就由它代替真正的 <c>Shutdown()</c>。
+    /// 用来验证"点了退出确实走到桌面生命周期"——这条链路曾经断过（托盘模式没登记生命周期，
+    /// 表现是"点了托盘退出窗口还在"），而当时所有自动化用例都测不到。
+    /// </summary>
+    internal Action? ShutdownOverride { get; set; }
 
     public AppOptions Options { get; }
 
@@ -100,6 +109,7 @@ public sealed class AppServices : IAsyncDisposable
     /// <summary>托盘模式：建托盘、建主窗口、按配置决定要不要直接显示。</summary>
     public void AttachDesktop(IClassicDesktopStyleApplicationLifetime desktop)
     {
+        _desktop = desktop;
         Tray = new TrayHost(this);
         Main = new MainWindow(this);
         desktop.MainWindow = Main;
@@ -174,6 +184,8 @@ public sealed class AppServices : IAsyncDisposable
 
     public void ExitApplication()
     {
+        // 这条日志是排"点了退出没反应"用的：能看出走到哪一步、环境是否齐全。
+        Log.Info($"退出：开始（主窗口={(Main is null ? "无" : "有")}，桌面生命周期={(_desktop is null ? "无" : "有")}）");
         Tray?.Hide();
 
         // 主窗口的关闭按钮被重写成"只收起"，不先放行的话 Shutdown 会被 OnClosing 拦下来，
@@ -183,7 +195,47 @@ public sealed class AppServices : IAsyncDisposable
             main.AllowClose = true;
         }
 
-        _desktop?.Shutdown();
+        if (_desktop is null)
+        {
+            // 命令行/自检环境没有桌面生命周期：关掉窗口就返回，进程由调用方结束。
+            Log.Warn("退出：没有桌面生命周期，仅关闭窗口");
+            Main?.Close();
+            return;
+        }
+
+        // 双保险：先自己把主窗口关掉，再让生命周期收尾。
+        // 只做其中一层都出过问题——窗口的关闭按钮被改写成"只收起"，而生命周期在托盘模式下
+        // 曾经根本没被登记（见字段注释），两次的表现都是"点了退出窗口还在"。
+        Main?.Close();
+
+        if (ShutdownOverride is { } probe)
+        {
+            // 自检路径：确认"退出请求确实走到了桌面生命周期"就够了，
+            // 不能真的调 Shutdown——那会把自检进程的调度器一起关掉。
+            probe();
+            return;
+        }
+
+        _desktop.Shutdown();
+        Log.Info($"退出：Shutdown 已返回（剩余窗口 {_desktop.Windows.Count} 个）");
+
+        // 兜底：万一消息循环仍然没退（历史问题复发或环境异常），两秒后直接结束进程——
+        // 托盘程序退不掉是最严重的问题，只能由用户去任务管理器杀。
+        // 数据是随写随存的（记录逐条提交、任务运行时间在每次任务后写 state.json），不会丢。
+        // 只在真正拉起界面的进程里生效：自检/命令行调用 ExitApplication 不该被它结束。
+        if (Main is null)
+        {
+            return;
+        }
+
+        var watchdog = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+        watchdog.Tick += (_, _) =>
+        {
+            watchdog.Stop();
+            Log.Warn("退出：Shutdown 之后进程仍未结束，兜底直接退出进程");
+            Environment.Exit(0);
+        };
+        watchdog.Start();
     }
 
     // ---------------------------------------------------------------- 动作
