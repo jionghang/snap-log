@@ -86,6 +86,8 @@ internal static class UiProbes
         Shoot(shots, output, "02-records", "抓取记录", () => new RecordsPage(services), 1060, 720, SelectFirstRow);
         Shoot(shots, output, "03-summaries", "总结记录", () => new SummariesPage(services), 1060, 720, SelectFirstRow);
         Shoot(shots, output, "04-settings", "设置", () => new SettingsPage(services), 1060, 720);
+        // 设置页比默认窗口高，另拍一张高的：核对整页对齐与留白（开发用）
+        Shoot(shots, output, "04b-settings-tall", "设置（整页）", () => new SettingsPage(services), 1060, 1180);
         Shoot(shots, output, "05-advanced", "高级设置（独立窗口）", () => new AdvancedSettingsWindow(services), 780, 880);
         Shoot(shots, output, "05b-advanced-bottom", "高级设置（滚动到底）", () => new AdvancedSettingsWindow(services), 780, 880, ScrollToEnd);
         Shoot(shots, output, "06-window", "主窗口", () => new MainWindow(services), 1060, 720);

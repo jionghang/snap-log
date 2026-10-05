@@ -215,7 +215,12 @@ internal static class Ui
     /// 一行：左侧固定宽度标题（可带问号提示），右侧控件，下面可选一行灰色说明。
     /// 能收进问号的说明就别写成 hint——界面上少一行字，扫起来更快。
     /// </summary>
-    public static Grid FieldRow(string label, Control editor, string? hint = null, string? tip = null)
+    /// <param name="labelTop">
+    /// 标签顶部对齐。控件比一行高时（多列勾选网格、多行输入框）用它：
+    /// 默认的垂直居中对齐会让标签飘在控件中间。
+    /// </param>
+    public static Grid FieldRow(
+        string label, Control editor, string? hint = null, string? tip = null, bool labelTop = false)
     {
         var grid = new Grid
         {
@@ -223,7 +228,7 @@ internal static class Ui
         };
 
         var caption = Label(label);
-        caption.VerticalAlignment = VerticalAlignment.Center;
+        caption.VerticalAlignment = labelTop ? VerticalAlignment.Top : VerticalAlignment.Center;
 
         if (string.IsNullOrEmpty(tip))
         {
@@ -233,6 +238,7 @@ internal static class Ui
         else
         {
             var labelRow = Inline(6, caption, Tip(tip));
+            labelRow.VerticalAlignment = caption.VerticalAlignment;
             Grid.SetColumn(labelRow, 0);
             grid.Children.Add(labelRow);
         }

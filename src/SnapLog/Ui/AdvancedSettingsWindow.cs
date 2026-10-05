@@ -79,12 +79,12 @@ internal sealed class AdvancedSettingsWindow : Window
         Ui.Header("记录范围",
             "决定哪些程序不参与记录：勾选后不再截图，也不进入总结；清单取自历史记录中出现过的程序。"),
         null,
-        Ui.FieldRow("排除的程序", _excluded));
+        Ui.FieldRow("排除的程序", _excluded, labelTop: true));
 
     private Control BuildSummaryCard() => Ui.CardWith(
         Ui.Header("总结偏好", "补充写作要求的自定义段落：内容原样追加到提示词末尾；留空则不加。"),
         null,
-        Ui.FieldRow("附加要求", _extraInstructions));
+        Ui.FieldRow("附加要求", _extraInstructions, labelTop: true));
 
     private Control BuildProjectsCard() => Ui.CardWith(
         Ui.Header("工作项目", "指定总结的分组方式：主要工作主题按这里的项目分组，说明越具体归类越准。"),
