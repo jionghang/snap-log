@@ -79,7 +79,7 @@ internal sealed class AboutWindow : Window
 
         Content = new Border
         {
-            Padding = new Thickness(22, 20, 22, 18),
+            Padding = new Thickness(22, 20, 22, 20),
             Child = new StackPanel { Spacing = 16, Children = { panel, buttons } },
         };
     }
@@ -176,6 +176,6 @@ internal sealed class FirstRunWindow : Window
             }
         };
 
-        Content = new Border { Padding = new Thickness(22, 20, 22, 18), Child = content };
+        Content = new Border { Padding = new Thickness(22, 20, 22, 20), Child = content };
     }
 }

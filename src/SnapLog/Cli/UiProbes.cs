@@ -86,8 +86,8 @@ internal static class UiProbes
         Shoot(shots, output, "02-records", "抓取记录", () => new RecordsPage(services), 1060, 720, SelectFirstRow);
         Shoot(shots, output, "03-summaries", "总结记录", () => new SummariesPage(services), 1060, 720, SelectFirstRow);
         Shoot(shots, output, "04-settings", "设置", () => new SettingsPage(services), 1060, 720);
-        Shoot(shots, output, "05-advanced", "高级设置（独立窗口）", () => new AdvancedSettingsWindow(services), 760, 640);
-        Shoot(shots, output, "05b-advanced-bottom", "高级设置（滚动到底）", () => new AdvancedSettingsWindow(services), 760, 640, ScrollToEnd);
+        Shoot(shots, output, "05-advanced", "高级设置（独立窗口）", () => new AdvancedSettingsWindow(services), 780, 880);
+        Shoot(shots, output, "05b-advanced-bottom", "高级设置（滚动到底）", () => new AdvancedSettingsWindow(services), 780, 880, ScrollToEnd);
         Shoot(shots, output, "06-window", "主窗口", () => new MainWindow(services), 1060, 720);
         Shoot(shots, output, "07-tray-menu", "托盘右键菜单", () => new TrayMenuWindow(services) { CloseOnDeactivate = false }, 248, 240);
         Shoot(shots, output, "08-record-detail", "记录详情（独立窗口）", () =>

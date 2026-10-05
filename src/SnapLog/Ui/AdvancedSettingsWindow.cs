@@ -34,10 +34,11 @@ internal sealed class AdvancedSettingsWindow : Window
         _saved = saved;
 
         Title = "高级设置";
-        Width = 760;
-        Height = 640;
+        Width = 780;
+        Height = 880;          // 常用数据量下尽量一屏放下，减少滚动
         MinWidth = 620;
         MinHeight = 460;
+        MaxHeight = 980;       // 别超过工作区（本机 1040，留出任务栏）
         Icon = IconFactory.WindowIcon;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 

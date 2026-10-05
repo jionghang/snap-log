@@ -134,7 +134,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     {
         var head = Ui.FieldRow("启用大模型总结", _summaryEnabled);
 
-        // 保存行放在卡片顶部：模型多的时候卡片会很长，按钮留在底部就会被挤出屏幕。
+        // 按钮在设置项之后：先看到要设什么，再保存；页面本身可滚动，不用担心按钮被挤出屏幕。
         var buttons = Ui.ButtonRow(
             Ui.Primary("保存大模型设置", () => SaveAsync(_llmNote)),
             Ui.Secondary("测试连接", TestLlmAsync),
@@ -142,7 +142,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
         return Ui.CardWith(
             Ui.Header("大模型配置", "按顺序调用：前一个失败就换下一个。接口地址填任意 OpenAI 兼容服务的地址，一般以 /v1 结尾。"),
-            _llmStatus, head, buttons, _providers);
+            _llmStatus, head, _providers, buttons);
     }
 
     /// <summary>把进程名说成人话：勾选清单里出现 et / msedge 这种名字，没人知道是什么。</summary>

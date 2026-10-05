@@ -438,7 +438,7 @@ internal static class Ui
     /// <summary>把页面内容裹成"卡片之间留 16px"的竖排。</summary>
     public static StackPanel Page(params Control[] blocks)
     {
-        var panel = new StackPanel { Spacing = 16, Margin = new Thickness(20, 18, 20, 20) };
+        var panel = new StackPanel { Spacing = 16, Margin = new Thickness(20, 18, 20, 18) };
         foreach (var block in blocks)
         {
             panel.Children.Add(block);

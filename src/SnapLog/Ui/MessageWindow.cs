@@ -79,7 +79,7 @@ internal sealed class MessageWindow : Window
 
         Content = new StackPanel
         {
-            Margin = new Avalonia.Thickness(22, 20, 22, 18),
+            Margin = new Avalonia.Thickness(22, 20, 22, 20),
             Spacing = 18,
             Children =
             {
