@@ -130,6 +130,12 @@ public interface IActivityStore : IAsyncDisposable
     /// </summary>
     Task<int> ClearImagePathsBeforeAsync(DateTime cutoff, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// 清空全部记录（设置页"清空本地记录和总结"用），返回截图文件路径，
+    /// 由调用方决定文件怎么处理（界面上会一并删除）。
+    /// </summary>
+    Task<IReadOnlyList<string>> DeleteAllAsync(CancellationToken cancellationToken);
+
     // ---------------------------------------------------------------- 定时批量识别
 
     /// <summary>

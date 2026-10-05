@@ -139,4 +139,13 @@ public interface ISummaryHistoryStore
         CancellationToken cancellationToken);
 
     Task<int> DeleteSummaryRunsBeforeAsync(DateTime cutoff, CancellationToken cancellationToken);
+
+    /// <summary>总结历史总条数（清空前的确认提示用）。</summary>
+    Task<long> CountSummaryRunsAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 清空全部总结历史（设置页"清空本地记录和总结"用），返回保存过的 Markdown 文件路径，
+    /// 由调用方决定文件怎么处理（界面上会一并删除）。
+    /// </summary>
+    Task<IReadOnlyList<string>> DeleteAllSummaryRunsAsync(CancellationToken cancellationToken);
 }

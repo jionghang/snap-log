@@ -73,7 +73,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             _status,
             BuildLlmCard(),
             BuildFeishuCard(),
-            BuildAboutCard()));
+            BuildAboutCard(),
+            BuildDataCard()));
 
         _savedSnapshot = Snapshot();
         _dirtyWatch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -252,6 +253,121 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             Ui.Header("其他", "关闭窗口只收进托盘，仍在后台记录；退出请使用托盘菜单。"
                               + "排除的程序、附加要求、工作项目与字段映射都在高级设置里。"),
             null, buttons);
+    }
+
+    /// <summary>清空属于危险操作：单独成卡片放页尾，点下去要过两道确认。</summary>
+    private Control BuildDataCard()
+    {
+        var clear = new Button { Content = "清空本地记录和总结", Classes = { "danger" } };
+        clear.Click += (_, _) => _ = ClearLocalDataAsync();
+
+        return Ui.CardWith(
+            Ui.Header("本地数据", "抓取记录、截图与总结都保存在本机。清空后无法恢复；"
+                                  + "已推送到飞书的内容不受影响，程序也会照常继续记录。"),
+            null, Ui.ButtonRow(clear));
+    }
+
+    /// <summary>
+    /// 清空本地记录与总结。危险操作走两道确认：第一道说清删什么，第二道是最终确认。
+    /// 只动本机数据：飞书上已有的内容和配置文件都不受影响。
+    /// </summary>
+    private async Task ClearLocalDataAsync()
+    {
+        if (OwnerWindow() is not { } owner)
+        {
+            return;
+        }
+
+        long recordCount;
+        long summaryCount;
+        try
+        {
+            recordCount = await _services.Store.CountAsync(CancellationToken.None);
+            summaryCount = await _services.Store.CountSummaryRunsAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _services.Log.Error("读取待清空的数据条数失败", ex);
+            await Ui.Info(owner, "清空失败", "读取本地数据条数失败：" + ex.Message);
+            return;
+        }
+
+        if (recordCount == 0 && summaryCount == 0)
+        {
+            await Ui.Info(owner, "没有可清空的数据", "本机目前没有抓取记录和总结记录。");
+            return;
+        }
+
+        // 第一道确认：说清删什么、影响什么。
+        var proceed = await Ui.Confirm(owner,
+            "清空本地记录和总结？",
+            $"将删除全部 {recordCount} 条抓取记录（含对应截图文件）和 {summaryCount} 条总结记录（含保存的正文文件）。"
+            + Environment.NewLine + Environment.NewLine
+            + "已推送到飞书的内容不受影响；本机数据删除后无法恢复。",
+            "继续");
+        if (!proceed)
+        {
+            return;
+        }
+
+        // 第二道确认：不可撤销的最后一道。
+        var confirmed = await Ui.Confirm(owner,
+            "确认清空？",
+            "这是最后一次确认：全部本地记录、截图与总结都会删除，且无法恢复。",
+            "确认清空",
+            danger: true);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            var imagePaths = await _services.Store.DeleteAllAsync(CancellationToken.None);
+            var summaryPaths = await _services.Store.DeleteAllSummaryRunsAsync(CancellationToken.None);
+
+            var files = 0;
+            foreach (var stored in imagePaths)
+            {
+                files += DeleteFile(_services.Paths.ResolveStoredImagePath(stored));
+            }
+
+            foreach (var path in summaryPaths)
+            {
+                files += DeleteFile(path);
+            }
+
+            _services.Log.Info($"已清空本地数据：记录 {recordCount} 条、总结 {summaryCount} 条、文件 {files} 个");
+
+            await Ui.Info(owner, "已清空",
+                $"已删除 {recordCount} 条抓取记录与 {summaryCount} 条总结"
+                + (files > 0 ? $"，连同 {files} 个文件" : string.Empty)
+                + "。之后会照常记录新的活动。");
+        }
+        catch (Exception ex)
+        {
+            _services.Log.Error("清空本地数据失败", ex);
+            await Ui.Info(owner, "清空失败", ex.Message);
+        }
+    }
+
+    /// <summary>清空时删文件：失败不打断流程（行已经删掉），只记日志。返回是否真的删了一个。</summary>
+    private int DeleteFile(string path)
+    {
+        try
+        {
+            if (path.Length > 0 && File.Exists(path))
+            {
+                File.Delete(path);
+                return 1;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _services.Log.Warn($"清空时删除文件失败：{path} —— {ex.Message}");
+        }
+
+        return 0;
     }
 
     /// <summary>高级设置独立成弹窗：里面的选项多数人一辈子不改一次。</summary>

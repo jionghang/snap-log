@@ -395,13 +395,13 @@ internal sealed class CliRunner
         // 7) 图片降级判定：模型拒收图片时改发纯文字，判定不能误伤普通报错
         var imageFallbackOk = VerifyImageFallback(report);
 
-        // 8) 总结记录的删除：详情窗"删除这条"走的就是这个接口（沙盒库里插一条、删一条）
-        var summaryDeleteOk = await VerifySummaryDeleteAsync(report, cancellationToken).ConfigureAwait(false);
+        // 8) 数据删除与清空：详情窗"删除这条"与设置页"清空本地记录和总结"走的就是这些接口
+        var dataClearingOk = await VerifyDataClearingAsync(report, cancellationToken).ConfigureAwait(false);
 
         // 9) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
         var planOk = VerifySummaryPlan(report);
 
-        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk && promptOk && imageFallbackOk && summaryDeleteOk;
+        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk && promptOk && imageFallbackOk && dataClearingOk;
 
         if (restored.TextLength == 0)
         {
@@ -512,13 +512,14 @@ internal sealed class CliRunner
     }
 
     /// <summary>
-    /// 总结记录的删除：详情窗的"删除这条"走 store 的删除接口（返回保存的文件路径，由调用方删文件）。
-    /// 在沙盒库里插一条、删一条，确认行真的没了、保存路径也带回来了。
+    /// 数据的删除与清空：详情窗的"删除这条"与设置页的"清空本地记录和总结"都走这些接口
+    /// （返回保存的文件路径，由调用方删文件）。在沙盒库里插一条、删一条，再整体清空，
+    /// 确认行真的没了、路径也按预期带回来；全程不碰真实数据。
     /// </summary>
-    private async Task<bool> VerifySummaryDeleteAsync(StringBuilder report, CancellationToken cancellationToken)
+    private async Task<bool> VerifyDataClearingAsync(StringBuilder report, CancellationToken cancellationToken)
     {
         report.AppendLine();
-        report.AppendLine("--- 总结删除 ---");
+        report.AppendLine("--- 删除与清空 ---");
 
         var sentinel = new SummaryRun
         {
@@ -545,7 +546,23 @@ internal sealed class CliRunner
 
         report.AppendLine($"插入后删除    : {(gone ? "行已删除" : "行还在（异常）")}");
         report.AppendLine($"保存路径返回  : {(pathReturned ? "已返回" : $"未返回（{paths.Count} 个）")}");
-        return gone && pathReturned;
+
+        // 整体清空：先数、再清、清完归零；返回的文件路径数要和"有文件的行数"对得上
+        // （失败的总结没有正文文件，不能拿总行数比）。
+        var beforeRuns = await _store.GetSummaryRunsAsync(1000, cancellationToken).ConfigureAwait(false);
+        var expectedPaths = beforeRuns.Count(run => run.SavedPath.Length > 0);
+        var clearedSummaryPaths = await _store.DeleteAllSummaryRunsAsync(cancellationToken).ConfigureAwait(false);
+        var summariesCleared = await _store.CountSummaryRunsAsync(cancellationToken).ConfigureAwait(false) == 0
+                               && clearedSummaryPaths.Count == expectedPaths;
+
+        var recordsBefore = await _store.CountAsync(cancellationToken).ConfigureAwait(false);
+        var clearedImages = await _store.DeleteAllAsync(cancellationToken).ConfigureAwait(false);
+        var recordsCleared = await _store.CountAsync(cancellationToken).ConfigureAwait(false) == 0;
+
+        report.AppendLine($"清空总结      : {(summariesCleared ? $"已清空（{beforeRuns.Count} 条，取回 {clearedSummaryPaths.Count} 个正文文件路径）" : $"未清空（异常：{beforeRuns.Count} 条中应有 {expectedPaths} 个路径，取回 {clearedSummaryPaths.Count} 个）")}");
+        report.AppendLine($"清空记录      : {(recordsCleared ? $"已清空（{recordsBefore} 条，取回 {clearedImages.Count} 个截图路径）" : "未清空（异常）")}");
+
+        return gone && pathReturned && summariesCleared && recordsCleared;
     }
 
     /// <summary>

@@ -499,6 +499,33 @@ public sealed class SqliteActivityStore : IActivityRepository
             return command.ExecuteNonQuery();
         }, cancellationToken);
 
+    public Task<IReadOnlyList<string>> DeleteAllAsync(CancellationToken cancellationToken) =>
+        RunAsync<IReadOnlyList<string>>(connection =>
+        {
+            var paths = new List<string>();
+            using (var select = connection.CreateCommand())
+            {
+                select.CommandText = "SELECT image_path FROM activity WHERE image_path <> ''";
+                using var reader = select.ExecuteReader();
+                while (reader.Read())
+                {
+                    var path = reader.GetString(0);
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        paths.Add(path);
+                    }
+                }
+            }
+
+            using (var delete = connection.CreateCommand())
+            {
+                delete.CommandText = "DELETE FROM activity";
+                delete.ExecuteNonQuery();
+            }
+
+            return paths;
+        }, cancellationToken);
+
     // ---------------------------------------------------------------- 定时批量识别
 
     public Task<IReadOnlyList<ActivityRecord>> GetPendingRecordsAsync(int limit, CancellationToken cancellationToken) =>
@@ -773,6 +800,41 @@ public sealed class SqliteActivityStore : IActivityRepository
             command.CommandText = "DELETE FROM summary_runs WHERE started_at < $cutoff";
             command.Parameters.AddWithValue("$cutoff", cutoff.ToString(TimeFormat, CultureInfo.InvariantCulture));
             return command.ExecuteNonQuery();
+        }, cancellationToken);
+
+    public Task<long> CountSummaryRunsAsync(CancellationToken cancellationToken) =>
+        RunAsync(connection =>
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM summary_runs";
+            return Convert.ToInt64(command.ExecuteScalar() ?? 0L, CultureInfo.InvariantCulture);
+        }, cancellationToken);
+
+    public Task<IReadOnlyList<string>> DeleteAllSummaryRunsAsync(CancellationToken cancellationToken) =>
+        RunAsync<IReadOnlyList<string>>(connection =>
+        {
+            var paths = new List<string>();
+            using (var select = connection.CreateCommand())
+            {
+                select.CommandText = "SELECT saved_path FROM summary_runs WHERE saved_path <> ''";
+                using var reader = select.ExecuteReader();
+                while (reader.Read())
+                {
+                    var path = reader.GetString(0);
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        paths.Add(path);
+                    }
+                }
+            }
+
+            using (var delete = connection.CreateCommand())
+            {
+                delete.CommandText = "DELETE FROM summary_runs";
+                delete.ExecuteNonQuery();
+            }
+
+            return paths;
         }, cancellationToken);
 
     public Task<long> CountAsync(CancellationToken cancellationToken) =>
