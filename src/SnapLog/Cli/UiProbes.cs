@@ -969,6 +969,11 @@ internal static class UiProbes
             var missing = wanted.Where(text => !texts.Any(t => t.Contains(text, StringComparison.Ordinal))).ToList();
             var hasStateLine = texts.Any(t => t is "正在记录" or "已暂停");
 
+            // 暂停/开始不在托盘里（操作面统一在概览页）：出现了说明设计被打回。
+            var leaked = new[] { "暂停记录", "开始记录" }
+                .Where(text => texts.Any(t => t.Contains(text, StringComparison.Ordinal)))
+                .ToList();
+
             // 自绘的证据：菜单里有一块圆角卡片（系统菜单是 Win32 的 #32768，没有这种控件树）
             var card = menu.GetVisualDescendants().OfType<Border>()
                 .FirstOrDefault(b => b.CornerRadius.TopLeft >= 8 && b.Padding.Left > 0);
@@ -1017,13 +1022,14 @@ internal static class UiProbes
             shell.Close();
             Pump(150);
 
-            var ok = missing.Count == 0 && hasStateLine && card is not null && adjacent && clamped && recalled && quits;
+            var ok = missing.Count == 0 && hasStateLine && leaked.Count == 0 && card is not null && adjacent && clamped && recalled && quits;
 
             if (!ok)
             {
                 failures.Add(label + "："
                     + (missing.Count > 0 ? "缺菜单项 " + string.Join("/", missing) + "；" : string.Empty)
                     + (hasStateLine ? string.Empty : "没有状态行；")
+                    + (leaked.Count > 0 ? "不该出现的操作 " + string.Join("/", leaked) + "；" : string.Empty)
                     + (card is null ? "菜单不是白底圆角自绘；" : string.Empty)
                     + (adjacent ? string.Empty : "菜单位置没贴着托盘或越界；")
                     + (clamped ? string.Empty : "越界时没被夹回工作区；")

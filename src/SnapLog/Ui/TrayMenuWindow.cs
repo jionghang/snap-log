@@ -47,14 +47,7 @@ internal sealed class TrayMenuWindow : Window
             Margin = new Thickness(8, 4, 8, 4),
         });
 
-        rows.Children.Add(MenuRow(
-            services.Engine.IsRunning ? "暂停记录" : "开始记录",
-            async () =>
-            {
-                Close();
-                await services.ToggleRecordingAsync();
-            }));
-
+        // 托盘不提供暂停/开始：记录状态只在这里显示，开关在概览页（一个操作面，避免两处状态互相打架）。
         rows.Children.Add(MenuRow("打开 SnapLog", () =>
         {
             Close();

@@ -412,7 +412,8 @@ internal sealed class HomePage : UserControl, IRefreshable
             }));
 
         return Ui.CardWith(
-            Ui.Header("最近一次总结", "每天一份工作概要：在设定时间自动生成；失败或遗漏的日期下次执行时重做。"),
+            Ui.Header("最近一次总结", "最近生成的一条结果。覆盖日期指总结针对的那一天；生成时间可能晚一天，"
+                                      + "因为定时点电脑未开机时会在下次启动后补生成。"),
             null, head, _reportDetail, buttons);
     }
 
