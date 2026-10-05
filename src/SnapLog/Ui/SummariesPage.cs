@@ -30,6 +30,15 @@ internal sealed class SummariesPage : UserControl, IRefreshable
         _list = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 520 };
         _list.SelectionChanged += (_, _) => OpenDetail();
 
+        // 在详情窗里删掉总结后，列表要跟着刷新。页面会被复用，所以切回来要重新订阅。
+        AttachedToVisualTree += (_, _) =>
+        {
+            SummaryDetailWindow.SummaryDeleted -= OnSummaryDeleted;
+            SummaryDetailWindow.SummaryDeleted += OnSummaryDeleted;
+        };
+
+        DetachedFromVisualTree += (_, _) => SummaryDetailWindow.SummaryDeleted -= OnSummaryDeleted;
+
         Content = Ui.Scroller(Ui.Page(
             BuildHeader(),
             BuildList()));
@@ -119,12 +128,19 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             SummaryDetailWindow.ShowFor(owner, _services, run);
         }
     }
+
+    private void OnSummaryDeleted() => _ = LoadAsync();
 }
 
 /// <summary>总结正文窗口。和记录详情一样全进程只有一个，看另一条时内容被覆盖。</summary>
 internal sealed class SummaryDetailWindow : Window
 {
     private static SummaryDetailWindow? _current;
+
+    /// <summary>在详情窗里删掉一条总结后触发，让列表刷新自己。</summary>
+    public static event Action? SummaryDeleted;
+
+    private AppServices? _services;
 
     /// <summary>标题下面的元数据与按钮：固定不动，滚动只滚正文。</summary>
     private readonly StackPanel _meta = new() { Spacing = 10 };
@@ -188,6 +204,7 @@ internal sealed class SummaryDetailWindow : Window
 
     internal void Render(AppServices services, SummaryRun run)
     {
+        _services = services;
         _meta.Children.Clear();
         _text.Text = string.Empty;
 
@@ -214,11 +231,18 @@ internal sealed class SummaryDetailWindow : Window
         // 与记录详情一致：元数据只留一行浅字，不加框。
         _meta.Children.Add(Ui.Caption(meta.ToString()));
 
+        var buttons = Ui.ButtonRow();
         if (run.SavedPath.Length > 0 && File.Exists(run.SavedPath))
         {
-            _meta.Children.Add(Ui.ButtonRow(
-                Ui.Secondary("打开文件", () => { MainWindow.OpenPath(run.SavedPath); return Task.CompletedTask; })));
+            buttons.Children.Add(Ui.Secondary("打开文件", () =>
+            {
+                MainWindow.OpenPath(run.SavedPath);
+                return Task.CompletedTask;
+            }));
         }
+
+        buttons.Children.Add(Ui.Secondary("删除这条", () => DeleteAsync(run)));
+        _meta.Children.Add(buttons);
 
         // 失败原因只显示一处，放在正文区（可选中复制）；以前元数据区还有一条同样的提示，重复。
         var fallback = run.Message.Length > 0
@@ -228,7 +252,51 @@ internal sealed class SummaryDetailWindow : Window
         _text.Text = run.Markdown.Length > 0
             ? run.Markdown
             : run.Success ? fallback : "失败原因：" + fallback;
+    }
 
-        _ = services;
+    /// <summary>删除这条总结：记录行与它保存的正文文件一起删，和"记录详情"的删除一致。</summary>
+    private async Task DeleteAsync(SummaryRun run)
+    {
+        var ok = await Ui.Confirm(this,
+            "删除这条总结？",
+            "将删除这条总结记录，它保存的正文文件一并删除，此操作不可撤销。"
+            + Environment.NewLine + Environment.NewLine
+            + "已推送到飞书的内容不受影响；该日期视为未生成，下次自动执行时会重新生成并再次写入飞书。",
+            "删除",
+            danger: true);
+
+        if (!ok || _services is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var savedPaths = await _services.Store.DeleteSummaryRunsAsync([run.Id], CancellationToken.None);
+
+            foreach (var path in savedPaths)
+            {
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // 记录已经删掉，文件删不掉只记日志，不打断流程。
+                    _services.Log.Warn($"删除总结文件失败（记录已删除）：{path} —— {ex.Message}");
+                }
+            }
+
+            SummaryDeleted?.Invoke();
+            Close();
+        }
+        catch (Exception ex)
+        {
+            _services.Log.Error("删除总结失败", ex);
+            await Ui.Info(this, "删除失败", ex.Message);
+        }
     }
 }

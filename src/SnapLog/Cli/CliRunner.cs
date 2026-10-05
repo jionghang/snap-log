@@ -395,10 +395,13 @@ internal sealed class CliRunner
         // 7) 图片降级判定：模型拒收图片时改发纯文字，判定不能误伤普通报错
         var imageFallbackOk = VerifyImageFallback(report);
 
-        // 8) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
+        // 8) 总结记录的删除：详情窗"删除这条"走的就是这个接口（沙盒库里插一条、删一条）
+        var summaryDeleteOk = await VerifySummaryDeleteAsync(report, cancellationToken).ConfigureAwait(false);
+
+        // 9) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
         var planOk = VerifySummaryPlan(report);
 
-        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk && promptOk && imageFallbackOk;
+        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk && promptOk && imageFallbackOk && summaryDeleteOk;
 
         if (restored.TextLength == 0)
         {
@@ -506,6 +509,43 @@ internal sealed class CliRunner
         }
 
         return ok;
+    }
+
+    /// <summary>
+    /// 总结记录的删除：详情窗的"删除这条"走 store 的删除接口（返回保存的文件路径，由调用方删文件）。
+    /// 在沙盒库里插一条、删一条，确认行真的没了、保存路径也带回来了。
+    /// </summary>
+    private async Task<bool> VerifySummaryDeleteAsync(StringBuilder report, CancellationToken cancellationToken)
+    {
+        report.AppendLine();
+        report.AppendLine("--- 总结删除 ---");
+
+        var sentinel = new SummaryRun
+        {
+            Trigger = "自检",
+            Success = false,
+            Message = "自检插入的临时记录",
+            SavedPath = Path.Combine(Path.GetTempPath(), "snaplog-selftest-not-a-real-file.txt"),
+        };
+
+        await _store.AppendSummaryRunAsync(sentinel, cancellationToken).ConfigureAwait(false);
+
+        var inserted = (await _store.GetSummaryRunsAsync(1, cancellationToken).ConfigureAwait(false))
+            .FirstOrDefault();
+        var insertedId = inserted?.Id ?? 0;
+
+        var paths = insertedId > 0
+            ? await _store.DeleteSummaryRunsAsync([insertedId], cancellationToken).ConfigureAwait(false)
+            : [];
+
+        var gone = insertedId > 0
+                   && (await _store.GetSummaryRunsAsync(50, cancellationToken).ConfigureAwait(false))
+                       .All(run => run.Id != insertedId);
+        var pathReturned = paths.Count == 1;
+
+        report.AppendLine($"插入后删除    : {(gone ? "行已删除" : "行还在（异常）")}");
+        report.AppendLine($"保存路径返回  : {(pathReturned ? "已返回" : $"未返回（{paths.Count} 个）")}");
+        return gone && pathReturned;
     }
 
     /// <summary>
