@@ -86,7 +86,8 @@ internal static class UiProbes
         Shoot(shots, output, "02-records", "抓取记录", () => new RecordsPage(services), 1060, 720, SelectFirstRow);
         Shoot(shots, output, "03-summaries", "总结记录", () => new SummariesPage(services), 1060, 720, SelectFirstRow);
         Shoot(shots, output, "04-settings", "设置", () => new SettingsPage(services), 1060, 720);
-        Shoot(shots, output, "05-settings-advanced", "设置（进阶展开）", () => new SettingsPage(services), 1060, 900, ExpandFirstExpander);
+        Shoot(shots, output, "05-advanced", "高级设置（独立窗口）", () => new AdvancedSettingsWindow(services), 760, 640);
+        Shoot(shots, output, "05b-advanced-bottom", "高级设置（滚动到底）", () => new AdvancedSettingsWindow(services), 760, 640, ScrollToEnd);
         Shoot(shots, output, "06-window", "主窗口", () => new MainWindow(services), 1060, 720);
         Shoot(shots, output, "07-tray-menu", "托盘右键菜单", () => new TrayMenuWindow(services) { CloseOnDeactivate = false }, 248, 240);
         Shoot(shots, output, "08-record-detail", "记录详情（独立窗口）", () =>
@@ -369,6 +370,7 @@ internal static class UiProbes
             ("抓取记录", () => new RecordsPage(services)),
             ("总结记录", () => new SummariesPage(services)),
             ("设置", () => new SettingsPage(services)),
+            ("高级设置", () => new AdvancedSettingsWindow(services)),
             ("关于", () => new AboutWindow(services)),
         };
 
@@ -1248,15 +1250,9 @@ internal static class UiProbes
     }
 
     /// <summary>展开第一个折叠区（设置页的"进阶设置"）。</summary>
-    private static void ExpandFirstExpander(Window window)
+    /// <summary>滚到底：内容长的窗口要拍下半部分（等布局完成再滚）。</summary>
+    private static void ScrollToEnd(Window window)
     {
-        var expander = window.GetVisualDescendants().OfType<Expander>().FirstOrDefault();
-        if (expander is not null)
-        {
-            expander.IsExpanded = true;
-        }
-
-        // 展开后内容在设置页最下面，得滚到底才拍得到（等布局完成再滚）。
         if (window.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is { } scroller)
         {
             Dispatcher.UIThread.Post(scroller.ScrollToEnd, DispatcherPriority.Background);
