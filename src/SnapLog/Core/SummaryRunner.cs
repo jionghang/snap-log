@@ -132,11 +132,19 @@ public sealed class SummaryRunner
                 ? []
                 : SummaryImageSelector.Select(records, settings, _paths, _log);
 
-            if (settings.PayloadMode != LlmPayloadMode.TextOnly && images.Count == 0)
+            // 仅发图模式没有图就真的没内容可发：如实报错，不降级。
+            if (settings.PayloadMode == LlmPayloadMode.ImageOnly && images.Count == 0)
             {
                 return (null,
-                    "当前配置为发送截图，但所选记录中没有可用的截图文件。"
-                    + "请确认已开启“保存截图文件”，或将“发送内容”改回“仅发送识别文字”。");
+                    "当前配置为仅发送截图，但所选记录中没有可用的截图文件。"
+                    + "请确认已开启“保存截图文件”，或将“发送内容”改为其他方式。");
+            }
+
+            // 文字与截图模式缺图时降级为纯文字：摘要照常产出，只是少了截图校正。
+            if (settings.PayloadMode == LlmPayloadMode.TextAndImage && images.Count == 0)
+            {
+                _log.Warn("所选记录里没有可用的截图文件，本次按纯文字发送"
+                          + "（检查“保存截图文件”设置与截图保留天数）。");
             }
 
             // 只发图时，文字部分只留"时间范围"这种骨架，不把 OCR 内容发出去（否则就不叫只发图了）。
@@ -422,7 +430,11 @@ public sealed class SummaryRunner
             .AppendLine($"记录条数：{preparation.Digest.IncludedRecords} / {preparation.Digest.AvailableRecords}"
                         + (preparation.Digest.Truncated ? "（按预算截断）" : string.Empty))
             .AppendLine($"发送内容：{SummaryPreparation.DescribeMode(preparation.PayloadMode)}"
-                        + (preparation.ImageCount > 0 ? $"，附带 {preparation.ImageCount} 张截图" : string.Empty))
+                        + (preparation.ImageCount > 0
+                            ? $"，附带 {preparation.ImageCount} 张截图"
+                            : preparation.PayloadMode == LlmPayloadMode.TextAndImage
+                                ? "（本次没有可用截图，按纯文字发送）"
+                                : string.Empty))
             .AppendLine($"模型：{completion.ProviderDescription}"
                         + (completion.Attempts > 1 ? $"（第 {completion.Attempts} 次尝试成功）" : string.Empty))
             .AppendLine($"数据文件：{_store.Location}");
