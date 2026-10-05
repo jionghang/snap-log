@@ -184,15 +184,21 @@ public static class OptionsStore
 
         // 空 = 还没填过；等于某一版内置模板 = 当时自动填入的那份。
         // 两种情况都换成最新模板；用户自己改过的一律不动。
+        // 比较前统一换行符：源码字面量是 \n，配置里存下来的多半是 \r\n，
+        // 逐字符比会被换行风格挡住，同一份模板却迁移不了。
         var untouched = string.IsNullOrWhiteSpace(current)
                         || Summarization.Prompts.LegacyDefaultTemplates
-                            .Any(legacy => string.Equals(current.Trim(), legacy.Trim(), StringComparison.Ordinal));
+                            .Any(legacy => string.Equals(Normalize(current), Normalize(legacy), StringComparison.Ordinal));
 
         if (untouched)
         {
             summarization.SystemPromptOverride = Summarization.Prompts.DefaultTemplate;
         }
     }
+
+    /// <summary>迁移比较用：统一换行符并去掉首尾空白，避免换行风格不同导致同一段文本不相等。</summary>
+    private static string Normalize(string? text) =>
+        (text ?? string.Empty).Replace("\r\n", "\n").Trim();
 
     /// <summary>
     /// 写入飞书的内容从"抓取记录"改成了"大模型总结"，旧配置里的记录字段（Timestamp、OcrText…）
