@@ -214,18 +214,25 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
             new UserChatMessage(userParts),
         ];
 
-        var requestOptions = new ChatCompletionOptions
-        {
-            Temperature = 0.3f,
-            // 提示词里要求"写完整、写充实"，上限就得留够。
-            // 推理型模型（网关把内容放在 reasoning 里）会先花大量 token 盘材料，
-            // 上限给小了会出现"全程在推理、正文一个字没有"的截断，只能给足空间。
-            MaxOutputTokenCount = 16000,
-        };
+        System.ClientModel.ClientResult<ChatCompletion> response;
 
-        var response = await provider.Client
-            .CompleteChatAsync(messages, requestOptions, cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            response = await provider.Client
+                .CompleteChatAsync(messages, BuildRequestOptions(DefaultTemperature), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (ClientResultException ex) when (MentionsTemperature(ex))
+        {
+            // 有的模型（例如 Kimi 的 k3）只接受 temperature=1，默认的 0.3 会被 400 拒掉。
+            // 这属于"参数不被接受"，拿同样的参数重试没有意义；去掉温度、用服务端默认值再来一次。
+            _log.Warn($"{provider.Describe()} 不接受 temperature={DefaultTemperature}"
+                      + $"（{Trim(ex.Message)}），改用服务端默认值重试一次");
+
+            response = await provider.Client
+                .CompleteChatAsync(messages, BuildRequestOptions(null), cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         ChatCompletion completion = response;
         var text = string.Concat(completion.Content
@@ -349,6 +356,23 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
                 return false;
         }
     }
+
+    /// <summary>默认温度；服务端不接受时去掉这个字段重试（见 SendOnceAsync）。</summary>
+    private const float DefaultTemperature = 0.3f;
+
+    /// <summary>请求参数。temperature 传 null 表示不发这个字段、用服务端默认值。</summary>
+    private static ChatCompletionOptions BuildRequestOptions(float? temperature) => new()
+    {
+        Temperature = temperature,
+        // 提示词里要求"写完整、写充实"，上限就得留够。
+        // 推理型模型（网关把内容放在 reasoning 里）会先花大量 token 盘材料，
+        // 上限给小了会出现"全程在推理、正文一个字没有"的截断，只能给足空间。
+        MaxOutputTokenCount = 16000,
+    };
+
+    /// <summary>400 里明确提到 temperature 的：参数不被接受，换参数重试才有意义。</summary>
+    private static bool MentionsTemperature(ClientResultException ex) =>
+        ex.Message.Contains("temperature", StringComparison.OrdinalIgnoreCase);
 
     private static string Describe(Exception exception) => exception switch
     {
