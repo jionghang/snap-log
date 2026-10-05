@@ -38,8 +38,7 @@ internal sealed class AboutWindow : Window
         };
 
         intro.Children.Add(Ui.Inline(8, versionLine, Ui.Tip(
-            "截图和识别文字都保存在本机；到了设定的时间、且已开启每日自动执行时，才会发送到已配置的模型接口"
-            + "（默认仅发送文字；是否附带截图取决于大模型设置）。")));
+            "截图与识别文字仅保存在本机；每天在设定时间才发送到配置的模型接口（默认仅发送文字）。")));
         intro.Children.Add(Ui.Hint("每天在设定时间由大模型将当天的屏幕活动整理成一份总结，再推送到飞书多维表格。"));
 
         var rows = new List<(string Label, string Value)>

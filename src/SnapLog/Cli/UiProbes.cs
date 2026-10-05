@@ -1041,13 +1041,15 @@ internal static class UiProbes
                             Console.WriteLine($"  折叠区 {Text(expander.Header)} : {(expander.IsExpanded ? "展开" : "收起")}");
                             break;
 
-                        case Button button when button.TemplatedParent is null && button.Content is string text && !SkipClick(text):
+                        // 不可见的按钮不点（例如时间一致时隐藏的"统一时间"链接）：
+                        // 以前会点出一行空的"点按钮 "，看起来像界面上有个空按钮。
+                        case Button { IsVisible: true } button when button.TemplatedParent is null && button.Content is string text && !SkipClick(text):
                             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                             Pump(250);
                             Console.WriteLine($"  点按钮 {Text(button.Content)}");
                             break;
 
-                        case Button button when button.TemplatedParent is null && button.Content is string text:
+                        case Button { IsVisible: true } button when button.TemplatedParent is null && button.Content is string text:
                             Console.WriteLine($"  （跳过有副作用的按钮 {text}）");
                             break;
                     }

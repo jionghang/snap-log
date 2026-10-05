@@ -375,9 +375,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         var titleColumn = new StackPanel { Spacing = 3 };
         titleColumn.Children.Add(Ui.Inline(8, _stateTitle, Ui.Tip(
-            "记录期间会跟随前台窗口自动截图并识别文字；暂停期间不截图，也不执行每日流程。"
-            + "每天在设定时间会将识别出的文字发送到配置的模型接口并生成总结，再推送到飞书；"
-            + "是否附带截图取决于大模型设置。")));
+            "记录中会自动截图并识别文字，每天在设定时间生成总结并推送到飞书；暂停后两项都停止。")));
         titleColumn.Children.Add(_stateHint);
         Grid.SetColumn(titleColumn, 1);
         head.Children.Add(_stateDot);
@@ -412,7 +410,7 @@ internal sealed class HomePage : UserControl, IRefreshable
             }));
 
         return Ui.CardWith(
-            Ui.Header("最近一次总结", "每天在设定时间自动生成；失败或遗漏的日期会在下一次执行时重做。"),
+            Ui.Header("最近一次总结", "每天在设定时间自动生成；失败或遗漏的日期下次执行时重做。"),
             null, head, _reportDetail, buttons);
     }
 
@@ -427,12 +425,13 @@ internal sealed class HomePage : UserControl, IRefreshable
         _pipelineNext.VerticalAlignment = VerticalAlignment.Center;
         row.Children.Add(_pipelineNext);
 
-        var autoStart = Ui.FieldRow("开机自动启动", _autoStartSwitch);
+        var autoStart = Ui.FieldRow("开机自动启动", _autoStartSwitch,
+            tip: "登录 Windows 后自动在后台启动并开始记录。");
 
         return Ui.CardWith(
             Ui.Header("每天自动执行",
-                "在设定时间自动执行三步：把前一天的截图识别成文字，生成那一天的总结，再推送到飞书多维表格。"
-                + "总结的是已经结束的那一天，晚上加班的记录也会包含在内；设定时间电脑未开机时，会在下次启动后自动执行。"),
+                "每天在设定时间依次执行三步：识别、生成总结、推送飞书。总结的是已经结束的那一天；"
+                + "设定时间电脑未开机时，会在下次启动后自动执行。"),
             null, row, _pipelineWarning, _unifyButton, Ui.Divider(), autoStart);
     }
 

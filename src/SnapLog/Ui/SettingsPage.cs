@@ -132,7 +132,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
     private Control BuildLlmCard()
     {
-        var head = Ui.FieldRow("启用大模型总结", _summaryEnabled);
+        var head = Ui.FieldRow("启用大模型总结", _summaryEnabled,
+            tip: "关闭时不调用任何模型接口，只保留本地记录。");
 
         // 按钮在设置项之后：先看到要设什么，再保存；页面本身可滚动，不用担心按钮被挤出屏幕。
         var buttons = Ui.ButtonRow(
@@ -141,7 +142,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             _llmNote);
 
         return Ui.CardWith(
-            Ui.Header("大模型配置", "按顺序调用：前一个失败就换下一个。接口地址填任意 OpenAI 兼容服务的地址，一般以 /v1 结尾。"),
+            Ui.Header("大模型配置", "按顺序调用，前一个失败自动换下一个；接口地址一般以 /v1 结尾。"),
             _llmStatus, head, _providers, buttons);
     }
 
@@ -231,7 +232,9 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
         var buttons = Ui.ButtonRow(Ui.Primary("保存飞书设置", () => SaveAsync(_feishuNote)), _feishuNote);
 
-        return Ui.CardWithHeader("飞书配置", _feishuStatus, rows, buttons);
+        return Ui.CardWith(
+            Ui.Header("飞书配置", "把每天的总结按日期写入多维表格，一天一行；需要多维表格的读写权限。"),
+            _feishuStatus, rows, buttons);
     }
 
     private Control BuildAboutCard()
@@ -242,8 +245,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             Ui.Secondary("退出 SnapLog", ExitAsync));
 
         return Ui.CardWith(
-            Ui.Header("其他", "关闭窗口仅收进托盘，仍会继续记录；要停止请使用托盘菜单中的退出 SnapLog。"
-                              + "排除的程序、附加要求、工作项目与飞书字段映射都在高级设置里。"),
+            Ui.Header("其他", "关窗只收进托盘，仍在记录；退出请用托盘菜单。"
+                              + "排除的程序、附加要求、工作项目与字段映射都在高级设置里。"),
             null, buttons);
     }
 
