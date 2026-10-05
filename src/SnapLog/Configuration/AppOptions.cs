@@ -243,8 +243,9 @@ public sealed class SummarizationOptions
     public int MaxImages { get; set; } = 6;
 
     [Category("总结"), DisplayName("同窗口图片最小间隔(秒)"),
-     Description("仅对 ImageOnly / TextAndImage 生效。同一窗口在该时间内的多张截图只发送一张，"
-                 + "避免重复发送长时间静止的画面。填 0 表示不限制。")]
+     Description("仅对 ImageOnly / TextAndImage 生效。挑选截图时每个窗口全天只挑一张；"
+                 + "当天窗口数不足图片上限时，用同窗口的更多画面补齐名额，该值是两个补挑画面之间的最小间隔。"
+                 + "填 0 表示不限制。")]
     public int ImageSampleSeconds { get; set; } = 300;
 
     [Category("总结"), DisplayName("图片清晰度"),
