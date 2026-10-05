@@ -28,6 +28,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
     private readonly Border _reportPill;
     private readonly TextBlock _reportTitle;
+    private readonly TextBlock _reportStamp;
     private readonly TextBlock _reportDetail;
 
     private readonly ToggleSwitch _pipelineSwitch;
@@ -60,6 +61,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         _reportPill = Ui.Pill("—", PillKind.Neutral);
         _reportTitle = new TextBlock { Classes = { "headline" } };
+        _reportStamp = Ui.Caption(string.Empty);
         _reportDetail = Ui.Caption(string.Empty);
 
         _pipelineSwitch = Ui.Switch(false, OnPipelineToggled);
@@ -154,23 +156,25 @@ internal sealed class HomePage : UserControl, IRefreshable
         {
             Ui.UpdatePill(_reportPill, "暂无", PillKind.Neutral);
             _reportTitle.Text = "暂无总结记录";
+            _reportStamp.Text = string.Empty;
             _reportDetail.Text = "配置大模型和飞书后，会在每天设定时间自动生成。";
             return;
         }
 
+        // 标题区两档：主信息只留"哪一天的总结"，生成时刻退成小字排在旁边。
+        // 覆盖日与生成时刻是两个日期概念（补跑时差一天），分档排也不会再被读成一串。
+        _reportTitle.Text = $"{DayLabel(run)}的总结";
+        _reportStamp.Text = $"{run.StartedAt:MM-dd HH:mm} 生成";
+
         if (!run.Success)
         {
             Ui.UpdatePill(_reportPill, "失败", PillKind.Danger);
-            _reportTitle.Text = $"{DayLabel(run)}的总结　{run.StartedAt:MM-dd HH:mm} 生成失败";
             _reportDetail.Text = Ui.Shorten(run.Message, 90);
             return;
         }
 
         var pushed = run.PushedAt is not null;
         Ui.UpdatePill(_reportPill, pushed ? "已推送" : "未推送", pushed ? PillKind.Ok : PillKind.Warn);
-        // 覆盖日与生成时刻是两个日期概念，别拼成"昨天 08:32"那种读着像同一时刻的样子：
-        // 补跑（夜里没开机、早上启动才执行）时两者会差一天。
-        _reportTitle.Text = $"{DayLabel(run)}的总结　{run.StartedAt:MM-dd HH:mm} 生成";
 
         var details = $"覆盖：{run.CoveredDay}　记录：{run.RecordCount} 条"
                       + (run.Provider.Length > 0 ? $"　模型：{run.Provider}" : string.Empty)
@@ -389,15 +393,19 @@ internal sealed class HomePage : UserControl, IRefreshable
     private Control BuildReportCard()
     {
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
-        Grid.SetColumn(_reportTitle, 1);
-        _reportTitle.VerticalAlignment = VerticalAlignment.Center;
+
+        // 标题与生成时刻同一行但不平级：大字主信息 + 小字灰色时刻，底对齐近似基线。
+        var titleRow = Ui.Inline(8, _reportTitle, _reportStamp);
+        titleRow.VerticalAlignment = VerticalAlignment.Center;
+        _reportStamp.VerticalAlignment = VerticalAlignment.Bottom;
+        Grid.SetColumn(titleRow, 1);
 
         var pillRow = new Panel { Height = 20 };
         var pill = _reportPill;
         pill.VerticalAlignment = VerticalAlignment.Center;
         pillRow.Children.Add(pill);
         head.Children.Add(pillRow);
-        head.Children.Add(_reportTitle);
+        head.Children.Add(titleRow);
 
         // 这个软件只有一条路径：到点自动跑。所以这里只报告结果，不放任何"手动执行"的按钮。
         var buttons = Ui.ButtonRow(
