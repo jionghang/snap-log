@@ -67,4 +67,16 @@
     </None>
   </ItemGroup>
 
+  <!--
+    发布包里去掉第三方调试符号：SkiaSharp / HarfBuzz 的 .pdb 合计约 100 MB，
+    运行时完全不用，只让发布包无谓变大。
+  -->
+  <Target Name="TrimPublishDebugSymbols" AfterTargets="Publish">
+    <ItemGroup>
+      <PublishPdbToDelete Include="$(PublishDir)**\*.pdb" />
+    </ItemGroup>
+    <Message Importance="normal" Text="发布清理：删除 $(PublishDir) 下的调试符号" />
+    <Delete Files="@(PublishPdbToDelete)" />
+  </Target>
+
 </Project>
