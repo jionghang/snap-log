@@ -24,6 +24,9 @@
     <RootNamespace>SnapLog</RootNamespace>
     <AssemblyName>SnapLog</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- exe 文件图标：与运行时画的托盘/窗口图标同一枚快门（见 Ui/IconFactory.cs 的 Draw），
+         改了那边的几何参数就要重新生成这个 .ico，否则两处图标对不上 -->
+    <ApplicationIcon>Assets\snaplog.ico</ApplicationIcon>
     <!-- 只钉住目标架构，不用 Platforms：否则项目构建和解决方案构建会输出到不同目录 -->
     <PlatformTarget>x64</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

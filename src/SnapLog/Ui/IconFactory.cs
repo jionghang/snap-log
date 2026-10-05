@@ -6,7 +6,8 @@ using SnapLog.Interop;
 namespace SnapLog.Ui;
 
 /// <summary>
-/// 运行时画图标，避免为了一个 16x16 的图标往仓库里塞二进制资源。
+/// 运行时画图标（托盘与窗口用）。exe 文件图标走编译期嵌入：Assets/snaplog.ico，
+/// 与下面的 Draw 是同一枚快门——改了这边的几何参数，要同步重新生成那个 .ico。
 /// 全进程共用同一个实例：窗口开开关关不会反复创建 GDI 句柄。
 /// </summary>
 internal static class IconFactory
