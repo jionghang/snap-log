@@ -118,7 +118,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         grid.Children.Add(Ui.PageHeader("抓取记录",
-            "最多列出最近 300 条；更早的记录请把时间范围改为全部。选择一行查看详情。"));
+            "程序自动抓取到的屏幕记录，每条含窗口标题与识别出的文字。最多列出最近 300 条，更早的记录请把时间范围改为全部。"));
         Grid.SetColumn(_summary, 1);
         _summary.VerticalAlignment = VerticalAlignment.Center;
         grid.Children.Add(_summary);

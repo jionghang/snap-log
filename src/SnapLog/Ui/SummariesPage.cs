@@ -43,7 +43,7 @@ internal sealed class SummariesPage : UserControl, IRefreshable
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         grid.Children.Add(Ui.PageHeader("总结记录",
-            "每天在设定时间自动生成；失败或遗漏的日期会在下一次执行时重做。选择一行可查看正文。"));
+            "保存生成过的每日总结，可回看正文与推送结果。失败或遗漏的日期会在下一次执行时重做。"));
 
         Grid.SetColumn(_count, 1);
         _count.VerticalAlignment = VerticalAlignment.Center;

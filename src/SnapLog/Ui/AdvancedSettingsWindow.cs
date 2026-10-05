@@ -77,22 +77,23 @@ internal sealed class AdvancedSettingsWindow : Window
 
     private Control BuildRecordingCard() => Ui.CardWith(
         Ui.Header("记录范围",
-            "勾选后该程序不再截图，也不进入总结。清单取自历史记录中出现过的程序。"),
+            "决定哪些程序不参与记录：勾选后不再截图，也不进入总结；清单取自历史记录中出现过的程序。"),
         null,
         Ui.FieldRow("排除的程序", _excluded));
 
     private Control BuildSummaryCard() => Ui.CardWith(
-        Ui.Header("总结偏好", "内容原样追加到提示词末尾，用于补充写作要求；留空则不加。"),
+        Ui.Header("总结偏好", "补充写作要求的自定义段落：内容原样追加到提示词末尾；留空则不加。"),
         null,
         Ui.FieldRow("附加要求", _extraInstructions));
 
     private Control BuildProjectsCard() => Ui.CardWith(
-        Ui.Header("工作项目", "总结的主要工作主题按这些项目分组；说明越具体，归类越准。"),
+        Ui.Header("工作项目", "告诉总结按哪些项目归类：主要工作主题按这里的项目分组，说明越具体归类越准。"),
         null,
         _projects);
 
     private Control BuildMappingsCard() => Ui.CardWith(
-        Ui.Header("飞书字段映射", "左侧是总结字段，右侧填对应的飞书列名，需与表头一致；留空则该列不写。"),
+        Ui.Header("飞书字段映射",
+            "决定总结写进表格的哪一列：左侧选总结字段，右侧填对应的飞书列名，需与表头一致；留空则该列不写。"),
         null,
         _mappings);
 

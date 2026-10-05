@@ -375,7 +375,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         var titleColumn = new StackPanel { Spacing = 3 };
         titleColumn.Children.Add(Ui.Inline(8, _stateTitle, Ui.Tip(
-            "记录中会自动截图并识别文字，每天在设定时间生成总结并推送到飞书；暂停后两项都停止。")));
+            "记录状态：开启后自动截图并识别文字，并在每天设定时间生成总结、推送到飞书；暂停后全部停止。")));
         titleColumn.Children.Add(_stateHint);
         Grid.SetColumn(titleColumn, 1);
         head.Children.Add(_stateDot);
@@ -410,7 +410,7 @@ internal sealed class HomePage : UserControl, IRefreshable
             }));
 
         return Ui.CardWith(
-            Ui.Header("最近一次总结", "每天在设定时间自动生成；失败或遗漏的日期下次执行时重做。"),
+            Ui.Header("最近一次总结", "每天一份的工作概要：在设定时间自动生成；失败或遗漏的日期下次执行时重做。"),
             null, head, _reportDetail, buttons);
     }
 

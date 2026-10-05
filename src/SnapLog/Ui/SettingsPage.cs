@@ -133,7 +133,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     private Control BuildLlmCard()
     {
         var head = Ui.FieldRow("启用大模型总结", _summaryEnabled,
-            tip: "关闭时不调用任何模型接口，只保留本地记录。");
+            tip: "生成每日总结的总开关：关闭时不调用任何模型接口，只保留本地记录。");
 
         // 按钮在设置项之后：先看到要设什么，再保存；页面本身可滚动，不用担心按钮被挤出屏幕。
         var buttons = Ui.ButtonRow(
@@ -142,7 +142,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             _llmNote);
 
         return Ui.CardWith(
-            Ui.Header("大模型配置", "按顺序调用，前一个失败自动换下一个；接口地址一般以 /v1 结尾。"),
+            Ui.Header("大模型配置", "生成每日总结用的大模型接口。按顺序调用，前一个失败自动换下一个；"
+                                  + "接口地址一般以 /v1 结尾。"),
             _llmStatus, head, _providers, buttons);
     }
 
@@ -220,7 +221,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
     private Control BuildFeishuCard()
     {
         var rows = Ui.RowStack(
-            Ui.FieldRow("启用飞书推送", _feishuEnabled, tip: "关闭后，每日流程不再推送到飞书。"),
+            Ui.FieldRow("启用飞书推送", _feishuEnabled, tip: "推送飞书的总开关：关闭后，每日流程不再推送到飞书。"),
             Ui.FieldRow("App ID", _appId, tip: "自建应用的 App ID。"),
             Ui.FieldRow("App Secret", _appSecret, tip: "留空则读取环境变量 SNAPLOG_FEISHU_APP_SECRET。"),
             Ui.FieldRow("多维表格 token", _appToken, tip: "表格链接中 /base/ 之后的部分。"),
@@ -229,7 +230,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
         var buttons = Ui.ButtonRow(Ui.Primary("保存飞书设置", () => SaveAsync(_feishuNote)), _feishuNote);
 
         return Ui.CardWith(
-            Ui.Header("飞书配置", "把每天的总结按日期写入多维表格，一天一行；需要多维表格的读写权限。"),
+            Ui.Header("飞书配置", "总结推送的目标表格。配置接入信息后，每天按日期写入一行；"
+                                + "需要多维表格的读写权限。"),
             _feishuStatus, rows, buttons);
     }
 
