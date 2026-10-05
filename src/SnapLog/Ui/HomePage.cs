@@ -107,7 +107,7 @@ internal sealed class HomePage : UserControl, IRefreshable
             var running = _services.Engine.IsRunning;
             _stateTitle.Text = running ? "正在记录" : "已暂停";
             _stateHint.Text = running
-                ? "跟随前台窗口自动识别；截图和文字只存本机。"
+                ? "跟随前台窗口自动识别，截图与文字仅保存在本机。"
                 : "暂停期间不截图，也不执行每日流程。";
             _stateDot.Background = new SolidColorBrush(Color.Parse(running ? "#15803D" : "#B45309"));
             _toggleButton.Content = running ? "暂停记录" : "开始记录";
@@ -303,8 +303,8 @@ internal sealed class HomePage : UserControl, IRefreshable
         var ok = await Ui.Confirm(
             owner,
             "开启每天自动执行？",
-            "到点会把当天的活动内容发送到你配置的大模型接口，并把生成的总结推送到飞书多维表格。"
-            + "发送内容（仅文字，或附带截图）取决于大模型设置中的「发送内容」。可随时在此关闭。",
+            "到点会将当天的活动内容发送到配置的模型接口，并将生成的总结推送到飞书多维表格。"
+            + "发送方式（仅文字或附带截图）取决于大模型设置中的发送内容选项。可随时在此关闭。",
             "开启");
 
         if (!ok)
@@ -375,8 +375,8 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         var titleColumn = new StackPanel { Spacing = 3 };
         titleColumn.Children.Add(Ui.Inline(8, _stateTitle, Ui.Tip(
-            "到点会把识别出的文字发送到你配置的模型接口，并把总结推送到飞书；"
-            + "是否附带截图取决于大模型设置中的「发送内容」。")));
+            "到点会将识别出的文字发送到配置的模型接口，并将总结推送到飞书；"
+            + "是否附带截图取决于大模型设置。")));
         titleColumn.Children.Add(_stateHint);
         Grid.SetColumn(titleColumn, 1);
         head.Children.Add(_stateDot);
@@ -461,7 +461,7 @@ internal sealed class HomePage : UserControl, IRefreshable
 
         if (TopLevel.GetTopLevel(this) is Window owner)
         {
-            _ = Ui.Info(owner, "设置开机自启动失败", $"写注册表被拒绝，或程序路径取不到。\n\n路径：{AutoStart.ExecutablePath}");
+            _ = Ui.Info(owner, "设置开机自启动失败", $"写入注册表被拒绝，或程序路径无法获取。\n\n路径：{AutoStart.ExecutablePath}");
         }
     }
 
@@ -469,7 +469,7 @@ internal sealed class HomePage : UserControl, IRefreshable
     {
         if (!_services.SaveOptions() && TopLevel.GetTopLevel(this) is Window owner)
         {
-            _ = Ui.Info(owner, "配置没能写入磁盘", "改动已经在内存里生效，但重启后会丢失。请检查配置目录的写权限。");
+            _ = Ui.Info(owner, "配置没能写入磁盘", "改动已在内存中生效，但重启后会丢失。请检查配置目录的写权限。");
         }
 
         Refresh();

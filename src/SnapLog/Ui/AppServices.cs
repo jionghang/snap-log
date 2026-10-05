@@ -135,8 +135,8 @@ public sealed class AppServices : IAsyncDisposable
             if (!string.IsNullOrWhiteSpace(StartupWarning))
             {
                 Tray.ShowBalloon(
-                    "配置文件有问题，本次按默认设置启动",
-                    StartupWarning + Environment.NewLine + "在设置里确认一遍，或把日志目录里的文件发给维护的人。",
+                    "配置文件读取失败，本次使用默认设置启动",
+                    StartupWarning + Environment.NewLine + "请在设置中确认配置，或把日志目录中的文件提供给维护人员。",
                     ToolTipIcon.Warning);
                 return;
             }

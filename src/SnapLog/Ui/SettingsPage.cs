@@ -288,9 +288,9 @@ internal sealed class SettingsPage : UserControl, IRefreshable
         var panel = new StackPanel { Spacing = 14 };
 
         panel.Children.Add(Ui.FieldRow(
-            "不记录的软件",
+            "排除的程序",
             _excluded,
-            tip: "勾选的程序不再记录。密码管理器等敏感程序建议勾选。"));
+            tip: "勾选后不再记录。密码管理器等敏感程序建议勾选。"));
 
         panel.Children.Add(Ui.FieldRow(
             "附加要求",
@@ -311,7 +311,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
 
         var expander = new Expander
         {
-            Header = "进阶设置（多数情况不用改）",
+            Header = "进阶设置（通常无需修改）",
             Content = panel,
             IsExpanded = false,
         };
@@ -326,7 +326,7 @@ internal sealed class SettingsPage : UserControl, IRefreshable
             Ui.Secondary("退出 SnapLog", ExitAsync));
 
         return Ui.CardWith(
-            Ui.Header("其他", "关闭窗口只是收进托盘，仍会继续记录；要停止请用托盘菜单中的「退出 SnapLog」。更换电脑时，把数据目录整体复制过去即可。"),
+            Ui.Header("其他", "关闭窗口仅收进托盘，仍会继续记录；要停止请使用托盘菜单中的退出 SnapLog。更换电脑时，把数据目录整体复制过去即可。"),
             null, buttons);
     }
 
@@ -509,10 +509,10 @@ internal sealed class SettingsPage : UserControl, IRefreshable
         SetNote(_llmNote, "测试完成：" + passed + " / " + targets.Count + " 个模型可用　" + DateTime.Now.ToString("HH:mm:ss"));
 
         await Ui.Info(owner,
-            passed == targets.Count ? "已启用的模型都能用" : "有模型不能用",
+            passed == targets.Count ? "所有已启用的模型均可用" : "部分模型不可用",
             string.Join(Environment.NewLine, lines)
             + Environment.NewLine + Environment.NewLine
-            + "地址、密钥、模型名三者任一不对都会失败；接口地址通常要以 /v1 结尾。");
+            + "地址、密钥或模型名称任一有误都会失败；接口地址通常以 /v1 结尾。");
     }
 
     private Task ExitAsync()

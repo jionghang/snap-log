@@ -62,7 +62,7 @@ internal sealed class RecordDetailWindow : Window
         // 标题 / 元数据与按钮 / 分隔线 都是固定的，只有正文在滚动区里。
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,Auto,*") };
 
-        grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("识别出的文字可以选中复制，也可以用「复制文字」整段复制。")));
+        grid.Children.Add(Ui.Inline(8, _title, Ui.Tip("识别出的文字可以选中复制，也可以使用复制文字按钮整段复制。")));
 
         _meta.Margin = new Thickness(0, 10, 0, 0);
         Grid.SetRow(_meta, 1);
@@ -182,7 +182,7 @@ internal sealed class RecordDetailWindow : Window
 
     private async Task DeleteAsync(long recordId)
     {
-        if (!await Ui.Confirm(this, "删除这条记录？", "记录和它的截图文件都会被删除，这个操作不可撤销。", "删除", danger: true))
+        if (!await Ui.Confirm(this, "删除这条记录？", "记录及其截图文件将一并删除，此操作不可撤销。", "删除", danger: true))
         {
             return;
         }

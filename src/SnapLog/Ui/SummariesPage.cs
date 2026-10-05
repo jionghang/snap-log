@@ -12,7 +12,7 @@ namespace SnapLog.Ui;
 /// <summary>
 /// 总结记录：只看历史，不放任何"手动生成/手动推送"的入口。
 /// 这个软件只有一条路径——到点自动跑；失败了规划器会在下一次自动补上，不需要人来点。
-/// 选择某一行会在详情窗口打开正文（和「抓取记录」一致）。
+/// 选择某一行会在详情窗口打开正文（和抓取记录页一致）。
 /// </summary>
 internal sealed class SummariesPage : UserControl, IRefreshable
 {
@@ -98,7 +98,7 @@ internal sealed class SummariesPage : UserControl, IRefreshable
             _count.Text = $"共 {runs.Count} 条　已推送 {pushed} 条";
 
             // 空态说明放在列表的位置上，和"抓取记录"同一处、同一样式；页头只留计数。
-            _empty.Text = "还没有生成过总结。开启每天自动执行后，到点会自动生成。";
+            _empty.Text = "暂无总结记录。开启每天自动执行后，到点自动生成。";
             _empty.IsVisible = runs.Count == 0;
         }
         catch (Exception ex)

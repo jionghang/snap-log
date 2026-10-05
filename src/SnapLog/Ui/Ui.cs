@@ -495,7 +495,7 @@ internal static class Ui
     }
 
     public static async Task Info(Window owner, string title, string message) =>
-        await new MessageWindow(title, message, "知道了", null).ShowDialogAsync(owner);
+        await new MessageWindow(title, message, "确定", null).ShowDialogAsync(owner);
 
     /// <summary>确认框。返回 true 表示用户点了确认按钮。</summary>
     public static async Task<bool> Confirm(Window owner, string title, string message, string confirmText, bool danger = false) =>

@@ -40,8 +40,8 @@ internal sealed class AboutWindow : Window
 
         intro.Children.Add(Ui.Inline(8, versionLine, Ui.Tip(
             "截图和识别文字都保存在本机；到了设定的时间、且已开启每日自动执行时，才会发送到已配置的模型接口"
-            + "（默认仅发送文字，是否附带截图取决于大模型设置中的「发送内容」）。")));
-        intro.Children.Add(Ui.Hint("每天到点把当天的屏幕活动交给大模型写成一份总结，再推送到飞书多维表格。"));
+            + "（默认仅发送文字；是否附带截图取决于大模型设置）。")));
+        intro.Children.Add(Ui.Hint("每天到点由大模型将当天的屏幕活动整理成一份总结，再推送到飞书多维表格。"));
 
         var rows = new List<(string Label, string Value)>
         {
@@ -49,7 +49,7 @@ internal sealed class AboutWindow : Window
             ("日志目录", services.Paths.LogsDirectory),
         };
 
-        // 这些只在排错时要看，界面上不铺开；点「复制诊断信息」会一起带上。
+        // 这些只在排错时要看，界面上不铺开；复制诊断信息时会一起带上。
         var diagnostics = new (string Label, string Value)[]
         {
             ("版本", "SnapLog " + version?.Major + "." + version?.Minor + "." + version?.Build),
@@ -68,13 +68,13 @@ internal sealed class AboutWindow : Window
             Environment.NewLine,
             diagnostics.Concat(rows).Select(row => $"{row.Label}：{row.Value}"));
 
-        // 关于窗口只讲"这是什么、去哪找它"；目录、版本这些排错信息都在「复制诊断信息」里。
+        // 关于窗口只讲"这是什么、去哪找它"；目录、版本这些排错信息都在复制诊断信息里。
         var panel = new StackPanel { Spacing = 10 };
         panel.Children.Add(intro);
         panel.Children.Add(Ui.Inline(8, Ui.Label("项目主页"),
             Ui.Link(GitHubUrl, () => MainWindow.OpenPath("https://" + GitHubUrl))));
         panel.Children.Add(Ui.Divider());
-        panel.Children.Add(Ui.Hint("数据目录、日志目录和运行状态都在「复制诊断信息」的内容里，排错时一并带走。"));
+        panel.Children.Add(Ui.Hint("数据目录、日志目录与运行状态均包含在复制诊断信息中，排错时一并提供。"));
 
         var buttons = Ui.ButtonRow(CopyDiagnosticsButton());
 
@@ -145,9 +145,9 @@ internal sealed class FirstRunWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         var content = new StackPanel { Spacing = 12 };
-        content.Children.Add(new TextBlock { Text = "已经在托盘里开始记录", Classes = { "section" } });
+        content.Children.Add(new TextBlock { Text = "已在后台开始记录", Classes = { "section" } });
         content.Children.Add(Ui.Hint("尚未配置大模型和飞书。记录功能不受影响，只是到点不会生成总结。"));
-        content.Children.Add(Ui.Hint("平时只在本机记录；到点会把当天内容发送到你的模型接口并推送到飞书（默认仅发送文字）。"));
+        content.Children.Add(Ui.Hint("平时仅在本机记录；到点会将当天内容发送到配置的模型接口并推送到飞书（默认仅发送文字）。"));
 
         var goSettings = Ui.Primary("去设置", () =>
         {

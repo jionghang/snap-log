@@ -118,7 +118,7 @@ internal sealed class RecordsPage : UserControl, IRefreshable
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         grid.Children.Add(Ui.PageHeader("抓取记录",
-            "最多列出最近 300 条；更早的记录请把时间范围改为「全部」。选择一行查看详情。"));
+            "最多列出最近 300 条；更早的记录请把时间范围改为全部。选择一行查看详情。"));
         Grid.SetColumn(_summary, 1);
         _summary.VerticalAlignment = VerticalAlignment.Center;
         grid.Children.Add(_summary);
@@ -218,8 +218,8 @@ internal sealed class RecordsPage : UserControl, IRefreshable
                 var total = await _services.Store.CountAsync(CancellationToken.None);
                 _summary.Text = "共 0 条";
                 _empty.Text = total == 0
-                    ? "还没有记录。保持运行后会自动抓取；切换一下窗口，几秒后就会出现在这里。"
-                    : "没有匹配的记录。可更换关键词，或把时间范围改为「全部」。";
+                    ? "暂无记录。程序运行后会自动抓取，切换窗口后数秒内即可看到。"
+                    : "没有匹配的记录。可更换关键词，或把时间范围改为全部。";
                 _empty.IsVisible = true;
             }
 

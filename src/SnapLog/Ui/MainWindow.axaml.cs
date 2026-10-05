@@ -81,8 +81,8 @@ public partial class MainWindow : Window
             {
                 _warnedAboutTray = true;
                 _services.Tray?.ShowBalloon(
-                    "SnapLog 还在托盘里",
-                    "窗口关掉后仍在记录。要完全退出，请右键托盘图标选退出。",
+                    "SnapLog 仍在后台运行",
+                    "窗口关闭后仍在记录。要完全退出，请使用托盘菜单中的退出命令。",
                     System.Windows.Forms.ToolTipIcon.Info);
             }
 
