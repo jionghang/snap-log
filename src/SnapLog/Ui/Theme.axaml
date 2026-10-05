@@ -99,6 +99,15 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <!-- 卡片内的分组框：把一组相关字段框起来便于划分（例如大模型配置里的每个模型） -->
+  <Style Selector="Border.well">
+    <Setter Property="Background" Value="#FAFBFC" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="14" />
+  </Style>
+
   <!-- 状态徽标：绿=正常，橙=暂停/提醒，灰=未启用 -->
   <Style Selector="Border.pill">
     <Setter Property="CornerRadius" Value="999" />

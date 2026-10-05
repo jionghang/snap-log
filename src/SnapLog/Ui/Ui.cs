@@ -188,12 +188,19 @@ internal static class Ui
             body.Children.Add(hintControl);
         }
 
+        var index = 0;
         foreach (var child in children)
         {
-            child.Margin = child.Margin == default
-                ? new Thickness(0, 14, 0, 0)
-                : child.Margin;
+            if (child.Margin == default)
+            {
+                // 与标题（或上一项）之间留 14px；卡片没有标题时，第一项不需要额外上边距——
+                // 否则上边距比下边距多一圈（抓取记录的筛选卡片"上边距偏高"就是这么来的）。
+                var gap = index > 0 || header is not null || hintControl is not null;
+                child.Margin = gap ? new Thickness(0, 14, 0, 0) : default;
+            }
+
             body.Children.Add(child);
+            index++;
         }
 
         return new Border { Classes = { "card" }, Child = body };

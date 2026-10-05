@@ -203,12 +203,8 @@ internal sealed class SettingsPage : UserControl, IRefreshable
                 block.Children.Add(Ui.ButtonRow(Ui.Link("删除这个模型", () => _ = RemoveProviderAsync(provider))));
             }
 
-            _providers.Children.Add(block);
-
-            if (index < list.Count - 1)
-            {
-                _providers.Children.Add(Ui.Divider());
-            }
+            // 每个模型一个分组框：模型多的时候用分隔线划分不够清楚。
+            _providers.Children.Add(new Border { Classes = { "well" }, Child = block });
         }
 
         _providers.Children.Add(Ui.ButtonRow(Ui.Secondary("添加模型", () =>
