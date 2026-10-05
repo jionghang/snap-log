@@ -24,6 +24,10 @@ public sealed record SummaryRequest(
     public bool HasImages => Images.Count > 0;
 
     public long TotalImageBytes => Images.Sum(image => image.SizeBytes);
+
+    /// <summary>这次请求对应的发送模式。总结器用它区分"图片可选"与"只发图"：
+    /// 后者遇到不收图的模型不能降级成纯文字（纯文字版没有正文可发）。</summary>
+    public LlmPayloadMode Mode { get; init; } = LlmPayloadMode.TextOnly;
 }
 
 /// <summary>一次成功的总结，带上是谁完成的、试了几次。</summary>

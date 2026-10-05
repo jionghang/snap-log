@@ -187,11 +187,8 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
         SummaryRequest request,
         CancellationToken cancellationToken)
     {
-        var userParts = new List<ChatMessageContentPart>
-        {
-            ChatMessageContentPart.CreateTextPart(request.UserPrompt),
-        };
-
+        // 图片只编码一次：下面的降级重试（换参数）不重复做这件重活。
+        var imageParts = new List<ChatMessageContentPart>();
         foreach (var image in request.Images)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -202,36 +199,63 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
                 continue;
             }
 
-            userParts.Add(ChatMessageContentPart.CreateImagePart(
+            imageParts.Add(ChatMessageContentPart.CreateImagePart(
                 BinaryData.FromBytes(bytes),
                 "image/jpeg",
                 ToDetailLevel(request.ImageDetail)));
         }
 
-        List<ChatMessage> messages =
-        [
-            new SystemChatMessage(request.SystemPrompt),
-            new UserChatMessage(userParts),
-        ];
+        List<ChatMessage> BuildMessages(bool withImages)
+        {
+            var parts = new List<ChatMessageContentPart>
+            {
+                ChatMessageContentPart.CreateTextPart(request.UserPrompt),
+            };
+
+            if (withImages)
+            {
+                parts.AddRange(imageParts);
+            }
+
+            return
+            [
+                new SystemChatMessage(request.SystemPrompt),
+                new UserChatMessage(parts),
+            ];
+        }
+
+        // 两类"参数不被接受"的降级重试：去掉 temperature、去掉图片。
+        // 每个方向只降一次（标志翻转后不复原），最多多试两轮，不会绕圈。
+        float? temperature = DefaultTemperature;
+        var withImages = imageParts.Count > 0;
+        var imagesOptional = request.Mode != LlmPayloadMode.ImageOnly;
 
         System.ClientModel.ClientResult<ChatCompletion> response;
 
-        try
+        while (true)
         {
-            response = await provider.Client
-                .CompleteChatAsync(messages, BuildRequestOptions(DefaultTemperature), cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (ClientResultException ex) when (MentionsTemperature(ex))
-        {
-            // 有的模型（例如 Kimi 的 k3）只接受 temperature=1，默认的 0.3 会被 400 拒掉。
-            // 这属于"参数不被接受"，拿同样的参数重试没有意义；去掉温度、用服务端默认值再来一次。
-            _log.Warn($"{provider.Describe()} 不接受 temperature={DefaultTemperature}"
-                      + $"（{Trim(ex.Message)}），改用服务端默认值重试一次");
-
-            response = await provider.Client
-                .CompleteChatAsync(messages, BuildRequestOptions(null), cancellationToken)
-                .ConfigureAwait(false);
+            try
+            {
+                response = await provider.Client
+                    .CompleteChatAsync(BuildMessages(withImages), BuildRequestOptions(temperature), cancellationToken)
+                    .ConfigureAwait(false);
+                break;
+            }
+            catch (ClientResultException ex) when (temperature is not null && MentionsTemperature(ex))
+            {
+                // 有的模型（例如 Kimi 的 k3）只接受 temperature=1，默认的 0.3 会被 400 拒掉。
+                // 这属于"参数不被接受"，拿同样的参数重试没有意义；去掉温度、用服务端默认值再来一次。
+                _log.Warn($"{provider.Describe()} 不接受 temperature={temperature}"
+                          + $"（{Trim(ex.Message)}），改用服务端默认值重试一次");
+                temperature = null;
+            }
+            catch (ClientResultException ex) when (withImages && imagesOptional && LooksLikeImageRejection(ex.Message))
+            {
+                // 有的模型只收文字：图片被拒时降级为纯文字，摘要照样能出，只是少了截图校正。
+                // 只发图模式不降级：那个模式没有文字正文可发，降级等于发一份空材料，宁可如实报错。
+                _log.Warn($"{provider.Describe()} 不接受图片输入（{Trim(ex.Message)}），本次改用纯文字重试");
+                withImages = false;
+            }
         }
 
         ChatCompletion completion = response;
@@ -373,6 +397,14 @@ public sealed class OpenAiCompatibleSummarizer : ISummarizer
     /// <summary>400 里明确提到 temperature 的：参数不被接受，换参数重试才有意义。</summary>
     private static bool MentionsTemperature(ClientResultException ex) =>
         ex.Message.Contains("temperature", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>错误信息明确指向图片输入的：该模型不收图，降级为纯文字重试。
+    /// 独立成静态方法，自检可以用样例消息验证判定，不依赖真实接口。</summary>
+    internal static bool LooksLikeImageRejection(string message)
+    {
+        string[] hints = ["image", "vision", "multimodal", "多模态", "图片", "图像"];
+        return hints.Any(hint => message.Contains(hint, StringComparison.OrdinalIgnoreCase));
+    }
 
     private static string Describe(Exception exception) => exception switch
     {

@@ -392,10 +392,13 @@ internal sealed class CliRunner
         // 6) 提示词组装：模板固化进配置后，随配置变化的说明仍要自动追加
         var promptOk = VerifySystemPrompt(report);
 
-        // 7) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
+        // 7) 图片降级判定：模型拒收图片时改发纯文字，判定不能误伤普通报错
+        var imageFallbackOk = VerifyImageFallback(report);
+
+        // 8) 定时生成的按天规划：合成几天的数据与历史，验证"补生成 + 覆盖"的判定
         var planOk = VerifySummaryPlan(report);
 
-        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk && promptOk;
+        var ok = textMatches && restored.TextLength > 0 && filtersOk && exportOk && planOk && promptOk && imageFallbackOk;
 
         if (restored.TextLength == 0)
         {
@@ -471,6 +474,35 @@ internal sealed class CliRunner
         foreach (var (name, passed) in checks.Where(c => !c.Ok))
         {
             report.AppendLine($"  未通过      : {name}");
+        }
+
+        return ok;
+    }
+
+    /// <summary>
+    /// 模型拒收图片时的降级判定：只有明确指向图片/视觉/多模态的报错才降级为纯文字；
+    /// 普通失败（限流、参数不对、网络不通）不能误判——误判会把带图模式悄悄降级。
+    /// </summary>
+    private static bool VerifyImageFallback(StringBuilder report)
+    {
+        var cases = new (string Message, bool Expected)[]
+        {
+            ("HTTP 400 (invalid_request_error: ) content type image_url is not supported", true),
+            ("HTTP 400 (invalid_request_error: ) model does not support image input", true),
+            ("当前模型不支持图片输入", true),
+            ("HTTP 429 Service request failed. Status: 429 (Too Many Requests)", false),
+            ("HTTP 400 (invalid_request_error: ) invalid temperature: only 1 is allowed for this model", false),
+            ("接口返回 0：不知道这样的主机。", false),
+        };
+
+        var ok = cases.All(c => Summarization.OpenAiCompatibleSummarizer.LooksLikeImageRejection(c.Message) == c.Expected);
+
+        report.AppendLine("--- 图片降级判定 ---");
+        report.AppendLine($"判定          : {(ok ? "通过" : "不符合预期")}");
+        foreach (var (message, expected) in cases.Where(c =>
+                     Summarization.OpenAiCompatibleSummarizer.LooksLikeImageRejection(c.Message) != c.Expected))
+        {
+            report.AppendLine($"  未通过      : {(expected ? "应命中未命中" : "误命中")} {message}");
         }
 
         return ok;

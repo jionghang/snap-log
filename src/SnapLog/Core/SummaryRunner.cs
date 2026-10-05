@@ -153,7 +153,10 @@ public sealed class SummaryRunner
                 Prompts.BuildSystemPrompt(settings),
                 string.Empty,
                 images,
-                settings.ImageDetail);
+                settings.ImageDetail)
+            {
+                Mode = settings.PayloadMode,
+            };
 
             request = request with { UserPrompt = Prompts.BuildUserPrompt(digest, request) };
 
