@@ -170,13 +170,13 @@ internal sealed class HomePage : UserControl, IRefreshable
         Ui.UpdatePill(_reportPill, pushed ? "已推送" : "未推送", pushed ? PillKind.Ok : PillKind.Warn);
         _reportTitle.Text = $"{DayLabel(run)} {run.StartedAt:HH:mm}";
 
-        var details = $"覆盖 {run.CoveredDay}　{run.RecordCount} 条记录"
-                      + (run.Provider.Length > 0 ? $"　{run.Provider}" : string.Empty)
-                      + $"　耗时 {run.ElapsedMilliseconds / 1000.0:0.#} 秒";
+        var details = $"覆盖：{run.CoveredDay}　记录：{run.RecordCount} 条"
+                      + (run.Provider.Length > 0 ? $"　模型：{run.Provider}" : string.Empty)
+                      + $"　耗时：{run.ElapsedMilliseconds / 1000.0:0.#} 秒";
 
         if (!pushed)
         {
-            details += _services.Options.Feishu.Enabled ? "　会在设定时间自动推送" : "　飞书推送未启用";
+            details += _services.Options.Feishu.Enabled ? "　推送：会在设定时间自动推送" : "　推送：未启用";
         }
 
         _reportDetail.Text = details;

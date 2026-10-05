@@ -122,7 +122,8 @@ internal sealed class RecordDetailWindow : Window
         }
 
         var meta = new System.Text.StringBuilder()
-            .Append($"{record.Timestamp:yyyy-MM-dd HH:mm:ss}　{record.ProcessName}　")
+            .Append($"时间：{record.Timestamp:yyyy-MM-dd HH:mm:ss}　")
+            .Append($"进程：{record.ProcessName}　")
             .Append($"状态：{Describe(record.Status)}　字数：{record.TextLength}");
 
         if (!string.IsNullOrWhiteSpace(record.Error))

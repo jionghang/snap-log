@@ -195,19 +195,20 @@ internal sealed class SummaryDetailWindow : Window
                       + (run.Success ? string.Empty : "（失败）");
 
         var meta = new System.Text.StringBuilder()
-            .Append($"生成于 {run.StartedAt:yyyy-MM-dd HH:mm:ss}　{run.RecordCount} 条记录")
-            .Append(run.Provider.Length > 0 ? $"　{run.Provider}" : string.Empty)
-            .Append($"　耗时 {run.ElapsedMilliseconds / 1000.0:0.#} 秒");
+            .Append($"时间：{run.StartedAt:yyyy-MM-dd HH:mm:ss}　")
+            .Append($"记录：{run.RecordCount} 条")
+            .Append(run.Provider.Length > 0 ? $"　模型：{run.Provider}" : string.Empty)
+            .Append($"　耗时：{run.ElapsedMilliseconds / 1000.0:0.#} 秒");
 
         if (run.PushedAt is { } pushed)
         {
             // 生成后立刻推送时两个时间在同一分钟，写两遍只是噪音。
             var sameMinute = Math.Abs((pushed - run.StartedAt).TotalMinutes) < 1;
-            meta.Append(sameMinute ? "　已推送到飞书" : $"　已推送到飞书 {pushed:MM-dd HH:mm}");
+            meta.Append(sameMinute ? "　推送：已推送" : $"　推送：已推送 {pushed:MM-dd HH:mm}");
         }
         else
         {
-            meta.Append("　尚未推送到飞书");
+            meta.Append("　推送：未推送");
         }
 
         // 与记录详情一致：元数据只留一行浅字，不加框。
