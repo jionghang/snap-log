@@ -420,8 +420,7 @@ internal sealed class HomePage : UserControl, IRefreshable
             }));
 
         return Ui.CardWith(
-            Ui.Header("最近一次总结", "最近生成的一条结果。覆盖日期指总结针对的那一天；生成时间可能晚一天，"
-                                      + "因为定时点电脑未开机时会在下次启动后补生成。"),
+            Ui.Header("最近一次总结", "最近生成的一条结果。"),
             null, head, _reportDetail, buttons);
     }
 
