@@ -6,6 +6,16 @@ SnapLog 是一个 Windows 桌面工具，用于记录屏幕活动并识别其中
 
 ---
 
+**English**
+
+SnapLog is a Windows tray app that captures the active window on every window switch and recognizes its text offline (PaddleOCR or the built-in Windows OCR). At a scheduled time each day, it summarizes the day's activity with an LLM into a concise work brief and writes it to a Feishu (Lark) bitable.
+
+- Everything stays on your machine; only the recognized text and a few sampled screenshots leave it, and only at the configured time, to your own model endpoint.
+- Any OpenAI-compatible model works, with automatic fallback between providers and between payload modes (text-with-images falls back to text-only when needed).
+- Self-contained build: download the zip from Releases, unzip, run SnapLog.exe — no .NET runtime required.
+
+---
+
 ## 一、适用场景
 
 SnapLog 适用于工作内容分散在多个窗口与系统之间、需要定期复盘或汇报的场景：无需人工整理，每天在固定时间自动产出一份按天归档的工作小结，并汇集至飞书多维表格。
